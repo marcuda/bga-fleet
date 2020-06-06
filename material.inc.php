@@ -32,6 +32,145 @@ $this->card_types = array(
 
 */
 
+if (!defined("LICENSE_SHRIMP") {
+    define("LICENSE_SHRIMP", 0);
+    define("LICENSE_COD", 1);
+    define("LICENSE_LOBSTER", 2);
+    define("LICENSE_TUNA", 3);
+    define("LICENSE_PROCESSING", 4);
+    define("LICENSE_PUB", 5);
+    define("LICENSE_CRAB_C", 6);
+    define("LICENSE_CRAB_F", 7);
+    define("LICENSE_CRAB_L", 8);
+    define("BOAT_SHRIMP", 9);
+    define("BOAT_LOBSTER", 10);
+    define("BOAT_PROCESSING", 11);
+    define("BOAT_COD", 12);
+    define("BOAT_TUNA", 13);
+    define("BOAT_CRAB", 14);
 
+    define("CARD_LICENSE", 'license');
+    define("CARD_BOAT", 'boat');
+}
 
-
+$this->card_types = array(
+    LICENSE_SHRIMP => array(
+        'name' => clienttranslate("Shrimp License"),
+        'type' => CARD_LICENSE,
+        'cost' => 4,
+        'points' => 4,
+        'nbr' => 4,
+        'text' => clienttranslate('$1 off every transaction for each Shrimp License'),
+    ),
+    LICENSE_COD => array(
+        'name' => clienttranslate("Cod License"),
+        'type' => CARD_LICENSE,
+        'cost' => 4,
+        'points' => 4,
+        'nbr' => 4,
+        'text' => clienttranslate("May launch 2 boats per Launch Boats phase. May draw 1 card for each Cod License if player launches any boats"),
+    ),
+    LICENSE_LOBSTER => array(
+        'name' => clienttranslate("Lobster License"),
+        'type' => CARD_LICENSE,
+        'cost' => 5,
+        'points' => 3,
+        'nbr' => 4,
+        'text' => clienttranslate("May captain 2 boats per Hire Captains phase and draw bonus cards. With 1 license: +1/2 cards for 1-3/4+ captained boats. With 2+ licenses: +1/2/3 cards for 1-2/3-6/7+ captained boats."),
+    ),
+    LICENSE_TUNA => array(
+        'name' => clienttranslate("Tuna License"),
+        'type' => CARD_LICENSE,
+        'cost' => 5,
+        'points' => 3,
+        'nbr' => 4,
+        'text' => clienttranslate("Draw bonus 1 => 2/2; 2 => 3/2; 3 => 3/3; 4 => 4/3"),
+    ),
+    LICENSE_PROCESSING => array(
+        'name' => clienttranslate("Processing Vessel License"),
+        'type' => CARD_LICENSE,
+        'cost' => 5,
+        'points' => 3,
+        'nbr' => 4,
+        'text' => clienttranslate("May process 1 crate of fish from each boat onto and may trade 1 fish crate from Processing Vessel License for +1 card for each Processing Vessel License"),
+    ),
+    LICENSE_PUB => array(
+        'name' => clienttranslate("Fisherman's Pub"),
+        'type' => CARD_LICENSE,
+        'cost' => 10,
+        'points' => 10,
+        'nbr' => 3,
+        'text' => clienttranslate(""),
+    ),
+    LICENSE_CRAB_C => array(
+        'name' => clienttranslate("King Crab License"),
+        'type' => CARD_LICENSE,
+        'cost' => 10,
+        'points' => 5,
+        'nbr' => 1,
+        'text' => clienttranslate("+1VP for each captain (max 10VP)"),
+    ),
+    LICENSE_CRAB_F => array(
+        'name' => clienttranslate("King Crab License"),
+        'type' => CARD_LICENSE,
+        'cost' => 10,
+        'points' => 5,
+        'nbr' => 1,
+        'text' => clienttranslate("+1VP for each 3 fish crates (max 10VP)"),
+    ),
+    LICENSE_CRAB_L => array(
+        'name' => clienttranslate("King Crab License"),
+        'type' => CARD_LICENSE,
+        'cost' => 10,
+        'points' => 5,
+        'nbr' => 1,
+        'text' => clienttranslate("+2/4/5/6/8/10VP for 2/3/4/5/6/7 different licenses"),
+    ),
+    BOAT_SHRIMP => array(
+        'name' => clienttranslate("Shrimp Boat"),
+        'type' => CARD_BOAT,
+        'cost' => 1,
+        'points' => 1,
+        'nbr' => 20,
+        'text' => clienttranslate(""),
+    ),
+    BOAT_LOBSTER => array(
+        'name' => clienttranslate("Lobster Boat"),
+        'type' => CARD_BOAT,
+        'cost' => 2,
+        'points' => 2,
+        'nbr' => 20,
+        'text' => clienttranslate(""),
+    ),
+    BOAT_PROCESSING => array(
+        'name' => clienttranslate("Processing Vessel"),
+        'type' => CARD_BOAT,
+        'cost' => 2,
+        'points' => 2,
+        'nbr' => 20,
+        'text' => clienttranslate(""),
+    ),
+    BOAT_COD => array(
+        'name' => clienttranslate("Cod Boat"),
+        'type' => CARD_BOAT,
+        'cost' => 2,
+        'points' => 2,
+        'nbr' => 12,
+        'text' => clienttranslate(""),
+    ),
+    BOAT_TUNA => array(
+        'name' => clienttranslate("Tuna Boat"),
+        'type' => CARD_BOAT,
+        'cost' => 1,
+        'points' => 1,
+        'nbr' => 12,
+        'text' => clienttranslate(""),
+    ),
+    BOAT_CRAB => array(
+        'name' => clienttranslate("King Crab Boat"),
+        'type' => CARD_BOAT,
+        'cost' => 3,
+        'points' => 3,
+        'nbr' => 12,
+        'text' => clienttranslate(""),
+    ),

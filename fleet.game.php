@@ -39,7 +39,40 @@ class fleet extends Table
             //    "my_first_game_variant" => 100,
             //    "my_second_game_variant" => 101,
             //      ...
-        ) );        
+            'nbr_fish_crates' => 10,
+        ) );
+
+        $this->cards = self::getNew("module.common.deck");
+        $this->cards->init("card");
+
+        $this->license_types = array(
+            LICENSE_SHRIMP,
+            LICENSE_COD,
+            LICENSE_LOBSTER,
+            LICENSE_TUNA,
+            LICENSE_PROCESSING,
+            LICENSE_PUB,
+            LICENSE_CRAB_C,
+            LICENSE_CRAB_F,
+            LICENSE_CRAB_L,
+        );
+
+        $this->premium_license_types = array(
+            LICENSE_PUB,
+            LICENSE_CRAB_C,
+            LICENSE_CRAB_F,
+            LICENSE_CRAB_L,
+        );
+
+        $this->boat_types = array(
+            BOAT_SHRIMP,
+            BOAT_LOBSTER,
+            BOAT_PROCESSING,
+            BOAT_COD,
+            BOAT_TUNA,
+            BOAT_CRAB,
+        );
+
     }
         
     protected function getGameName( )
@@ -88,7 +121,65 @@ class fleet extends Table
         //self::initStat( 'player', 'player_teststat1', 0 );  // Init a player statistics (for all players)
 
         // TODO: setup the initial game situation here
-       
+        $cards = array();
+        foreach ($this->card_types as $idx => $card) {
+            $cards[] = array(
+                'type' => $card['type'],
+                'type_arg' => $idx,
+                'nbr' => $card['nbr']
+            );
+        }
+        $this->cards->createCards($cards);
+
+        // Separate licenses from boats
+        $licences = $this->cards->getCardsOfType(CARD_LICENSE);
+        $this->cards->moveCards(array_column($licences, 'id'), 'licences');
+        $this->cards->shuffle('licenses');
+
+        // Setup license deck
+        // Separate all premium and 8 common licenses
+        foreach ($this->premium_license_types as $card_type) {
+            $cards = $this->cards->getCardsOfType($card_type);
+            $this->cards->moveCards(array_column($cards, 'id'), 'setup_premium');
+        }
+        $this->cards->pickCardsForLocation(8, 'licences', 'setup_common');
+        $this->cards->shuffle('setup_premium');
+        $this->cards->shuffle('setup_common');
+
+        // Remove some licenses from game based on number of players
+        $nbr_players = count($players);
+        if ($nbr_players == 2) {
+            $this->cards->pickCardsForLocation(3, 'setup_premium', 'box');
+            $this->cards->pickCardsForLocation(6, 'setup_common', 'box');
+        } else if ($nbr_players == 3) {
+            $this->cards->pickCardsForLocation(2, 'setup_premium', 'box');
+            $this->cards->pickCardsForLocation(2, 'setup_common', 'box');
+        }
+
+        // Shuffle premium back into deck and put common on top
+        $this->cards->moveAllCardsInLocation('setup_premium', 'licenses');
+        $this->cards->shuffle('licenses');
+        foreach ($this->cards->getCardsInLocation('setup_common') as $card) {
+            $this->cards->insertCardOnExtremePosition($card['id'], 'licenses', true);
+        }
+
+        // Give each player one of each boat
+        foreach ($this->boat_types as $card_type) {
+            $cards = $this->cards->getCardsOfType($card_type);
+            $i = 0;
+            foreach ($players as $player_id => $player) {
+                $this->cards->moveCard($cards[$i]['id'], 'hand', $player_id);
+                $i++;
+            }
+        }
+
+        // Shuffle boat deck and auto shuffle discard pile as needed
+        // TODO: notify on shuffle
+        $this->cards->shuffle('deck');
+        $this->cards->autoreshuffle = true;
+
+        // 25 fish crates in the game for each player
+        self::setGameStateInitialValue("fish_crates", $nbr_players * 25);
 
         // Activate first player (which is in general a good idea :) )
         $this->activeNextPlayer();
