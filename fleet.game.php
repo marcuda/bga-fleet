@@ -22,8 +22,8 @@ require_once( APP_GAMEMODULE_PATH.'module/table/table.game.php' );
 
 class fleet extends Table
 {
-	function __construct( )
-	{
+    function __construct( )
+    {
         // Your global variables labels:
         //  Here, you can assign labels to global variables you are using for this game.
         //  You can use any number of global variables with IDs between 10 and 99.
@@ -40,13 +40,13 @@ class fleet extends Table
             //    "my_second_game_variant" => 101,
             //      ...
         ) );        
-	}
-	
+    }
+        
     protected function getGameName( )
     {
-		// Used for translations and stuff. Please do not modify.
+        // Used for translations and stuff. Please do not modify.
         return "fleet";
-    }	
+    }   
 
     /*
         setupNewGame:
@@ -253,13 +253,13 @@ class fleet extends Table
 
     function zombieTurn( $state, $active_player )
     {
-    	$statename = $state['name'];
-    	
+        $statename = $state['name'];
+        
         if ($state['type'] === "activeplayer") {
             switch ($statename) {
                 default:
                     $this->gamestate->nextState( "zombiePass" );
-                	break;
+                        break;
             }
 
             return;

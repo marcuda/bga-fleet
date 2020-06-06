@@ -24,16 +24,16 @@
  *
  */
   
-  require_once( APP_BASE_PATH."view/common/game.view.php" );
-  
-  class view_fleet_fleet extends game_view
-  {
+require_once( APP_BASE_PATH."view/common/game.view.php" );
+
+class view_fleet_fleet extends game_view
+{
     function getGameName() {
         return "fleet";
     }    
-  	function build_page( $viewArgs )
-  	{		
-  	    // Get players & players number
+    function build_page( $viewArgs )
+    {		
+        // Get players & players number
         $players = $this->game->loadPlayersBasicInfos();
         $players_nbr = count( $players );
 
@@ -79,7 +79,7 @@
 
 
         /*********** Do not change anything below this line  ************/
-  	}
-  }
-  
+    }
+}
+
 
