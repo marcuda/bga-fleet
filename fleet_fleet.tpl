@@ -8,25 +8,42 @@
 -- This code has been produced on the BGA studio platform for use on http://boardgamearena.com.
 -- See http://en.boardgamearena.com/#!doc/Studio for more information.
 -------
-
-    fleet_fleet.tpl
-    
-    This is the HTML template of your game.
-    
-    Everything you are writing in this file will be displayed in the HTML page of your game user interface,
-    in the "main game zone" of the screen.
-    
-    You can use in this template:
-    _ variables, with the format {MY_VARIABLE_ELEMENT}.
-    _ HTML block, with the BEGIN/END format
-    
-    See your "view" PHP file to check how to set variables and control blocks
-    
-    Please REMOVE this comment before publishing your game on BGA
 -->
 
 
-This is your game interface. You can edit this HTML in your ".tpl" file.
+<div id="flt_game_area">
+    <div id="auction_wrap" class="flt_auction whiteblock">
+        <h3>{AUCTION_LABEL}</h3>
+        <div id="auctiontable"></div>
+    </div>
+    <div id="flt_counters">
+        <div style="display: inline-block">
+            <div class="flt_icon_license"></div>
+            <span id="licensecount"></span>
+        </div>
+        <div style="display: inline-block">
+            <div class="flt_icon_boat"></div>
+            <span id="boatcount"></span>
+        </div>
+        <div style="display: inline-block">
+            <div class="flt_icon_fish"></div>
+            <span id="fishcount"></span>
+        </div>
+    </div>
+</div>
+<div id="myhand_wrap" class="whiteblock">
+    <h3>{MY_HAND}</h3>
+    <div id="myhand"></div>
+</div>
+
+<div id="playertables">
+    <!-- BEGIN player -->
+    <div id="playertable_{PLAYER_ID}_wrap" class="whiteblock">
+        <h3 style="color:#{PLAYER_COLOR}">{PLAYER_NAME}</h3>
+        <div id="playertable_{PLAYER_ID}"></div>
+    </div>
+    <!-- END player -->
+</div>
 
 
 <script type="text/javascript">

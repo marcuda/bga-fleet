@@ -39,40 +39,11 @@ class fleet extends Table
             //    "my_first_game_variant" => 100,
             //    "my_second_game_variant" => 101,
             //      ...
-            'nbr_fish_crates' => 10,
+            'fish_crates' => 10,
         ) );
 
         $this->cards = self::getNew("module.common.deck");
         $this->cards->init("card");
-
-        $this->license_types = array(
-            LICENSE_SHRIMP,
-            LICENSE_COD,
-            LICENSE_LOBSTER,
-            LICENSE_TUNA,
-            LICENSE_PROCESSING,
-            LICENSE_PUB,
-            LICENSE_CRAB_C,
-            LICENSE_CRAB_F,
-            LICENSE_CRAB_L,
-        );
-
-        $this->premium_license_types = array(
-            LICENSE_PUB,
-            LICENSE_CRAB_C,
-            LICENSE_CRAB_F,
-            LICENSE_CRAB_L,
-        );
-
-        $this->boat_types = array(
-            BOAT_SHRIMP,
-            BOAT_LOBSTER,
-            BOAT_PROCESSING,
-            BOAT_COD,
-            BOAT_TUNA,
-            BOAT_CRAB,
-        );
-
     }
         
     protected function getGameName( )
@@ -132,17 +103,17 @@ class fleet extends Table
         $this->cards->createCards($cards);
 
         // Separate licenses from boats
-        $licences = $this->cards->getCardsOfType(CARD_LICENSE);
-        $this->cards->moveCards(array_column($licences, 'id'), 'licences');
+        $licenses = $this->cards->getCardsOfType(CARD_LICENSE);
+        $this->cards->moveCards(array_column($licenses, 'id'), 'licenses');
         $this->cards->shuffle('licenses');
 
         // Setup license deck
         // Separate all premium and 8 common licenses
-        foreach ($this->premium_license_types as $card_type) {
-            $cards = $this->cards->getCardsOfType($card_type);
+        foreach ($this->premium_license_types as $type_arg) {
+            $cards = $this->cards->getCardsOfType(CARD_LICENSE, $type_arg);
             $this->cards->moveCards(array_column($cards, 'id'), 'setup_premium');
         }
-        $this->cards->pickCardsForLocation(8, 'licences', 'setup_common');
+        $this->cards->pickCardsForLocation(8, 'licenses', 'setup_common');
         $this->cards->shuffle('setup_premium');
         $this->cards->shuffle('setup_common');
 
@@ -163,13 +134,15 @@ class fleet extends Table
             $this->cards->insertCardOnExtremePosition($card['id'], 'licenses', true);
         }
 
+        // Draw initial licenses for auction
+        //$this->cards->pickCardsForLocation($nbr_players, 'licenses', 'auction');
+        $this->cards->pickCardsForLocation(4, 'licenses', 'auction');//TODO
+
         // Give each player one of each boat
-        foreach ($this->boat_types as $card_type) {
-            $cards = $this->cards->getCardsOfType($card_type);
-            $i = 0;
+        foreach ($this->boat_types as $type_arg) {
+            $cards = $this->cards->getCardsOfType(CARD_BOAT, $type_arg);
             foreach ($players as $player_id => $player) {
-                $this->cards->moveCard($cards[$i]['id'], 'hand', $player_id);
-                $i++;
+                $this->cards->moveCard(array_shift($cards)['id'], 'hand', $player_id);
             }
         }
 
@@ -206,6 +179,14 @@ class fleet extends Table
         // Note: you can retrieve some extra field you added for "player" table in "dbmodel.sql" if you need it.
         $sql = "SELECT player_id id, player_score score FROM player ";
         $result['players'] = self::getCollectionFromDb( $sql );
+
+        $result['hand'] = $this->cards->getPlayerHand($current_player_id);
+
+        $result['cards'] = $this->cards->countCardsInLocations();
+
+        $result['auction'] = $this->cards->getCardsInLocation('auction');
+
+        $result['fish'] = self::getGameStateValue('fish_crates');
   
         // TODO: Gather all information about current game situation (visible by player $current_player_id).
   
@@ -248,6 +229,27 @@ class fleet extends Table
         Each time a player is doing some game action, one of the methods below is called.
         (note: each method below must match an input method in fleet.action.php)
     */
+    function getPlayersInOrder()
+    {
+        $result = array();
+
+        $players = self::loadPlayersBasicInfos();
+        $next_player = self::getNextPlayerTable();
+        $player_id = self::getCurrentPlayerId();
+
+        // Check for spectator
+        if (!key_exists($player_id, $players)) {
+            $player_id = $next_player[0];
+        }
+
+        // Build array starting with current player
+        for ($i=0; $i<count($players); $i++) {
+            $result[] = $player_id;
+            $player_id = $next_player[$player_id];
+        }
+
+        return $result;
+    }
 
     /*
     

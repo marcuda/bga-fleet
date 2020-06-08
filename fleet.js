@@ -18,7 +18,8 @@
 define([
     "dojo","dojo/_base/declare",
     "ebg/core/gamegui",
-    "ebg/counter"
+    "ebg/counter",
+    "ebg/stock"
 ],
 function (dojo, declare) {
     return declare("bgagame.fleet", ebg.core.gamegui, {
@@ -28,7 +29,18 @@ function (dojo, declare) {
             // Here, you can init the global variables of your user interface
             // Example:
             // this.myGlobalValue = 0;
-
+            this.spectator = false;
+            this.auction = null;
+            this.playerHand = null;
+            this.boat_width = 100;
+            this.boat_height = 143;
+            this.boat_row_size = 7;
+            this.license_width = 180;
+            this.license_height = 125;
+            this.license_row_size = 5;
+            this.license_counter = null;
+            this.boat_counter = null;
+            this.fish_counter = null;
         },
         
         /*
@@ -55,9 +67,64 @@ function (dojo, declare) {
                          
                 // TODO: Setting up players boards if needed
             }
+
+            // License Auction
+            this.auction = new ebg.stock();
+            this.auction.create(this, $('auctiontable'), this.license_width, this.license_height);
+            this.auction.images_items_per_row = this.license_row_size;
+            for (var i = 0; i < 10; i++) {
+                this.auction.addItemType(i, i, g_gamethemeurl+'img/licenses.png', i);
+            }
+            this.auction.setSelectionMode(0);
+            for (var i in gamedatas.auction) {
+                var card = gamedatas.auction[i];
+                this.auction.addToStockWithId(card.type_arg, card.id);
+            }
+
+            this.license_counter = new ebg.counter();
+            this.license_counter.create('licensecount');
+            this.license_counter.setValue(gamedatas.cards['licenses']);
+            this.boat_counter = new ebg.counter();
+            this.boat_counter.create('boatcount');
+            this.boat_counter.setValue(gamedatas.cards['deck']);
+            this.fish_counter = new ebg.counter();
+            this.fish_counter.create('fishcount');
+            this.fish_counter.setValue(gamedatas.fish);
             
             // TODO: Set up your game interface here, according to "gamedatas"
-            
+            /*
+            // Set up player table unless spectating
+            this.playerTable = this.player_tables[this.player_id];
+            if (this.playerTable === undefined) {
+                // Spectator - hide player hand area
+                this.spectator = true;
+                dojo.style('myhand_wrap', 'display', 'none');
+            } else {
+                //TODO: onchangeselection
+            }
+            */
+
+            console.log(gamedatas);
+            // Player hand
+            if (!this.spectator) { // Spectator has no hand element
+                this.playerHand = new ebg.stock();
+                this.playerHand.create(this, $('myhand'), this.boat_width, this.boat_height);
+                this.playerHand.image_items_per_row = this.card_art_row_size;
+                //for (var i = 9; i < 15; i++) {
+                var type, pos;
+                for (type = 9, pos = 0; pos < 7; type++, pos++) {
+                    // Boat cards follow licenses in type order
+                    this.playerHand.addItemType(type, type, g_gamethemeurl+'img/boats.png', pos);
+                }
+                this.playerHand.setSelectionMode(0);
+                //this.playerHand.onItemCreate = dojo.hitch(this, 'setupNewCard');
+                for (var i in gamedatas.hand) {
+                    var card = gamedatas.hand[i];
+                    this.playerHand.addToStockWithId(card.type_arg, card.id);
+                }
+                //dojo.connect(this.playerHand, 'onChangeSelection', this, 'onPlayerHandSelectionChanged');
+            }
+
  
             // Setup game notifications to handle (see "setupNotifications" method below)
             this.setupNotifications();

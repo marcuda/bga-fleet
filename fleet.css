@@ -48,25 +48,40 @@
 
 /********* You can start writing your CSS below this line: **********/
 
+.flt_auction {
+    width: 740px;
+}
 
-/*
-    Example of CSS sprites (a black token and a white token, 20x20px each, embedded in the same "tokens.png" 40x20px image):
+.flt_boat {
+    position: absolute;
+    width: 100px;
+    height: 143px;
+    background-image: url('img/boats.png');
+    cursor: pointer;
+}
 
-    .white_token {
-        background-image: url('img/tokens.png');
-        background-position: 0px 0px;
-    }
-    .black_token {
-        background-image: url('img/tokens.png');
-        background-position: -20px 0px;
-    }
-    .token {
-        width: 20px;
-        height: 20px;
-        background-repeat: none;
-    }
-*/
+.flt_license {
+    position: absolute;
+    width: 180px;
+    height: 125px;
+    background-image: url('img/licenses.png');
+    cursor: pointer;
+}
 
+.flt_icon_boat {
+    width: 21px;
+    height: 30px;
+    background-image: url('img/boaticon.png');
+}
 
+.flt_icon_fish {
+    width: 30px;
+    height: 30px;
+    background-image: url('img/cube.png');
+}
 
-
+.flt_icon_license {
+    width: 43px;
+    height: 30px;
+    background-image: url('img/licenseicon.png');
+}
