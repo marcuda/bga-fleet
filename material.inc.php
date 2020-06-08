@@ -19,20 +19,7 @@
  *
  */
 
-
-/*
-
-Example:
-
-$this->card_types = array(
-    1 => array( "card_name" => ...,
-                ...
-              )
-);
-
-*/
-
-if (!defined("LICENSE_SHRIMP") {
+if (!defined("LICENSE_SHRIMP")) {
     define("LICENSE_SHRIMP", 0);
     define("LICENSE_COD", 1);
     define("LICENSE_LOBSTER", 2);
@@ -52,6 +39,35 @@ if (!defined("LICENSE_SHRIMP") {
     define("CARD_LICENSE", 'license');
     define("CARD_BOAT", 'boat');
 }
+
+$this->license_types = array(
+    LICENSE_SHRIMP,
+    LICENSE_COD,
+    LICENSE_LOBSTER,
+    LICENSE_TUNA,
+    LICENSE_PROCESSING,
+    LICENSE_PUB,
+    LICENSE_CRAB_C,
+    LICENSE_CRAB_F,
+    LICENSE_CRAB_L,
+);
+
+$this->premium_license_types = array(
+    LICENSE_PUB,
+    LICENSE_CRAB_C,
+    LICENSE_CRAB_F,
+    LICENSE_CRAB_L,
+);
+
+$this->boat_types = array(
+    BOAT_SHRIMP,
+    BOAT_LOBSTER,
+    BOAT_PROCESSING,
+    BOAT_COD,
+    BOAT_TUNA,
+    BOAT_CRAB,
+);
+
 
 $this->card_types = array(
     LICENSE_SHRIMP => array(
@@ -131,6 +147,7 @@ $this->card_types = array(
         'type' => CARD_BOAT,
         'cost' => 1,
         'points' => 1,
+        'value' => 2,
         'nbr' => 20,
         'text' => clienttranslate(""),
     ),
@@ -139,6 +156,7 @@ $this->card_types = array(
         'type' => CARD_BOAT,
         'cost' => 2,
         'points' => 2,
+        'value' => 2,
         'nbr' => 20,
         'text' => clienttranslate(""),
     ),
@@ -147,6 +165,7 @@ $this->card_types = array(
         'type' => CARD_BOAT,
         'cost' => 2,
         'points' => 2,
+        'value' => 2,
         'nbr' => 20,
         'text' => clienttranslate(""),
     ),
@@ -155,6 +174,7 @@ $this->card_types = array(
         'type' => CARD_BOAT,
         'cost' => 2,
         'points' => 2,
+        'value' => 1,
         'nbr' => 12,
         'text' => clienttranslate(""),
     ),
@@ -163,6 +183,7 @@ $this->card_types = array(
         'type' => CARD_BOAT,
         'cost' => 1,
         'points' => 1,
+        'value' => 3,
         'nbr' => 12,
         'text' => clienttranslate(""),
     ),
@@ -171,6 +192,8 @@ $this->card_types = array(
         'type' => CARD_BOAT,
         'cost' => 3,
         'points' => 3,
+        'value' => 1,
         'nbr' => 12,
         'text' => clienttranslate(""),
     ),
+);
