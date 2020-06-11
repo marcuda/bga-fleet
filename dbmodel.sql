@@ -34,3 +34,6 @@ CREATE TABLE IF NOT EXISTS `card` (
 ALTER TABLE `player` ADD COLUMN `current_bid` tinyint(1) unsigned NOT NULL DEFAULT 0;
 ALTER TABLE `player` ADD COLUMN `auction_pass` tinyint(1) unsigned NOT NULL DEFAULT 0;
 ALTER TABLE `player` ADD COLUMN `auction_done` tinyint(1) unsigned NOT NULL DEFAULT 0;
+
+-- Processed fish crates for selling
+ALTER TABLE `player` ADD COLUMN `fish_crates` tinyint(1) unsigned NOT NULL DEFAULT 0;

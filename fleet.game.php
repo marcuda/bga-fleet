@@ -313,18 +313,21 @@ class fleet extends Table
     {
         self::checkAction('pass');
 
-        $player_id = self::getActivePlayerId();
-        $sql = 'UPDATE player SET auction_pass = 1';
+        if ($this->getCurrentPhase() == PHASE_AUCTION) {
+            // Keep track of which players pass during auction
+            $player_id = self::getActivePlayerId();
+            $sql = 'UPDATE player SET auction_pass = 1';
 
-        if (self::getGameStateValue('auctioned_license') < 0) {
-            // No active auction, player is choosing not to buy
-            $sql .= ', auction_done = 1';
+            if (self::getGameStateValue('auctioned_license') < 0) {
+                // No active auction, player chooses not to buy
+                $sql .= ', auction_done = 1';
+            }
+
+            $sql .= " WHERE player_id = $player_id";
+            self::DbQuery($sql);
         }
 
-        $sql .= " WHERE player_id = $player_id";
-        self::DbQuery($sql);
-
-        $this->gamestate->nextState('nextPlayer');
+        $this->gamestate->nextState();
     }
 
     function bid($current_bid, $card_id=-1)
@@ -374,7 +377,11 @@ class fleet extends Table
             throw new BgaUserException(self::_("Bid must be greater than highest bid ($high_bid)"));
         }
 
-        //TODO: verify player can pay bid
+        // Verify player can pay bid
+        $coins = $this->getCoins($player_id);
+        if ($coins < $current_bid) {
+            throw new BgaUserException(self::_("You cannot afford that bid"));
+        }
 
         // Set player bid
         $sql = "UPDATE player SET current_bid = $current_bid WHERE player_id = $player_id";
@@ -382,28 +389,87 @@ class fleet extends Table
 
         //TODO: notify
 
-        $this->gamestate->nextState('nextPlayer');
+        $this->gamestate->nextState();
     }
 
-    function buyLicense($card_ids, $fish=0)
+    function getCoins($player_id)
     {
-        //TODO: verify
-        //      - all cards in hand
-        //      - player has fish crates availablle
-        //      - player won auction
-        //      - license selected
-        //      - cards + fish >= license cost
-        //
-        //TODO: action
-        //      - discard cards
-        //      - discard fish
-        //      - take license
-        //      - notify
-        //
+        $coins = 0;
+        $cards = $this->getPlayerHand($player_id);
+        foreach ($cards as $card) {
+            $card_info = $this->getCardInfo($card);
+            $coins += $card_info['coins'];
+        }
+        return $coins;
+    }
+
+    function buyLicense($card_ids, $fish_sold=0)
+    {
+        self::checkAction('buyLicense');
+
+        $player_id = self::getActivePlayerId();
+        $coins = $fish; // $1 per fish crate
+
+        // Verify game state and transaction
+
+        // Verify license selected in auction
+        $license_id = self::getGameStateValue('auctioned_license');
+        if ($license_id < 0) {
+            throw new feException("Impossible buy: no license");
+        }
+        $license = $this->cards->getCard($license_id);
+        if ($license == null || $license['location'] != 'auction') {
+            throw new feException("Impossible buy: non-auction license");
+        }
+        $license_info = $this->getCardInfo($license);
+
+        // Verify player won auction
+        $sql = "SELECT player_id FROM player WHERE auction_pass = 0";
+        if (self::getUniqueValueFromDB($sql) != $player_id) {
+            throw new feException("Impossible buy: ongoing auction");
+        }
+
+        // Verify all cards in player hand and tally coins
+        foreach ($card_ids as $card_id) {
+            $card = $this->cards->getCard($card_id);
+            if ($card == null || $card['location'] != 'hand' || $card['location_arg'] != $player_id) {
+                throw new feException("Invalid card id for purchase: $card_id");
+            }
+
+            $card_info = $this->getCardInfo($card);
+            $coins += $card_info['coins'];
+        }
+
+        if ($fish > 0) {
+            // Verify player has fish to sell
+            if ($this->getFishCrates($player_id) < $fish) {
+                throw new feException("Impossible buy: too many fish");
+            }
+        }
+
+        // Verify player paid enough
+        if ($coins < $license_info['cost']) {
+            throw new feException("Impossible buy: not enough");
+        }
+
+        // Purchase is valid
+
+        // Discard cards and fish crates
+        $this->cards->moveCards($card_ids, 'discard');
+        if ($fish > 0) {
+            $this->incFishCrates($player_id, $fish);
+        }
+
+        // Take license
+        $this->cards->moveCard($license_id, 'table', $player_id);
+        self::setGameStateValue('auctioned_license', -1);
+
+        //TODO: notify
+
+        $this->gamestate->nextState();
+
         //TODO: license bonus
-        //      shrimp: -1 cost/license
-        //
-        //TODO: state machine - reset all auction values here?
+        //      shrimp: -1 cost/license (could be free?)
     }
 
     function launchBoats($boat_id, $card_ids, $fish=0)
@@ -555,8 +621,19 @@ class fleet extends Table
         }
         // Extra columns
         $sql .= ' nbr_fish AS fish, has_captain FROM card';
-        $sql .= " WHERE card_location = 'table' AND card_location_arg = $player_id";
+        $sql .= " WHERE location = 'table' AND location_arg = $player_id AND type = '" . CARD_BOAT . "'";
         return self::getCollectionFromDB($sql);
+    }
+
+    function getFishCrates($player_id)
+    {
+        return self::getUniqueValueFromDB("SELECT fish_crates FROM player WHERE player_id = $player_id");
+    }
+
+    function incFishCrates($player_id, $inc)
+    {
+        $fish = $this->getFishCrates($player_id) + $inc;
+        self::DbQuery("UPDATE player SET fish_crates = $fish WHERE player_id = $player_id");
     }
 
     function stFishing()
