@@ -403,14 +403,14 @@ class fleet extends Table
         return $coins;
     }
 
-    function buyLicense($card_ids, $fish_sold=0)
+    function buyLicense($card_ids, $fish=0)
     {
         self::checkAction('buyLicense');
 
         $player_id = self::getActivePlayerId();
         $coins = $fish; // $1 per fish crate
 
-        // Verify game state and transaction
+        // Validate game state and transaction
 
         // Verify license selected in auction
         $license_id = self::getGameStateValue('auctioned_license');
@@ -472,37 +472,116 @@ class fleet extends Table
         //      shrimp: -1 cost/license (could be free?)
     }
 
-    function launchBoats($boat_id, $card_ids, $fish=0)
+    function launchBoat($boat_id, $card_ids, $fish=0)
     {
-        //TODO: verify
-        //      - all cards in hand
-        //      - player owns correct license
-        //      - player has fish crates available
-        //      - cards + fish >= boat cost
-        //
-        // TODO: is boat:license 1:1? or launch many boats with one lic?:w
-        //
-        //TODO: action
-        //      - move boat to table
-        //      - discard cards
-        //      - discard fish
-        //      - notify
-        //
+        self::checkAction('launchBoat');
+
+        $player_id = self::getActivePlayerId();
+        $coins = $fish; // $1 per fish crate
+
+        // Validate game state and transaction
+
+        // Verify boat exists in player hand
+        $boat = $this->cards->getCard($boat_id);
+        if ($boat == null || $boat['location'] != 'hand' || $boat['location_arg'] != $player_id) {
+            throw new feException("Impossible launch: invalid boat");
+        }
+        $boat_info = $this->getCardInfo($boat);
+
+        // Verify player owns required license
+        // TODO: license:boat = 1:1 or 1:many?
+        if ($boat['type_arg'] == BOAT_CRAB) {
+            // Multiple licenses for crab boats
+            $licenses1 = $this->cards->getCardsOfTypeInLocation(CARD_LICENSE, LICENSE_CRAB_C, 'table', $player_id);
+            $licenses2 = $this->cards->getCardsOfTypeInLocation(CARD_LICENSE, LICENSE_CRAB_F, 'table', $player_id);
+            $licenses3 = $this->cards->getCardsOfTypeInLocation(CARD_LICENSE, LICENSE_CRAB_L, 'table', $player_id);
+            $licenses = array_merge($licenses1, $licenses2, $licenses3);
+        } else {
+            $licenses = $this->cards->getCardsOfTypeInLocation(CARD_LICENSE, $boat['license'], 'table', $player_id);
+        }
+        if (count($licenses) == 0) {
+            throw new feException("Impossible launch: missing license");
+        }
+
+        // Verify all cards in player hand and tally coins
+        foreach ($card_ids as $card_id) {
+            $card = $this->cards->getCard($card_id);
+            if ($card == null || $card['location'] != 'hand' || $card['location_arg'] != $player_id) {
+                throw new feException("Invalid card id for purchase: $card_id");
+            }
+
+            $card_info = $this->getCardInfo($card);
+            $coins += $card_info['coins'];
+        }
+
+        if ($fish > 0) {
+            // Verify player has fish to sell
+            if ($this->getFishCrates($player_id) < $fish) {
+                throw new feException("Impossible launch: too many fish");
+            }
+        }
+
+        // Verify player paid enough
+        if ($coins < $boat_info['cost']) {
+            throw new feException("Impossible launch: not enough");
+        }
+
+        // Launch is valid
+
+        // Discard cards and fish crates
+        $this->cards->moveCards($card_ids, 'discard');
+        if ($fish > 0) {
+            $this->incFishCrates($player_id, $fish);
+        }
+
+        // Play boat
+        $this->cards->moveCard($boat_id, 'table', $player_id);
+
+        //TODO: notify
+
+        $this->gamestate->nextState();
+
         //TODO: license bonus
         //      cod: +1 launch, +1 card/license
         //      shrimp: -1 cost/license
     }
 
-    function hireCaptains($boat_id, $card_id)
+    function hireCaptain($boat_id, $card_id)
     {
-        //TODO: verify
-        //      - boat is on table without captain
-        //      - card is in hand
-        //
-        //TODO: action
-        //      - move card onto boat (how exactly? loc=captain, loc_arg=boat_id?)
-        //      - notify
-        //
+        self::checkAction('hireCaptain');
+
+        $player_id = self::getActivePlayerId();
+
+        // Validate game state and transaction
+
+        // Verify card in player hand
+        $card = $this->cards->getCard($card_id);
+        if ($card == null || $card['location'] != 'table' || $card['location_arg'] != $player_id) {
+            throw new feException("Impossible hire: invalid card");
+        }
+
+        // Verify boat owned by player
+        $boat = $this->cards->getCard($boat_id);
+        if ($boat == null || $boat['location'] != 'table' || $boat['location_arg'] != $player_id) {
+            throw new feException("Impossible hire: invalid boat");
+        }
+
+        // Verify boat needs captain
+        $sql = "SELECT has_captain FROM card WHERE card_id = $boat_id";
+        if (self::getUniqueValueFromDB($sql)) {
+            throw new feException("Impossible hire: already captained");
+        }
+
+        // Hire is valid
+
+        // Place card on boat
+        $this->cards->moveCard($card_id, 'captain', $boat_id);
+        self::DbQuery("UPDATE card SET has_captain = 1 WHERE card_id = $boat_id");
+
+        //TODO: notify
+
+        $this->gamestate->nextState();
+
         //TODO: license bonus
         //      lobster: +1 captain, complicated draw bonus
     }
