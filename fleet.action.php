@@ -89,7 +89,7 @@ class action_fleet extends APP_GameAction
         $boat_id = self::getArg("boat_id", AT_posint, true); // card id for boat to launch
         $card_ids = self::getNumberList("card_ids"); // cards discarded for payment
         $fish_crates = self::getArg("fish_crates", AT_posint, false, 0); // fish crates discarded for payment
-        $result = $this->game->launchBoats($boat_id, $card_ids, $fish_crates);
+        $result = $this->game->launchBoat($boat_id, $card_ids, $fish_crates);
         self::ajaxResponse();
     }
 
@@ -98,7 +98,7 @@ class action_fleet extends APP_GameAction
         self::setAjaxMode();
         $boat_id = self::getArg("boat_id", AT_posint, true); // card id of boat to captain
         $card_id = self::getArg("card_id", AT_posint, true); // id of card to use as captain
-        $result = $this->game->hireCaptains($boat_id, $card_id);
+        $result = $this->game->hireCaptain($boat_id, $card_id);
         self::ajaxResponse();
     }
 
