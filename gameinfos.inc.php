@@ -139,6 +139,7 @@ $gameinfos = array(
 //  IMPORTANT: it is mandatory that the FIRST tag is 1, 2, 3 and 4 (= game category)
 'tags' => array( 2, 22, 200 ),
 
+'enable_3d' => false,
 
 //////// BGA SANDBOX ONLY PARAMETERS (DO NOT MODIFY)
 
