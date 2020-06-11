@@ -49,6 +49,16 @@
 
 //    !! It is not a good idea to modify this file when a game is running !!
 
+if (!defined("STATE_AUCTION")) {
+    define("STATE_AUCTION", 2);
+    define("STATE_LAUNCH", 3);
+    define("STATE_HIRE", 4);
+    define("STATE_FISHING", 5);
+    define("STATE_PROCESSING", 6);
+    define("STATE_TRADING", 7);
+    define("STATE_DRAW", 8);
+    define("STATE_NEXT_PLAYER", 9);
+}
  
 $machinestates = array(
 
@@ -63,38 +73,76 @@ $machinestates = array(
     
     // Note: ID=2 => your first state
 
-    2 => array(
-        "name" => "playerTurn",
-        "description" => clienttranslate('${actplayer} must play a card or pass'),
-        "descriptionmyturn" => clienttranslate('${you} must play a card or pass'),
+    STATE_AUCTION => array(
+        "name" => "auction",
+        "description" => clienttranslate('${actplayer} may select a license to bid on'),
+        "descriptionmyturn" => clienttranslate('${you} may select a license to bid on'),
         "type" => "activeplayer",
-        "possibleactions" => array( "playCard", "pass" ),
-        "transitions" => array( "playCard" => 2, "pass" => 2 )
+        "possibleactions" => array("bid", "pass"),
+        "transitions" => array("" => STATE_NEXT_PLAYER)
     ),
-    
-/*
-    Examples:
-    
-    2 => array(
+    STATE_LAUNCH => array(
+        "name" => "launch",
+        "description" => clienttranslate('${actplayer} may launch a boat'),
+        "descriptionmyturn" => clienttranslate('${you} may launch a boat'),
+        "type" => "activeplayer",
+        "possibleactions" => array("launchBoat", "pass"),
+        "transitions" => array("" => STATE_NEXT_PLAYER)
+    ),
+    STATE_HIRE => array(
+        "name" => "hire",
+        "description" => clienttranslate('${actplayer} may hire a captain'),
+        "descriptionmyturn" => clienttranslate('${you} may hire a captain'),
+        "type" => "activeplayer",
+        "possibleactions" => array("hireCaptain", "pass"),
+        "transitions" => array("" => STATE_NEXT_PLAYER)
+    ),
+    STATE_FISHING => array(
+        "name" => "fishing",
+        "type" => "game",
+        "action" => "stFishing",
+        "transitions" => array("" => STATE_PROCESSING, "gameEnd" => 99)
+    ),
+    STATE_PROCESSING => array(
+        "name" => "processing",
+        "description" => clienttranslate('${actplayer} may process fish crates'),
+        "descriptionmyturn" => clienttranslate('${you} may process fish crates'),
+        "type" => "activeplayer",
+        "possibleactions" => array("processFish", "pass"),
+        "transitions" => array("" => STATE_NEXT_PLAYER)
+    ),
+    STATE_TRADING => array(
+        "name" => "trading",
+        "description" => clienttranslate('${actplayer} may trade a fish crate'),
+        "descriptionmyturn" => clienttranslate('${you} may trade a fish crate'),
+        "type" => "activeplayer",
+        "possibleactions" => array("tradeFish", "pass"),
+        "transitions" => array("" => STATE_NEXT_PLAYER)
+    ),
+    STATE_DRAW => array(
+        "name" => "draw",
+        "description" => clienttranslate('${actplayer} must discard a card'),
+        "descriptionmyturn" => clienttranslate('${you} must discard a card'),
+        "type" => "activeplayer",
+        "possibleactions" => array("discard"),
+        "transitions" => array("" => STATE_NEXT_PLAYER)
+    ),
+    STATE_NEXT_PLAYER => array(
         "name" => "nextPlayer",
-        "description" => '',
         "type" => "game",
         "action" => "stNextPlayer",
-        "updateGameProgression" => true,   
-        "transitions" => array( "endGame" => 99, "nextPlayer" => 10 )
+        "transitions" => array(
+            "auction" => STATE_AUCTION,
+            "launch" => STATE_LAUNCH,
+            "hire" => STATE_HIRE,
+            "fishing" => STATE_FISHING,
+            "processing" => STATE_PROCESSING,
+            "trading" => STATE_TRADING,
+            "draw" => STATE_DRAW,
+            "gameEnd" => 99
+        )
     ),
-    
-    10 => array(
-        "name" => "playerTurn",
-        "description" => clienttranslate('${actplayer} must play a card or pass'),
-        "descriptionmyturn" => clienttranslate('${you} must play a card or pass'),
-        "type" => "activeplayer",
-        "possibleactions" => array( "playCard", "pass" ),
-        "transitions" => array( "playCard" => 2, "pass" => 2 )
-    ), 
 
-*/    
-   
     // Final state.
     // Please do not modify (and do not overload action/args methods).
     99 => array(

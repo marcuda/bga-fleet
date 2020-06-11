@@ -38,6 +38,14 @@ if (!defined("LICENSE_SHRIMP")) {
 
     define("CARD_LICENSE", 'license');
     define("CARD_BOAT", 'boat');
+
+    define("PHASE_AUCTION", "auction");
+    define("PHASE_LAUNCH", "launch");
+    define("PHASE_HIRE", "hire");
+    define("PHASE_FISHING", "fishing");
+    define("PHASE_PROCESSING", "processing");
+    define("PHASE_TRADING", "trading");
+    define("PHASE_DRAW", "draw");
 }
 
 $this->license_types = array(

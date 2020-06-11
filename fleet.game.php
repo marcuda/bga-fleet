@@ -33,17 +33,28 @@ class fleet extends Table
         parent::__construct();
         
         self::initGameStateLabels( array( 
-            //    "my_first_global_variable" => 10,
-            //    "my_second_global_variable" => 11,
-            //      ...
-            //    "my_first_game_variant" => 100,
-            //    "my_second_game_variant" => 101,
-            //      ...
             'fish_crates' => 10,
+            'auctioned_license' => 11,
+            'current_phase' => 12,         // current phase number, always increasing
+            'first_player' => 13,
+            'final_round' => 14,
         ) );
 
         $this->cards = self::getNew("module.common.deck");
         $this->cards->init("card");
+
+        // Game phases for determining next player logic and states
+        // N.B. Phases Two and Four are split into two phases each here
+        $this->phases = array(
+            PHASE_AUCTION,
+            PHASE_LAUNCH,
+            PHASE_HIRE,
+            PHASE_FISHING,
+            PHASE_PROCESSING,
+            PHASE_TRADING,
+            PHASE_DRAW
+        );
+        $this->nbr_phases = count($this->phases);
     }
         
     protected function getGameName( )
@@ -84,7 +95,9 @@ class fleet extends Table
         /************ Start the game initialization *****/
 
         // Init global values with their initial values
-        //self::setGameStateInitialValue( 'my_first_global_variable', 0 );
+        self::setGameStateInitialValue('auctioned_license', -1);
+        self::setGameStateInitialValue("current_phase", 0);
+        self::setGameStateInitialValue("final_round", 0);
         
         // Init game statistics
         // (note: statistics used in this file must be defined in your stats.inc.php file)
@@ -155,7 +168,8 @@ class fleet extends Table
         self::setGameStateInitialValue("fish_crates", $nbr_players * 25);
 
         // Activate first player (which is in general a good idea :) )
-        $this->activeNextPlayer();
+        $player_id = $this->activeNextPlayer();
+        self::setGameStateInitialValue('first_player', $player_id);
 
         /************ End of the game initialization *****/
     }
@@ -218,17 +232,6 @@ class fleet extends Table
     /*
         In this space, you can put any utility methods useful for your game logic
     */
-
-
-
-//////////////////////////////////////////////////////////////////////////////
-//////////// Player actions
-//////////// 
-
-    /*
-        Each time a player is doing some game action, one of the methods below is called.
-        (note: each method below must match an input method in fleet.action.php)
-    */
     function getPlayersInOrder()
     {
         $result = array();
@@ -251,31 +254,235 @@ class fleet extends Table
         return $result;
     }
 
-    /*
-    
-    Example:
-
-    function playCard( $card_id )
+    function nextPhase()
     {
-        // Check that this is the player's turn and that it is a "possible action" at this game state (see states.inc.php)
-        self::checkAction( 'playCard' ); 
-        
-        $player_id = self::getActivePlayerId();
-        
-        // Add your game logic to play a card there 
-        ...
-        
-        // Notify all players about the card played
-        self::notifyAllPlayers( "cardPlayed", clienttranslate( '${player_name} plays ${card_name}' ), array(
-            'player_id' => $player_id,
-            'player_name' => self::getActivePlayerName(),
-            'card_name' => $card_name,
-            'card_id' => $card_id
-        ) );
-          
+        $phase = self::incGameStateValue('current_phase', 1) % $this->nbr_phases;
+        return $this->phases[$phase];
     }
-    
-    */
+
+    function getCurrentPhase()
+    {
+        $phase = self::getGameStateValue('current_phase') % $this->nbr_phases;
+        return $this->phases[$phase];
+    }
+
+    /*
+     * Return additional card information for the given card.
+     * This information is stored outside of the in order to make
+     * use of the standard Deck implementation and functions.
+     */
+    function getCardInfo($card)
+    {
+        return $this->card_types[$card['type_arg']];
+    }
+
+    /*
+     * Return additional card information for the given card ID.
+     * See getCardInfo
+     */
+    function getCardInfoById($card_id)
+    {
+        $card = $this->cards->getCard($card_id);
+        return $this->getCardInfo($card);
+    }
+
+    /*
+     * Return the written name of the given card.
+     * Convenience function mainly used for notifications.
+     */
+    function getCardName($card)
+    {
+        return $this->getCardInfo($card)['card_name'];
+    }
+
+    /*
+     * Return true if player is able to bid in the current auction round,
+     * false otherwise (passed or won previous)
+     */
+    function canBid($player_id)
+    {
+        $sql = "SELECT (auction_pass + auction_done) AS passed FROM player WHERE player_id = $player_id";
+        return self::getUniqueValueFromDB($sql) > 0;
+    }
+
+//////////////////////////////////////////////////////////////////////////////
+//////////// Player actions
+//////////// 
+
+    function pass()
+    {
+        self::checkAction('pass');
+
+        $player_id = self::getActivePlayerId();
+        $sql = 'UPDATE player SET auction_pass = 1';
+
+        if (self::getGameStateValue('auctioned_license') < 0) {
+            // No active auction, player is choosing not to buy
+            $sql .= ', auction_done = 1';
+        }
+
+        $sql .= " WHERE player_id = $player_id";
+        self::DbQuery($sql);
+
+        $this->gamestate->nextState('nextPlayer');
+    }
+
+    function bid($current_bid, $card_id=-1)
+    {
+        self::checkAction('bid');
+
+        $player_id = self::getActivePlayerId();
+
+        // Verify player is still active in auction
+        if (!$this->canBid($player_id)) {
+            throw new feException("Player is not active in this auction");
+        }
+
+        // Initial card selection for auction round
+        if ($card_id > 0) {
+            // Verify some card not already selected
+            if (self::getGameStateValue('auctioned_license') > 0) {
+                throw new feException("Impossible bid state");
+            }
+
+            // Verify card exists in auction
+            $card = $this->cards->getCard($card_id);
+            if ($card == null || $card['location'] != 'auction') {
+                throw new feException("Impossible bid action");
+            }
+
+            // Verify bid meets minimum
+            $card_info = $this->getCardInfo($card);
+            if ($current_bid < $card_info['cost']) {
+                $cost = $card_info['cost'];
+                throw new BgaUserException(self::_("Minimum bid must be at least $cost"));
+            }
+
+            // Store selected card for current auction round
+            self::setGameStateValue('auctioned_license', $card_id);
+        } else {
+            // Verify license already selected
+            if (self::getGameStateValue('auctioned_license') < 0) {
+                throw new feException("Impossible bid without license");
+            }
+        }
+
+        // Verify bid is higher than previous
+        $sql = "SELECT MAX(current_bid) AS high_bid FROM player";
+        $high_bid = self::getUniqueValueFromDB($sql);
+        if ($current_bid <= $high_bid) {
+            throw new BgaUserException(self::_("Bid must be greater than highest bid ($high_bid)"));
+        }
+
+        //TODO: verify player can pay bid
+
+        // Set player bid
+        $sql = "UPDATE player SET current_bid = $current_bid WHERE player_id = $player_id";
+        self::DbQuery($sql);
+
+        //TODO: notify
+
+        $this->gamestate->nextState('nextPlayer');
+    }
+
+    function buyLicense($card_ids, $fish=0)
+    {
+        //TODO: verify
+        //      - all cards in hand
+        //      - player has fish crates availablle
+        //      - player won auction
+        //      - license selected
+        //      - cards + fish >= license cost
+        //
+        //TODO: action
+        //      - discard cards
+        //      - discard fish
+        //      - take license
+        //      - notify
+        //
+        //TODO: license bonus
+        //      shrimp: -1 cost/license
+        //
+        //TODO: state machine - reset all auction values here?
+    }
+
+    function launchBoats($boat_id, $card_ids, $fish=0)
+    {
+        //TODO: verify
+        //      - all cards in hand
+        //      - player owns correct license
+        //      - player has fish crates available
+        //      - cards + fish >= boat cost
+        //
+        // TODO: is boat:license 1:1? or launch many boats with one lic?:w
+        //
+        //TODO: action
+        //      - move boat to table
+        //      - discard cards
+        //      - discard fish
+        //      - notify
+        //
+        //TODO: license bonus
+        //      cod: +1 launch, +1 card/license
+        //      shrimp: -1 cost/license
+    }
+
+    function hireCaptains($boat_id, $card_id)
+    {
+        //TODO: verify
+        //      - boat is on table without captain
+        //      - card is in hand
+        //
+        //TODO: action
+        //      - move card onto boat (how exactly? loc=captain, loc_arg=boat_id?)
+        //      - notify
+        //
+        //TODO: license bonus
+        //      lobster: +1 captain, complicated draw bonus
+    }
+
+    function processFish($boat_ids)
+    {
+        //TODO: verify
+        //      - boats is on table
+        //      - boats have captain
+        //      - boats have 1+ fish cube
+        //      - player has processing vessel lic
+        //
+        //TODO: action
+        //      - remove 1 fish from each boat
+        //      - add N fish to processing lic
+        //      - notify
+    }
+
+    function tradeFish()
+    {
+        //TODO: verify
+        //      - player has processing lic with 1+ fish
+        //
+        //TODO: action
+        //      - discard fish cube
+        //      - draw card
+        //      - notify
+        //
+        //TODO: license bonus
+        //      PV: +1 card/license
+    }
+
+    function discard($card_id)
+    {
+        //TODO: game state will need to draw two cards into location... 'draw'? with locarg player_id?
+        //TODO: verify
+        //      - card was drawn
+        //
+        //TODO: action
+        //      - play discard
+        //      - move other card(s) from draw to hand
+        //      - notify (what? draw is private...)
+        //
+        //TODO: license bonus
+        //      tuna allows discard from hand
+    }
 
     
 //////////////////////////////////////////////////////////////////////////////
@@ -309,23 +516,173 @@ class fleet extends Table
 //////////// Game state actions
 ////////////
 
-    /*
-        Here, you can create methods defined as "game state actions" (see "action" property in states.inc.php).
-        The action method of state X is called everytime the current game state is set to X.
-    */
-    
-    /*
-    
-    Example for game state "MyGameState":
-
-    function stMyGameState()
+    function stNextPlayer()
     {
-        // Do some stuff ...
-        
-        // (very often) go to another gamestate
-        $this->gamestate->nextState( 'some_gamestate_transition' );
-    }    
-    */
+        $current_phase = $this->getCurrentPhase();
+        $next_state = $current_phase;
+        if ($current_phase == PHASE_AUCTION) {
+            // Auction phase has complicated progression
+            $player_and_state = $this->nextAuction();
+            $player_id = $player_and_state[0];
+            $next_state = $player_and_state[1];
+        } else {
+            // All other phases proceed in order
+            $player_id = self::activeNextPlayer();
+            if ($player_id == self::getGameStateValue('first_player')) {
+                // Back to first player => next phase
+                $next_state = $this->nextPhase();
+                if ($next_state == PHASE_AUCTION) {
+                    // New round, advance first player token
+                    $player_id = $this->rotateFirstPlayer();
+                    if (self::getGameStateValue('final_round')) {
+                        $next_state = "gameEnd";
+                    }
+                }
+            }
+        }
+
+        // Forward progress
+        self::giveExtraTime($player_id);
+        $this->gamestate->nextState($next_state);
+    }
+
+    function getBoats($player_id)
+    {
+        $sql = "SELECT";
+        // Standard deck query
+        foreach (array('id', 'type', 'type_arg', 'location', 'location_arg') as $col) {
+            $sql .= " card_$col AS $col,";
+        }
+        // Extra columns
+        $sql .= ' nbr_fish AS fish, has_captain FROM card';
+        $sql .= " WHERE card_location = 'table' AND card_location_arg = $player_id";
+        return self::getCollectionFromDB($sql);
+    }
+
+    function stFishing()
+    {
+        $fish = self::getGameStateValue('fish_crates');
+        $players = self::loadPlayersBasicInfos();
+        foreach ($players as $player_id => $player) {
+            $boats = $this->getBoats($player_id);
+            $crate_ids = array();
+            foreach ($boats as $card_id => $boat) {
+                if ($boat['has_captain'] && $boat['fish'] < 4) {
+                    // Add fish crate to boat
+                    $nbr_fish = $boat['fish'] + 1;
+                    $sql = "UPDATE card SET nbr_fish = $nbr_fish WHERE card_id = $card_id";
+                    self::DbQuery($sql);
+                    $fish = self::incGameStateValue('fish_crates', -1);
+                    $crate_ids[] = $card_id;
+                }
+            }
+            //TODO: notify
+        }
+
+        if ($fish <= 0) {
+            // No more fish crates, game is over!
+            // TODO: notify
+            $this->gamestate->nextState('gameEnd');
+        } else {
+            // Next phase
+            // First player already activated in previous stNextPlayer
+            $this->nextPhase();
+            $this->gamestate->nextState();
+        }
+    }
+
+    function rotateFirstPlayer()
+    {
+        $player_id = self::getGameStateValue('first_player');
+        $next_player = self::getNextPlayerTable();
+        $first_player = $next_player[$player_id];
+        self::setGameStateValue('first_player', $first_player);
+
+        //TODO: notify for token
+
+        return $first_player;
+    }
+
+    function nextAuction()
+    {
+        $next_state = PHASE_AUCTION;
+        if (self::getGameStateValue('auctioned_license') > 0) {
+            // Auction in progress
+            // Determine if auction should end
+            $sql = "SELECT COUNT(player_id) AS passed FROM player WHERE auction_pass = 1";
+            $num_pass = self::getUniqueValueFromDB($sql);
+            if ($num_pass == (self::getPlayersNumber() - 1)) {
+                // Some player won the bid
+                $sql = "SELECT player_id FROM player WHERE auction_pass = 0";
+                $player_id = self::getUniqueValueFromDB($sql);
+                //TODO: separate state for win? or just notify?
+            } else {
+                // One or more players left to act
+                // Some players may be skipped
+                $current_player = self::getActivePlayerId();
+                $next_player = self::getNextPlayerTable();
+                $player_id = $next_player[$current_player];
+                while (!$this->canBid($player_id)) {
+                    $player_id = $next_player[$player_id];
+                }
+            }
+        } else {
+            // Start new auction
+            // Reset pass count for those still in auction
+            self::DbQuery('UPDATE player SET auction_pass = 0 WHERE auction_done = 0');
+
+            // Determine player to start auction
+            $first_player = self::getGameStateValue('first_player');
+            if (!$this->canBid($first_player)) {
+                // First player won or passed, find next valid player
+                $next_player = self::getNextPlayerTable();
+                $player_id = $next_player[$first_player];
+                while ($player_id != $first_player) {
+                    if (!$this->canBid($player_id)) {
+                        $player_id = $next_player[$player_id];
+                    }
+                }
+
+                if ($player_id == $first_player) {
+                    // All players finished auction
+                    // Reset auction and go to next phase
+                    $this->drawLicenses();
+                    self::DbQuery('UPDATE player SET auction_pass = 0, auction_done = 0');
+                    $next_state = PHASE_LAUNCH;
+                }
+            } else {
+                $player_id = $first_player;
+            }
+        }
+
+        $this->gamestate->changeActivePlayer($player_id);
+        return array($player_id, $next_state);
+    }
+
+    function drawLicenses()
+    {
+        // Determine number licenses to draw
+        $nbr_players = self::getPlayersNumber();
+        $nbr_left = $this->cards->countCardInLocation('auction');
+        $nbr_draw = $nbr_players - $nbr_left;
+        if ($nbr_draw == 0) {
+            // No license bought this round, remove all from game and redraw
+            $this->cards->moveAllCardsInLocation('auction', 'box');
+            $nbr_draw = $nbr_players;
+        }
+
+        // Draw new licenses
+        $cards = $this->cards->pickCardsForLocation($nbr_draw, 'licenses', 'auction', 0, true);
+
+        //TODO: notify
+
+        if (count($cards) < $nbr_draw) {
+            // Not enough cards left to fill license auction
+            // This will be the final round
+            self::setGameStateValue('final_round', 1);
+            //TODO: notify
+        }
+    }
 
 //////////////////////////////////////////////////////////////////////////////
 //////////// Zombie

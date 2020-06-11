@@ -38,30 +38,92 @@ class action_fleet extends APP_GameAction
             self::trace( "Complete reinitialization of board game" );
         }
     } 
+
+    static function getNumberList($arg, $required=true)
+    {
+        // Get number list argument
+        $numbers_raw = self::getArg($arg, AT_numberlist, $required);
+
+        // Remove trailing ;
+        if (substr($numbers_raw, -1) == ';') {
+            $numbers_raw = substr($numbers_raw, 0, -1);
+        }
+
+        if ($numbers_raw == '') {
+            $numbers = array();
+        } else {
+            $numbers = explode(';', $numbers_raw);
+        }
+
+        return $numbers;
+    }
     
-    // TODO: defines your action entry points there
+    public function pass()
+    {
+        self::setAjaxMode();
+        $result = $this->game->pass();
+        self::ajaxResponse();
+    }
 
+    public function bid()
+    {
+        self::setAjaxMode();
+        $bid = self::getArg("bid", AT_posint, true); // amount to bid
+        $card_id = self::getArg("card_id", AT_posint, false, -1); // license card id
+        $result = $this->game->bid($bid, $card_id);
+        self::ajaxResponse();
+    }
 
-/*
+    public function buyLicense()
+    {
+        self::setAjaxMode();
+        $card_ids = self::getNumberList("card_ids"); // cards discarded for payment
+        $fish_crates = self::getArg("fish_crates", AT_posint, false, 0); // fish crates discarded for payment
+        $result = $this->game->buyLicense($card_ids, $fish_crates);
+        self::ajaxResponse();
+    }
 
-Example:
-    
-public function myAction()
-{
-    self::setAjaxMode();     
+    public function launchBoat()
+    {
+        self::setAjaxMode();
+        $boat_id = self::getArg("boat_id", AT_posint, true); // card id for boat to launch
+        $card_ids = self::getNumberList("card_ids"); // cards discarded for payment
+        $fish_crates = self::getArg("fish_crates", AT_posint, false, 0); // fish crates discarded for payment
+        $result = $this->game->launchBoats($boat_id, $card_ids, $fish_crates);
+        self::ajaxResponse();
+    }
 
-    // Retrieve arguments
-    // Note: these arguments correspond to what has been sent through the javascript "ajaxcall" method
-    $arg1 = self::getArg( "myArgument1", AT_posint, true );
-    $arg2 = self::getArg( "myArgument2", AT_posint, true );
+    public function hireCaptain()
+    {
+        self::setAjaxMode();
+        $boat_id = self::getArg("boat_id", AT_posint, true); // card id of boat to captain
+        $card_id = self::getArg("card_id", AT_posint, true); // id of card to use as captain
+        $result = $this->game->hireCaptains($boat_id, $card_id);
+        self::ajaxResponse();
+    }
 
-    // Then, call the appropriate method in your game logic, like "playCard" or "myAction"
-    $this->game->myAction( $arg1, $arg2 );
+    public function processFish()
+    {
+        self::setAjaxMode();
+        $card_ids = self::getNumberList("card_ids"); // card ids for boats to process
+        $result = $this->game->processFish($card_ids);
+        self::ajaxResponse();
+    }
 
-    self::ajaxResponse( );
-}
+    public function tradeFish()
+    {
+        self::setAjaxMode();
+        $result = $this->game->tradeFish();
+        self::ajaxResponse();
+    }
 
-*/
+    public function discard()
+    {
+        self::setAjaxMode();
+        $card_id = self::getArg("card_id", AT_posint, true); // id of card to discard
+        $result = $this->game->discard($card_id);
+        self::ajaxResponse();
+    }
 
 }
 
