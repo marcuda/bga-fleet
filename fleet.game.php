@@ -588,43 +588,86 @@ class fleet extends Table
 
     function processFish($boat_ids)
     {
-        //TODO: verify
-        //      - boats is on table
-        //      - boats have captain
-        //      - boats have 1+ fish cube
-        //      - player has processing vessel lic
-        //
-        //TODO: action
-        //      - remove 1 fish from each boat
-        //      - add N fish to processing lic
-        //      - notify
+        self::checkAction('processFish');
+
+        $player_id = self::getActivePlayerId();
+
+        // Validate game state and transaction
+
+        // Verify player has Processing Vessel License
+        $license = $this->cards->getCardsOfTypeInLocation(CARD_LICENSE, LICENSE_PROCESSING, 'table', $player_id);
+        if (count($license) == 0) {
+            throw new feException("Impossible process: no license");
+        }
+
+        // Verify selected boats have fish
+        $boats = $this->getBoats($player_id);
+        foreach ($boat_ids as $boat_id) {
+            $boat = $boats[$boat_id];
+            if ($boat == null) { // getBoats verifies card owned by player
+                throw new feException("Impossible process: invalid card $boat_id");
+            }
+
+            if (!$boat['has_captain'] || $boat['fish'] == 0) {
+                throw new feException("Impossible process: no fish");
+            }
+
+            // Boat is valid
+            // Transactions will prevent this from taking if any other boat is invalid
+            $nbr_fish = $boat['fish'] - 1;
+            self::DbQuery("UPDATE card SET nbr_fish = $nbr_fish WHERE card_id = $boat_id");
+        }
+
+        // Add fish to PV
+        $this->incFishCrates($player_id, count($boat_ids));
+
+        //TODO: notify
     }
 
     function tradeFish()
     {
-        //TODO: verify
-        //      - player has processing lic with 1+ fish
-        //
-        //TODO: action
-        //      - discard fish cube
-        //      - draw card
-        //      - notify
-        //
-        //TODO: license bonus
-        //      PV: +1 card/license
+        self::checkAction('tradeFish');
+        $player_id = self::getActivePlayerId();
+
+        // Validate game state and transaction
+
+        // Verify player has license with fish
+        $license = $this->cards->getCardsOfTypeInLocation(CARD_LICENSE, LICENSE_PROCESSING, 'table', $player_id);
+        if (count($license) == 0) {
+            throw new feException("Impossible trading: no license");
+        }
+        $fish = $this->getFishCrates($player_id);
+        if ($fish == 0) {
+            throw new feException("Impossible trading: no fish");
+        }
+
+        // Remove fish crate and draw card(s)
+        $this->incFishCrates($player_id, -1);
+        $cards = $this->cards->pickCards(count($license), 'hand', $player_id);
+
+        //TODO: notify
     }
 
     function discard($card_id)
     {
+        self::checkAction('discard');
+
+        $player_id = self::getActivePlayerId();
         //TODO: game state will need to draw two cards into location... 'draw'? with locarg player_id?
-        //TODO: verify
-        //      - card was drawn
-        //
-        //TODO: action
-        //      - play discard
-        //      - move other card(s) from draw to hand
-        //      - notify (what? draw is private...)
-        //
+
+        // Verify card
+        $card = $this->cards->getCard($card_id);
+        if ($card == null || $card['location'] != 'draw' || $card['location_arg'] != $player_id) {
+            throw new feException("Impossible discard: invalid card $card_id");
+        }
+
+        // Discard card and take other(s)
+        $this->cards->playCard($card_id);
+        $this->moveAllCardsInLocation('draw', 'hand', $player_id, $player_id);
+
+        //TODO: notify all players of discard
+        //TODO: notify active player of kept card (private)
+
         //TODO: license bonus
         //      tuna allows discard from hand
     }
