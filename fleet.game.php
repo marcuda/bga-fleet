@@ -305,6 +305,30 @@ class fleet extends Table
         return self::getUniqueValueFromDB($sql) > 0;
     }
 
+    function getBoats($player_id)
+    {
+        $sql = "SELECT";
+        // Standard deck query
+        foreach (array('id', 'type', 'type_arg', 'location', 'location_arg') as $col) {
+            $sql .= " card_$col AS $col,";
+        }
+        // Extra columns
+        $sql .= ' nbr_fish AS fish, has_captain FROM card';
+        $sql .= " WHERE location = 'table' AND location_arg = $player_id AND type = '" . CARD_BOAT . "'";
+        return self::getCollectionFromDB($sql);
+    }
+
+    function getFishCrates($player_id)
+    {
+        return self::getUniqueValueFromDB("SELECT fish_crates FROM player WHERE player_id = $player_id");
+    }
+
+    function incFishCrates($player_id, $inc)
+    {
+        $fish = $this->getFishCrates($player_id) + $inc;
+        self::DbQuery("UPDATE player SET fish_crates = $fish WHERE player_id = $player_id");
+    }
+
 //////////////////////////////////////////////////////////////////////////////
 //////////// Player actions
 //////////// 
@@ -729,33 +753,14 @@ class fleet extends Table
             }
         }
 
+        if ($next_state == PHASE_DRAW) {
+            // Draw cards for next player
+            $this->drawCards($player_id);
+        }
+
         // Forward progress
         self::giveExtraTime($player_id);
         $this->gamestate->nextState($next_state);
-    }
-
-    function getBoats($player_id)
-    {
-        $sql = "SELECT";
-        // Standard deck query
-        foreach (array('id', 'type', 'type_arg', 'location', 'location_arg') as $col) {
-            $sql .= " card_$col AS $col,";
-        }
-        // Extra columns
-        $sql .= ' nbr_fish AS fish, has_captain FROM card';
-        $sql .= " WHERE location = 'table' AND location_arg = $player_id AND type = '" . CARD_BOAT . "'";
-        return self::getCollectionFromDB($sql);
-    }
-
-    function getFishCrates($player_id)
-    {
-        return self::getUniqueValueFromDB("SELECT fish_crates FROM player WHERE player_id = $player_id");
-    }
-
-    function incFishCrates($player_id, $inc)
-    {
-        $fish = $this->getFishCrates($player_id) + $inc;
-        self::DbQuery("UPDATE player SET fish_crates = $fish WHERE player_id = $player_id");
     }
 
     function stFishing()
@@ -788,6 +793,15 @@ class fleet extends Table
             $this->nextPhase();
             $this->gamestate->nextState();
         }
+    }
+
+    function drawCards($player_id)
+    {
+        $cards = $this->cards->pickCards(2, 'draw', $player_id);
+        //TODO: notify only player
+
+        //TODO: license bonus
+        //      tuna: extra draw/keep: 1=>2/2, 2=>3/2, 3=>3/3, 4=>4/3 plus can discard from handextra draw/keep: 1=>2/2, 2=>3/2, 3=>3/3, 4=>4/3 plus can discard from hand
     }
 
     function rotateFirstPlayer()
