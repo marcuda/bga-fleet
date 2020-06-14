@@ -148,8 +148,11 @@ class fleet extends Table
         }
 
         // Draw initial licenses for auction
-        //$this->cards->pickCardsForLocation($nbr_players, 'licenses', 'auction');
-        $this->cards->pickCardsForLocation(4, 'licenses', 'auction');//TODO
+        if ($nbr_players == 1) { //TODO XXX
+            $this->cards->pickCardsForLocation(4, 'licenses', 'auction');
+        } else {
+           $this->cards->pickCardsForLocation($nbr_players, 'licenses', 'auction');
+        }
 
         // Give each player one of each boat
         foreach ($this->boat_types as $type_arg) {
@@ -302,7 +305,7 @@ class fleet extends Table
     function canBid($player_id)
     {
         $sql = "SELECT (auction_pass + auction_done) AS passed FROM player WHERE player_id = $player_id";
-        return self::getUniqueValueFromDB($sql) > 0;
+        return self::getUniqueValueFromDB($sql) == 0;
     }
 
     function getBoats($player_id)
@@ -677,7 +680,6 @@ class fleet extends Table
         self::checkAction('discard');
 
         $player_id = self::getActivePlayerId();
-        //TODO: game state will need to draw two cards into location... 'draw'? with locarg player_id?
 
         // Verify card
         $card = $this->cards->getCard($card_id);
@@ -757,6 +759,9 @@ class fleet extends Table
             // Draw cards for next player
             $this->drawCards($player_id);
         }
+
+        // TODO: notify active player with possible moves
+        // TODO: auto pass if no action (and would not reveal private info)
 
         // Forward progress
         self::giveExtraTime($player_id);
@@ -853,7 +858,10 @@ class fleet extends Table
                 while ($player_id != $first_player) {
                     if (!$this->canBid($player_id)) {
                         $player_id = $next_player[$player_id];
+                        continue;
                     }
+
+                    break;
                 }
 
                 if ($player_id == $first_player) {
