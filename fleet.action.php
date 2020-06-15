@@ -39,7 +39,7 @@ class action_fleet extends APP_GameAction
         }
     } 
 
-    static function getNumberList($arg, $required=true)
+    function getNumberList($arg, $required=true)
     {
         // Get number list argument
         $numbers_raw = self::getArg($arg, AT_numberlist, $required);
@@ -77,7 +77,7 @@ class action_fleet extends APP_GameAction
     public function buyLicense()
     {
         self::setAjaxMode();
-        $card_ids = self::getNumberList("card_ids"); // cards discarded for payment
+        $card_ids = $this->getNumberList("card_ids"); // cards discarded for payment
         $fish_crates = self::getArg("fish_crates", AT_posint, false, 0); // fish crates discarded for payment
         $result = $this->game->buyLicense($card_ids, $fish_crates);
         self::ajaxResponse();
@@ -87,7 +87,7 @@ class action_fleet extends APP_GameAction
     {
         self::setAjaxMode();
         $boat_id = self::getArg("boat_id", AT_posint, true); // card id for boat to launch
-        $card_ids = self::getNumberList("card_ids"); // cards discarded for payment
+        $card_ids = $this->getNumberList("card_ids"); // cards discarded for payment
         $fish_crates = self::getArg("fish_crates", AT_posint, false, 0); // fish crates discarded for payment
         $result = $this->game->launchBoat($boat_id, $card_ids, $fish_crates);
         self::ajaxResponse();
@@ -105,7 +105,7 @@ class action_fleet extends APP_GameAction
     public function processFish()
     {
         self::setAjaxMode();
-        $card_ids = self::getNumberList("card_ids"); // card ids for boats to process
+        $card_ids = $this->getNumberList("card_ids"); // card ids for boats to process
         $result = $this->game->processFish($card_ids);
         self::ajaxResponse();
     }

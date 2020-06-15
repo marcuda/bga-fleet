@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS `card` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 ;
 
 -- Auction values
-ALTER TABLE `player` ADD COLUMN `current_bid` tinyint(1) unsigned NOT NULL DEFAULT 0;
+ALTER TABLE `player` ADD COLUMN `auction_bid` tinyint(1) unsigned NOT NULL DEFAULT 0;
 ALTER TABLE `player` ADD COLUMN `auction_pass` tinyint(1) unsigned NOT NULL DEFAULT 0;
 ALTER TABLE `player` ADD COLUMN `auction_done` tinyint(1) unsigned NOT NULL DEFAULT 0;
 

@@ -34,10 +34,11 @@ class fleet extends Table
         
         self::initGameStateLabels( array( 
             'fish_crates' => 10,
-            'auctioned_license' => 11,
+            'auction_license' => 11,
             'current_phase' => 12,         // current phase number, always increasing
             'first_player' => 13,
             'final_round' => 14,
+            'auction_winner' => 15,
         ) );
 
         $this->cards = self::getNew("module.common.deck");
@@ -95,7 +96,8 @@ class fleet extends Table
         /************ Start the game initialization *****/
 
         // Init global values with their initial values
-        self::setGameStateInitialValue('auctioned_license', -1);
+        self::setGameStateInitialValue('auction_license', 0);
+        self::setGameStateInitialValue('auction_winner', 0);
         self::setGameStateInitialValue("current_phase", 0);
         self::setGameStateInitialValue("final_round", 0);
         
@@ -198,12 +200,19 @@ class fleet extends Table
         $result['players'] = self::getCollectionFromDb( $sql );
 
         $result['hand'] = $this->cards->getPlayerHand($current_player_id);
+        $result['coins'] = $this->getCoins($current_player_id);
 
         $result['cards'] = $this->cards->countCardsInLocations();
 
         $result['auction'] = $this->cards->getCardsInLocation('auction');
+        $result['auction_card'] = self::getGameStateValue('auction_license');
+        $result['auction_winner'] = self::getGameStateValue('auction_winner');
+        $result['auction_bid'] = $this->getHighBid();
 
         $result['fish'] = self::getGameStateValue('fish_crates');
+
+        $result['card_infos'] = $this->card_types;
+
   
         // TODO: Gather all information about current game situation (visible by player $current_player_id).
   
@@ -295,7 +304,7 @@ class fleet extends Table
      */
     function getCardName($card)
     {
-        return $this->getCardInfo($card)['card_name'];
+        return $this->getCardInfo($card)['name'];
     }
 
     /*
@@ -332,6 +341,11 @@ class fleet extends Table
         self::DbQuery("UPDATE player SET fish_crates = $fish WHERE player_id = $player_id");
     }
 
+    function getHighBid()
+    {
+        return self::getUniqueValueFromDB("SELECT MAX(auction_bid) AS high_bid FROM player");
+    }
+
 //////////////////////////////////////////////////////////////////////////////
 //////////// Player actions
 //////////// 
@@ -343,9 +357,9 @@ class fleet extends Table
         if ($this->getCurrentPhase() == PHASE_AUCTION) {
             // Keep track of which players pass during auction
             $player_id = self::getActivePlayerId();
-            $sql = 'UPDATE player SET auction_pass = 1';
+            $sql = 'UPDATE player SET auction_bid = 0, auction_pass = 1';
 
-            if (self::getGameStateValue('auctioned_license') < 0) {
+            if (self::getGameStateValue('auction_license') == 0) {
                 // No active auction, player chooses not to buy
                 $sql .= ', auction_done = 1';
             }
@@ -353,6 +367,11 @@ class fleet extends Table
             $sql .= " WHERE player_id = $player_id";
             self::DbQuery($sql);
         }
+
+        self::notifyAllPlayers('pass', clienttranslate('${player_name} passes'), array(
+            'player_name' => self::getActivePlayerName(),
+            'player_id' => self::getActivePlayerId(),
+        ));
 
         $this->gamestate->nextState();
     }
@@ -371,7 +390,7 @@ class fleet extends Table
         // Initial card selection for auction round
         if ($card_id > 0) {
             // Verify some card not already selected
-            if (self::getGameStateValue('auctioned_license') > 0) {
+            if (self::getGameStateValue('auction_license') > 0) {
                 throw new feException("Impossible bid state");
             }
 
@@ -385,23 +404,23 @@ class fleet extends Table
             $card_info = $this->getCardInfo($card);
             if ($current_bid < $card_info['cost']) {
                 $cost = $card_info['cost'];
-                throw new BgaUserException(self::_("Minimum bid must be at least $cost"));
+                throw new BgaUserException(self::_("You must bid at least $cost"));
             }
 
             // Store selected card for current auction round
-            self::setGameStateValue('auctioned_license', $card_id);
+            self::setGameStateValue('auction_license', $card_id);
         } else {
             // Verify license already selected
-            if (self::getGameStateValue('auctioned_license') < 0) {
+            if (self::getGameStateValue('auction_license') == 0) {
                 throw new feException("Impossible bid without license");
             }
         }
 
         // Verify bid is higher than previous
-        $sql = "SELECT MAX(current_bid) AS high_bid FROM player";
-        $high_bid = self::getUniqueValueFromDB($sql);
+        $high_bid = $this->getHighBid();
         if ($current_bid <= $high_bid) {
-            throw new BgaUserException(self::_("Bid must be greater than highest bid ($high_bid)"));
+            $min_bid = $high_bid + 1;
+            throw new BgaUserException(self::_("You must bid at least $min_bid"));
         }
 
         // Verify player can pay bid
@@ -411,10 +430,23 @@ class fleet extends Table
         }
 
         // Set player bid
-        $sql = "UPDATE player SET current_bid = $current_bid WHERE player_id = $player_id";
+        $sql = "UPDATE player SET auction_bid = $current_bid WHERE player_id = $player_id";
         self::DbQuery($sql);
 
-        //TODO: notify
+        if ($card_id > 0) {
+            $msg = clienttranslate('${player_name} selects ${card_name} for auction');
+            self::notifyAllPlayers('auctionSelect', $msg, array(
+                'player_name' => self::getActivePlayerName(),
+                'card_name' => $this->getCardName($card),
+                'card_id' => $card_id,
+            ));
+        }
+        $msg = clienttranslate('${player_name} bids ${bid}');
+        self::notifyAllPlayers('auctionBid', $msg, array(
+            'player_name' => self::getActivePlayerName(),
+            'bid' => $current_bid,
+            'player_id' => $player_id,
+        ));
 
         $this->gamestate->nextState();
     }
@@ -422,7 +454,7 @@ class fleet extends Table
     function getCoins($player_id)
     {
         $coins = 0;
-        $cards = $this->getPlayerHand($player_id);
+        $cards = $this->cards->getPlayerHand($player_id);
         foreach ($cards as $card) {
             $card_info = $this->getCardInfo($card);
             $coins += $card_info['coins'];
@@ -439,9 +471,14 @@ class fleet extends Table
 
         // Validate game state and transaction
 
+        // Verify player is current auction winner
+        if ($player_id != self::getGameStateValue('auction_winner')) {
+            throw new feException("Impossible buy: not winner");
+        }
+
         // Verify license selected in auction
-        $license_id = self::getGameStateValue('auctioned_license');
-        if ($license_id < 0) {
+        $license_id = self::getGameStateValue('auction_license');
+        if ($license_id == 0) {
             throw new feException("Impossible buy: no license");
         }
         $license = $this->cards->getCard($license_id);
@@ -449,12 +486,6 @@ class fleet extends Table
             throw new feException("Impossible buy: non-auction license");
         }
         $license_info = $this->getCardInfo($license);
-
-        // Verify player won auction
-        $sql = "SELECT player_id FROM player WHERE auction_pass = 0";
-        if (self::getUniqueValueFromDB($sql) != $player_id) {
-            throw new feException("Impossible buy: ongoing auction");
-        }
 
         // Verify all cards in player hand and tally coins
         foreach ($card_ids as $card_id) {
@@ -489,9 +520,27 @@ class fleet extends Table
 
         // Take license
         $this->cards->moveCard($license_id, 'table', $player_id);
-        self::setGameStateValue('auctioned_license', -1);
 
-        //TODO: notify
+        // Reset auction
+        self::setGameStateValue('auction_license', 0);
+        self::setGameStateValue('auction_winner', 0);
+        $sql = 'UPDATE player SET auction_bid = 0, auction_pass = 1, auction_done = 1';
+        $sql .= " WHERE player_id = $player_id";
+        self::DbQuery($sql);
+
+        $msg = clienttranslate('${player_name} discards ${nbr_cards} card(s)');
+        if ($fish > 0) {
+            $msg .= clienttranslate(' and ${nbr_fish} fish crate(s)');
+        }
+        self::notifyAllPlayers('buyLicense', $msg, array(
+            'player_name' => self::getActivePlayerName(),
+            'nbr_cards' => count($card_ids),
+            'nbr_fish' => $fish,
+            'player_id' => $player_id,
+            'card_ids' => $card_ids,
+            'license_id' => $license_id,
+            'license_type' => $license['type_arg'],
+        ));
 
         $this->gamestate->nextState();
 
@@ -824,7 +873,7 @@ class fleet extends Table
     function nextAuction()
     {
         $next_state = PHASE_AUCTION;
-        if (self::getGameStateValue('auctioned_license') > 0) {
+        if (self::getGameStateValue('auction_license') > 0) {
             // Auction in progress
             // Determine if auction should end
             $sql = "SELECT COUNT(player_id) AS passed FROM player WHERE auction_pass = 1";
@@ -833,7 +882,17 @@ class fleet extends Table
                 // Some player won the bid
                 $sql = "SELECT player_id FROM player WHERE auction_pass = 0";
                 $player_id = self::getUniqueValueFromDB($sql);
-                //TODO: separate state for win? or just notify?
+                self::setGameStateValue('auction_winner', $player_id);
+
+                // Notify client of winner to handle buy
+                $players = self::loadPlayersBasicInfos();
+                $msg = clienttranslate('${player_name} wins the auction');
+                self::notifyAllPlayers('auctionWin', $msg, array(
+                    'player_name' => $players[$player_id]['player_name'],
+                    'player_id' => $player_id,
+                    'bid' => $this->getHighBid(),
+                    'card_id' => self::getGameStateValue('auction_license'),
+                ));
             } else {
                 // One or more players left to act
                 // Some players may be skipped
@@ -846,7 +905,8 @@ class fleet extends Table
             }
         } else {
             // Start new auction
-            // Reset pass count for those still in auction
+            // Reset bids and pass count for those still in auction
+            self::DbQuery('UPDATE player SET auction_bid = 0');
             self::DbQuery('UPDATE player SET auction_pass = 0 WHERE auction_done = 0');
 
             // Determine player to start auction
@@ -868,7 +928,7 @@ class fleet extends Table
                     // All players finished auction
                     // Reset auction and go to next phase
                     $this->drawLicenses();
-                    self::DbQuery('UPDATE player SET auction_pass = 0, auction_done = 0');
+                    self::DbQuery('UPDATE player SET auction_bid = 0, auction_pass = 0, auction_done = 0');
                     $next_state = PHASE_LAUNCH;
                 }
             } else {
@@ -894,8 +954,7 @@ class fleet extends Table
 
         // Draw new licenses
         $cards = $this->cards->pickCardsForLocation($nbr_draw, 'licenses', 'auction', 0, true);
-
-        //TODO: notify
+        self::notifyAllPlayers('drawLicenses', '', array('cards' => $cards));
 
         if (count($cards) < $nbr_draw) {
             // Not enough cards left to fill license auction
