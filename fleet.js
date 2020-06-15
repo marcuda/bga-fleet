@@ -27,10 +27,8 @@ function (dojo, declare) {
             console.log('fleet constructor');
               
             // Here, you can init the global variables of your user interface
-            // Example:
-            // this.myGlobalValue = 0;
             this.spectator = false;
-            this.auction = null;
+            this.auction = {bids:[]};
             this.playerHand = null;
             this.boat_width = 100;
             this.boat_height = 143;
@@ -41,6 +39,10 @@ function (dojo, declare) {
             this.license_counter = null;
             this.boat_counter = null;
             this.fish_counter = null;
+            this.client_state_args = {};
+            this.card_infos = null;
+            this.player_coins = 0;
+            this.player_tables = [];
         },
         
         /*
@@ -59,6 +61,11 @@ function (dojo, declare) {
         setup: function( gamedatas )
         {
             console.log( "Starting game setup" );
+
+            this.card_infos = gamedatas.card_infos;
+            this.player_coins = parseInt(gamedatas.coins);
+            this.auction.high_bid = parseInt(gamedatas.auction_bid);
+            this.auction.winner = parseInt(gamedatas.auction_winner);
             
             // Setting up player boards
             for( var player_id in gamedatas.players )
@@ -66,20 +73,32 @@ function (dojo, declare) {
                 var player = gamedatas.players[player_id];
                          
                 // TODO: Setting up players boards if needed
+                var table = new ebg.stock();
+                table.create(this, $('playertable_' + player_id), this.license_width, this.license_height);
+                table.images_items_per_row = this.license_row_size;
+                for (var i = 0; i < 10; i++) {
+                    table.addItemType(i, i, g_gamethemeurl+'img/licenses.png', i);
+                }
+                table.setSelectionMode(0);
+                this.player_tables[player_id] = table;
             }
 
             // License Auction
-            this.auction = new ebg.stock();
-            this.auction.create(this, $('auctiontable'), this.license_width, this.license_height);
-            this.auction.images_items_per_row = this.license_row_size;
+            this.auction.card_id = parseInt(gamedatas.auction_card);
+            this.auction.table = new ebg.stock();
+            this.auction.table.create(this, $('auctiontable'), this.license_width, this.license_height);
+            this.auction.table.images_items_per_row = this.license_row_size;
             for (var i = 0; i < 10; i++) {
-                this.auction.addItemType(i, i, g_gamethemeurl+'img/licenses.png', i);
+                this.auction.table.addItemType(i, i, g_gamethemeurl+'img/licenses.png', i);
             }
-            this.auction.setSelectionMode(0);
+            this.auction.table.setSelectionMode(0);
+            this.auction.table.apparenceBorderWidth = '2px';
+            console.log(this.auction.table);
             for (var i in gamedatas.auction) {
                 var card = gamedatas.auction[i];
-                this.auction.addToStockWithId(card.type_arg, card.id);
+                this.auction.table.addToStockWithId(card.type_arg, card.id);
             }
+            dojo.connect(this.auction.table, 'onChangeSelection', this, 'onAuctionSelectionChanged');
 
             this.license_counter = new ebg.counter();
             this.license_counter.create('licensecount');
@@ -122,9 +141,8 @@ function (dojo, declare) {
                     var card = gamedatas.hand[i];
                     this.playerHand.addToStockWithId(card.type_arg, card.id);
                 }
-                //dojo.connect(this.playerHand, 'onChangeSelection', this, 'onPlayerHandSelectionChanged');
+                dojo.connect(this.playerHand, 'onChangeSelection', this, 'onPlayerHandSelectionChanged');
             }
-
  
             // Setup game notifications to handle (see "setupNotifications" method below)
             this.setupNotifications();
@@ -142,9 +160,57 @@ function (dojo, declare) {
         onEnteringState: function( stateName, args )
         {
             console.log( 'Entering state: '+stateName );
+            console.log(this.gamedatas.gamestate);
             
             switch( stateName )
             {
+                case 'auction':
+                    // Auction phase managed by client
+                    // Set correct message and buttons base on current auction status
+                    var debug = {
+                        winner: this.auction.winner,
+                        player: this.player_id,
+                        card: this.auction.card_id,
+                        bid: this.auction.high_bid
+                    }
+                    console.log(debug);
+                    this.client_state_args = {};
+                    if (this.auction.winner == this.player_id) {
+                        // Current player won auction
+                        this.setClientState('client_auctionWin', {
+                            descriptionmyturn: _('${you} must discard cards to pay ') + '0/' + this.auction.high_bid
+                            //TODO: fish crates
+                        });
+                    } else if (this.auction.card_id) {
+                        // Bid on selected license
+                        var card = this.auction.table.getItemById(this.auction.card_id);
+                        var card_info = this.card_infos[card.type];
+                        console.log(card);console.log(card_info);
+                        this.setClientState('client_auctionBid', {
+                            descriptionmyturn: _('${name}: ${you} must bid or pass'),
+                            args: card_info
+                        });
+                    } else {
+                        // Select license for bid
+                        this.setClientState('client_auctionSelect', {
+                            descriptionmyturn: _('${you} may choose a card to bid on')
+                        });
+                    }
+                    break;
+                case 'client_auctionSelect':
+                    this.auction.table.setSelectionMode(1);
+                    break;
+                case 'client_auctionBid':
+                    this.auction.table.selectItem(this.auction.card_id);
+                    break;
+                case 'client_auctionWin':
+                    this.playerHand.setSelectionMode(2);
+                    break;
+                case 'launch':
+                case 'hire':
+                case 'processing':
+                case 'trading':
+                case 'draw':
             
             /* Example:
             
@@ -171,6 +237,20 @@ function (dojo, declare) {
             
             switch( stateName )
             {
+                case 'auction':
+                case 'client_auctionSelect':
+                    this.auction.table.setSelectionMode(0);
+                    break;
+                case 'client_auctionBid':
+                case 'client_auctionWin':
+                    this.playerHand.setSelectionMode(0);
+                    break;
+                case 'launch':
+                case 'hire':
+                case 'processing':
+                case 'trading':
+                case 'draw':
+            
             
             /* Example:
             
@@ -199,6 +279,42 @@ function (dojo, declare) {
             {            
                 switch( stateName )
                 {
+                    case 'client_auctionSelect':
+                        this.addActionButton('button_1', _('Pass'), 'onPass');
+                        break;
+                    case 'client_auctionBid':
+                        this.client_state_args.bid = this.auction.high_bid + 1;
+                        console.log(this.client_state_args);
+                        console.log(this.auction.high_bid);
+                        console.log(this.player_coins);
+                        if (this.player_coins >= this.client_state_args.bid) {
+                            // Player has enough coins to continue bidding
+                            this.addActionButton('button_1', '-1', 'onMinusOne', null, false, 'gray');
+                            var color = this.player_coins == this.client_state_args.bid ? 'gray' : 'blue';
+                            this.addActionButton('button_2', '+1', 'onPlusOne', null, false, color);
+                            this.addActionButton('button_3', _('Bid') + ' (' + this.client_state_args.bid + ')', 'onBid');
+                        }
+                        this.addActionButton('button_4', _('Pass'), 'onPass');
+                        break;
+                    case 'client_auctionWin':
+                        this.addActionButton('button_1', _('Discard selected'), 'onBuy', null, false, 'gray');
+                        break;
+                    case 'launch':
+                        break;
+                    case 'hire':
+                        break;
+                    case 'processing':
+                        this.addActionButton('button_1', _('Done'), 'onProcess');
+                        this.addActionButton('button_2', _('Pass'), 'onPass');
+                        this.addActionButton('button_2', _('Cancel'), 'onCancel');
+                        break;
+                    case 'trading':
+                        this.addActionButton('button_1', _('Trade'), 'onTrade');
+                        this.addActionButton('button_2', _('Pass'), 'onPass');
+                        break;
+                    case 'draw':
+                        break;
+            
 /*               
                  Example:
  
@@ -225,6 +341,18 @@ function (dojo, declare) {
         
         */
 
+        ajaxAction: function (action, args)
+        {
+            if (!args) {
+                args = [];
+            }
+            if (!args.hasOwnProperty('lock')) {
+                args.lock = true;
+            }
+            var name = this.game_name;
+            this.ajaxcall('/' + name + '/' + name + '/' + action + '.html',
+                          args, this, function (result) {});
+        },
 
         ///////////////////////////////////////////////////
         //// Player's action
@@ -239,6 +367,179 @@ function (dojo, declare) {
             _ make a call to the game server
         
         */
+
+        onAuctionSelectionChanged: function()
+        {
+            //TODO: error message when unable to select auction
+            var items = this.auction.table.getSelectedItems();
+
+            if (items.length > 0) {
+                if (this.checkAction('bid')) {
+                    if (this.gamedatas.gamestate.name != 'client_auctionSelect') {
+                        //TODO: error msg cannot select
+                        //      this sould not happen!
+                        return;
+                    }
+
+                    var card_info = this.card_infos[items[0].type];
+                    var card_name = card_info['name'];
+                    this.auction.card_id = items[0].id;
+                    this.client_state_args.card_id = this.auction.card_id;
+                    this.client_state_args.bid = card_info['cost'];
+                    this.auction.high_bid = card_info['cost'];
+
+                    // Update page title and buttons for bidding
+                    // Do not change state to allow player to change selection
+                    this.gamedatas.gamestate.descriptionmyturn = card_name + ': ' + _('${you} may open the bidding at ') + this.client_state_args.bid;
+                    this.updatePageTitle();
+                    this.removeActionButtons();
+                    this.addActionButton('button_1', '-1', 'onMinusOne', null, false, 'gray');
+                    this.addActionButton('button_2', '+1', 'onPlusOne');
+                    this.addActionButton('button_3', _('Bid') + ' (' + this.client_state_args.bid + ')', 'onBid');
+                    this.addActionButton('button_4', _('Pass'), 'onPass');
+
+                } else {
+                    // Cannot select new auction card
+                    this.auction.table.unselectAll();
+                }
+            }
+        },
+
+        onPlayerHandSelectionChanged: function()
+        {
+            var items = this.playerHand.getSelectedItems();
+
+            switch(this.gamedatas.gamestate.name)
+            {
+                case 'client_auctionWin':
+                    var coins = 0;
+                    for (var i in items) {
+                        var card = items[i];
+                        coins += this.card_infos[card.type]['coins'];
+                    }
+                    this.gamedatas.gamestate.descriptionmyturn = _('${you} must discard cards to pay ') + coins + '/' + this.auction.high_bid;
+                    this.updatePageTitle();
+                    this.removeActionButtons();
+                    var color = coins >= this.auction.high_bid ? 'blue' : 'gray';
+                    this.addActionButton('button_1', _('Discard selected'), 'onBuy', null, false, color);
+                    break;
+                default:
+                    this.playerHand.unselectAll();
+                    break;
+            }
+        },
+
+        onPlayerTableSelectionChange: function()
+        {
+        },
+
+        onPass: function(evt)
+        {
+            dojo.stopEvent(evt);
+            if (!this.checkAction('pass'))
+                return;
+
+            this.ajaxAction('pass');
+        },
+
+        onPlusOne: function(evt)
+        {
+            dojo.stopEvent(evt);
+
+            this.client_state_args.bid += 1;
+
+            console.log('PLUS ONE: ' + this.client_state_args.bid);
+
+            var max_bid = this.player_coins;
+            if (this.client_state_args.bid > max_bid) {
+                this.showMessage(_('You cannot bid more than ') + max_bid, 'error');
+                this.client_state_args.bid = max_bid;
+            }
+
+            if (this.client_state_args.bid == max_bid) {
+                // "Disable" +1 button
+                dojo.removeClass('button_2', 'bgabutton_blue');
+                dojo.addClass('button_2', 'bgabutton_gray');
+            }
+
+            if (this.client_state_args.bid < max_bid) {
+                // "Enabe" -1 button
+                dojo.removeClass('button_1', 'bgabutton_gray');
+                dojo.addClass('button_1', 'bgabutton_blue');
+            }
+
+            // Update button text with current bid
+            $('button_3').textContent = _('Bid') + ' (' + this.client_state_args.bid + ')';
+        },
+
+        onMinusOne: function(evt)
+        {
+            dojo.stopEvent(evt);
+
+            this.client_state_args.bid -= 1;
+
+            console.log('MINUS ONE: ' + this.client_state_args.bid);
+
+            var min_bid = this.auction.high_bid + 1;
+            if (this.client_state_args.bid < min_bid) {
+                this.showMessage(_('You must bid at least ') + min_bid, 'error');
+                this.client_state_args.bid = min_bid;
+            }
+
+            if (this.client_state_args.bid == min_bid) {
+                // "Disable" -1 button
+                dojo.removeClass('button_1', 'bgabutton_blue');
+                dojo.addClass('button_1', 'bgabutton_gray');
+            }
+
+            if (this.client_state_args.bid < this.player_coins) {
+                // "Enabe" +1 button
+                dojo.removeClass('button_2', 'bgabutton_gray');
+                dojo.addClass('button_2', 'bgabutton_blue');
+            }
+
+            // Update button text with current bid
+            $('button_3').textContent = _('Bid') + ' (' + this.client_state_args.bid + ')';
+        },
+
+        onBid: function(evt)
+        {
+            dojo.stopEvent(evt);
+            if (!this.checkAction('bid'))
+                return;
+
+            this.ajaxAction('bid', this.client_state_args);
+        },
+
+        onBuy: function(evt)
+        {
+            dojo.stopEvent(evt);
+            if (!this.checkAction('buyLicense'))
+                return;
+
+            var items = this.playerHand.getSelectedItems();
+            this.client_state_args.card_ids = '';
+            for (var i in items) {
+                this.client_state_args.card_ids += items[i].id + ';';
+            }
+
+            //TODO: fish crates
+
+            this.ajaxAction('buyLicense', this.client_state_args);
+        },
+
+        onProcess: function(evt)
+        {
+        },
+
+        onTrade: function(evt)
+        {
+        },
+
+        onDiscard: function(evt)
+        {
+        },
+
         
         /* Example:
         
@@ -302,9 +603,87 @@ function (dojo, declare) {
             // dojo.subscribe( 'cardPlayed', this, "notif_cardPlayed" );
             // this.notifqueue.setSynchronous( 'cardPlayed', 3000 );
             // 
+            dojo.subscribe('pass', this, 'notif_pass');
+            dojo.subscribe('auctionSelect', this, 'notif_auctionSelect');
+            dojo.subscribe('auctionBid', this, 'notif_auctionBid');
+            dojo.subscribe('auctionWin', this, 'notif_auctionWin');
+            dojo.subscribe('buyLicense', this, 'notif_buyLicense');
+            this.notifqueue.setSynchronous('buyLicense', 1000);
+            dojo.subscribe('drawLicenses', this, 'notif_drawLicenses');
         },  
         
         // TODO: from this point and below, you can write your game notifications handling methods
+        notif_pass: function (notif)
+        {
+            console.log('notify_pass');
+            console.log(notif);
+            this.auction.bids[parseInt(notif.args.player_id)] = 'pass';
+        },
+
+        notif_auctionSelect: function (notif)
+        {
+            console.log('notify_auctionSelect');
+            console.log(notif);
+            this.auction.card_id = parseInt(notif.args.card_id); //XXX all values coming back as string?
+        },
+
+        notif_auctionBid: function (notif)
+        {
+            console.log('notify_auctionBid');
+            console.log(notif);
+            this.auction.bids[parseInt(notif.args.player_id)] = parseInt(notif.args.bid);
+            this.auction.high_bid = parseInt(notif.args.bid);
+        },
+        
+        notif_auctionWin: function (notif)
+        {
+            console.log('notify_auctionWin');
+            console.log(notif);
+            this.auction.winner = parseInt(notif.args.player_id);
+            this.auction.bids[this.auction.winner] = parseInt(notif.args.bid);
+            this.auction.high_bid = parseInt(notif.args.bid);
+        },
+
+        notif_buyLicense: function (notif)
+        {
+            console.log('notify_buyLicense');
+            console.log(notif);
+
+            if (notif.args.player_id == this.player_id) {
+                // Discard from hand
+                for (var i in notif.args.card_ids) {
+                    this.playerHand.removeFromStockById(notif.args.card_ids[i], 'boatcount');
+                }
+            } else {
+                // Animate cards from other player
+                // TODO
+            }
+
+            // Player takes license card
+            this.player_tables[notif.args.player_id].addToStockWithId(
+                notif.args.license_type,
+                notif.args.license_id,
+                this.auction.table.getItemDivId(notif.args.license_id)
+            );
+            this.auction.table.removeFromStockById(notif.args.license_id);
+
+            // Reset auction globals
+            this.auction.bids = [];
+            this.auction.high_bid = 0;
+            this.auction.card_id = 0;
+            this.auction.winner = 0;
+        },
+
+        notif_drawLicenses: function (notif)
+        {
+            console.log('notify_drawLicenses');
+            console.log(notif);
+
+            for (var i in notif.args.cards) {
+                var card = notif.args.cards[i];
+                this.auction.table.addToStockWithId(card.type_arg, card.id, 'licensecount');
+            }
+        },
         
         /*
         Example:
