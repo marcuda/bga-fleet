@@ -85,3 +85,11 @@
     height: 30px;
     background-image: url('img/licenseicon.png');
 }
+
+.flt_disabled {
+    opacity: 0.5 ! important;
+}
+
+.flt_auction_done {
+    display: none ! important;
+}

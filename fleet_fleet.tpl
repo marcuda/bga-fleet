@@ -15,6 +15,17 @@
     <div id="auction_wrap" class="flt_auction whiteblock">
         <h3>{AUCTION_LABEL}</h3>
         <div id="auctiontable"></div>
+        <div id="auctionbids">
+            <b>Bids</b>
+            <!-- BEGIN bid -->
+            <div id="playerbid_{PLAYER_ID}_wrap">
+                <div style="color:#{PLAYER_COLOR}">
+                    <b>{PLAYER_NAME}</b>&nbsp;
+                    <span id="playerbid_{PLAYER_ID}" style="color:black;">-</span>
+                </div>
+            </div>
+            <!-- END bid -->
+        </div>
     </div>
     <div id="flt_counters">
         <div style="display: inline-block">

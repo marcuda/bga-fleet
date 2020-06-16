@@ -81,6 +81,15 @@ function (dojo, declare) {
                 }
                 table.setSelectionMode(0);
                 this.player_tables[player_id] = table;
+
+                // Auction
+                var bid = parseInt(player.bid);
+                if (parseInt(player.done)) {
+                    dojo.addClass('playerbid_' + player_id + '_wrap', 'flt_auction_done');
+                } else if (parseInt(player.pass)) {
+                    bid = 'pass';
+                }
+                this.auction.bids[player_id] = bid;
             }
 
             // License Auction
@@ -198,12 +207,16 @@ function (dojo, declare) {
                     }
                     break;
                 case 'client_auctionSelect':
+                    this.showActiveAuction();
                     this.auction.table.setSelectionMode(1);
+                    //TODO: if last player change title to say buy vs bid?
                     break;
                 case 'client_auctionBid':
-                    this.auction.table.selectItem(this.auction.card_id);
+                    this.showActiveAuction();
                     break;
                 case 'client_auctionWin':
+                    this.showActiveAuction();
+                    // Player needs to select multiple cards to pay
                     this.playerHand.setSelectionMode(2);
                     break;
                 case 'launch':
@@ -234,6 +247,9 @@ function (dojo, declare) {
         onLeavingState: function( stateName )
         {
             console.log( 'Leaving state: '+stateName );
+
+            dojo.style('auctionbids', 'display', 'none');
+            dojo.query('.flt_disabled').removeClass('flt_disabled');
             
             switch( stateName )
             {
@@ -352,6 +368,29 @@ function (dojo, declare) {
             var name = this.game_name;
             this.ajaxcall('/' + name + '/' + name + '/' + action + '.html',
                           args, this, function (result) {});
+        },
+
+        showActiveAuction: function ()
+        {
+            // Update bids table
+            // Use player tables list to always get all players
+            for (var player in this.player_tables) {
+                var txt = this.auction.bids[player];
+                if (!txt) {
+                    txt = '-';
+                }
+                $('playerbid_' + player).textContent = txt;
+            }
+
+            // Show bids
+            dojo.style('auctionbids', 'display', 'block');
+
+            if (this.auction.card_id) {
+                // Highlight currently selected license and fade others
+                dojo.query('#auctiontable > .stockitem').addClass('flt_disabled');
+                dojo.removeClass(this.auction.table.getItemDivId(this.auction.card_id), 'flt_disabled');
+                this.auction.table.selectItem(this.auction.card_id);
+            }
         },
 
         ///////////////////////////////////////////////////
@@ -667,6 +706,9 @@ function (dojo, declare) {
             );
             this.auction.table.removeFromStockById(notif.args.license_id);
 
+            // Remove player from auction
+            dojo.addClass('playerbid_' + notif.args.player_id + '_wrap', 'flt_auction_done');
+
             // Reset auction globals
             this.auction.bids = [];
             this.auction.high_bid = 0;
@@ -684,20 +726,6 @@ function (dojo, declare) {
                 this.auction.table.addToStockWithId(card.type_arg, card.id, 'licensecount');
             }
         },
-        
-        /*
-        Example:
-        
-        notif_cardPlayed: function( notif )
-        {
-            console.log( 'notif_cardPlayed' );
-            console.log( notif );
-            
-            // Note: notif.args contains the arguments specified during you "notifyAllPlayers" / "notifyPlayer" PHP call
-            
-            // TODO: play the card in the user interface.
-        },    
-        
-        */
+
    });             
 });
