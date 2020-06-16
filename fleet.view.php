@@ -40,7 +40,17 @@ class view_fleet_fleet extends game_view
         /*********** Place your code below:  ************/
 
         $players_ordered = $this->game->getPlayersInOrder();
-        $this->page->begin_block( "fleet_fleet", "player" );
+
+        $this->page->begin_block("fleet_fleet", "bid");
+        foreach($players_ordered as $player_id) {
+            $this->page->insert_block("bid", array(
+                "PLAYER_ID" => $player_id,
+                "PLAYER_NAME" => $players[$player_id]['player_name'],
+                "PLAYER_COLOR" => $players[$player_id]['player_color'],
+            ));
+        }
+
+        $this->page->begin_block("fleet_fleet", "player");
         foreach ($players_ordered as $player_id) {
             $this->page->insert_block("player", array(
                 "PLAYER_ID" => $player_id,
