@@ -49,9 +49,16 @@
 
 <div id="playertables">
     <!-- BEGIN player -->
-    <div id="playertable_{PLAYER_ID}_wrap" class="whiteblock">
-        <h3 style="color:#{PLAYER_COLOR}">{PLAYER_NAME}</h3>
-        <div id="playertable_{PLAYER_ID}"></div>
+    <div id="playertable_{PLAYER_ID}_wrap" style="display:flex; flex-wrap:wrap">
+        <div class="whiteblock flt_player_table">
+            <h3 style="color:#{PLAYER_COLOR}">{PLAYER_NAME}'s {LICENSES}</h3>
+            <div id="playerlicenses_{PLAYER_ID}"></div>
+        </div>
+        &nbsp;
+        <div class="whiteblock flt_player_table">
+            <h3 style="color:#{PLAYER_COLOR}">{PLAYER_NAME}'s {BOATS}</h3>
+            <div id="playerboats_{PLAYER_ID}"></div>
+        </div>
     </div>
     <!-- END player -->
 </div>
@@ -60,6 +67,7 @@
 <script type="text/javascript">
 
 // Javascript HTML templates
+var jstpl_captain = '<div id="captain_${id}" class="flt_boat flt_captain"></div>';
 
 /*
 // Example:
