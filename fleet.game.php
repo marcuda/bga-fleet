@@ -199,6 +199,17 @@ class fleet extends Table
         $sql = "SELECT player_id id, player_score score, auction_bid bid, auction_pass pass, auction_done done FROM player ";
         $result['players'] = self::getCollectionFromDb( $sql );
 
+        // Get player cards on table
+        $players = self::loadPlayersBasicInfos();
+        $boats = array();
+        $licenses = array();
+        foreach ($players as $player_id => $player) {
+            $boats[$player_id] = $this->getBoats($player_id);
+            $licenses[$player_id] = $this->cards->getCardsOfTypeInLocation(CARD_LICENSE, null, 'table', $player_id);
+        }
+        $result['boats'] = $boats;
+        $result['licenses'] = $licenses;
+
         $result['hand'] = $this->cards->getPlayerHand($current_player_id);
         $result['coins'] = $this->getCoins($current_player_id);
 
@@ -326,7 +337,7 @@ class fleet extends Table
         }
         // Extra columns
         $sql .= ' nbr_fish AS fish, has_captain FROM card';
-        $sql .= " WHERE location = 'table' AND location_arg = $player_id AND type = '" . CARD_BOAT . "'";
+        $sql .= " WHERE card_location = 'table' AND card_location_arg = $player_id AND card_type = '" . CARD_BOAT . "'";
         return self::getCollectionFromDB($sql);
     }
 

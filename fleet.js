@@ -27,7 +27,6 @@ function (dojo, declare) {
             console.log('fleet constructor');
               
             // Here, you can init the global variables of your user interface
-            this.spectator = false;
             this.auction = {bids:[]};
             this.playerHand = null;
             this.boat_width = 100;
@@ -42,7 +41,8 @@ function (dojo, declare) {
             this.client_state_args = {};
             this.card_infos = null;
             this.player_coins = 0;
-            this.player_tables = [];
+            this.player_licenses = [];
+            this.player_boats = [];
         },
         
         /*
@@ -73,14 +73,27 @@ function (dojo, declare) {
                 var player = gamedatas.players[player_id];
                          
                 // TODO: Setting up players boards if needed
-                var table = new ebg.stock();
-                table.create(this, $('playertable_' + player_id), this.license_width, this.license_height);
-                table.images_items_per_row = this.license_row_size;
-                for (var i = 0; i < 10; i++) {
-                    table.addItemType(i, i, g_gamethemeurl+'img/licenses.png', i);
+
+                // Player license cards
+                this.player_licenses[player_id] = this.createStockLicense('playerlicenses_' + player_id);
+                var licenses = gamedatas.licenses[player_id];
+                for (var i in licenses) {
+                    var card = licenses[i];
+                    this.player_licenses[player_id].addToStockWithId(card.type_arg, card.id);
                 }
-                table.setSelectionMode(0);
-                this.player_tables[player_id] = table;
+
+                // Player boat cards
+                this.player_boats[player_id] = this.createStockBoat('playerboats_' + player_id);
+                var boats = gamedatas.boats[player_id];
+                for (var i in boats) {
+                    var card = boats[i];
+                    this.player_boats[player_id].addToStockWithId(card.type_arg, card.id);
+                    if (card.has_captain) {
+                        dojo.style('captain_' + card.id, 'display', 'block');
+                    }
+                    //TODO: fish
+                    //      need additional div on captain... use stock?
+                }
 
                 // Auction
                 var bid = parseInt(player.bid);
@@ -94,15 +107,7 @@ function (dojo, declare) {
 
             // License Auction
             this.auction.card_id = parseInt(gamedatas.auction_card);
-            this.auction.table = new ebg.stock();
-            this.auction.table.create(this, $('auctiontable'), this.license_width, this.license_height);
-            this.auction.table.images_items_per_row = this.license_row_size;
-            for (var i = 0; i < 10; i++) {
-                this.auction.table.addItemType(i, i, g_gamethemeurl+'img/licenses.png', i);
-            }
-            this.auction.table.setSelectionMode(0);
-            this.auction.table.apparenceBorderWidth = '2px';
-            console.log(this.auction.table);
+            this.auction.table = this.createStockLicense('auctiontable');
             for (var i in gamedatas.auction) {
                 var card = gamedatas.auction[i];
                 this.auction.table.addToStockWithId(card.type_arg, card.id);
@@ -123,9 +128,8 @@ function (dojo, declare) {
             /*
             // Set up player table unless spectating
             this.playerTable = this.player_tables[this.player_id];
-            if (this.playerTable === undefined) {
+            if (this.isSpectator) {
                 // Spectator - hide player hand area
-                this.spectator = true;
                 dojo.style('myhand_wrap', 'display', 'none');
             } else {
                 //TODO: onchangeselection
@@ -134,18 +138,8 @@ function (dojo, declare) {
 
             console.log(gamedatas);
             // Player hand
-            if (!this.spectator) { // Spectator has no hand element
-                this.playerHand = new ebg.stock();
-                this.playerHand.create(this, $('myhand'), this.boat_width, this.boat_height);
-                this.playerHand.image_items_per_row = this.card_art_row_size;
-                //for (var i = 9; i < 15; i++) {
-                var type, pos;
-                for (type = 9, pos = 0; pos < 7; type++, pos++) {
-                    // Boat cards follow licenses in type order
-                    this.playerHand.addItemType(type, type, g_gamethemeurl+'img/boats.png', pos);
-                }
-                this.playerHand.setSelectionMode(0);
-                //this.playerHand.onItemCreate = dojo.hitch(this, 'setupNewCard');
+            if (!this.isSpectator) { // Spectator has no hand element
+                this.playerHand = this.createStockBoat('myhand');
                 for (var i in gamedatas.hand) {
                     var card = gamedatas.hand[i];
                     this.playerHand.addToStockWithId(card.type_arg, card.id);
@@ -357,6 +351,42 @@ function (dojo, declare) {
         
         */
 
+        createStockLicense: function (div_id)
+        {
+            var stock = new ebg.stock();
+            stock.create(this, $(div_id), this.license_width, this.license_height);
+            stock.images_items_per_row = this.license_row_size;
+            for (var i = 0; i < 10; i++) {
+                stock.addItemType(i, i, g_gamethemeurl+'img/licenses.png', i);
+            }
+            stock.setSelectionMode(0);
+            stock.apparenceBorderWidth = '2px';
+            return stock;
+        },
+
+        createStockBoat: function (div_id)
+        {
+            var stock = new ebg.stock();
+            stock.create(this, $(div_id), this.boat_width, this.boat_height);
+            stock.image_items_per_row = this.card_art_row_size;
+            var type, pos;
+            for (type = 9, pos = 0; pos < 7; type++, pos++) {
+                // Boat cards follow licenses in type order
+                stock.addItemType(type, type, g_gamethemeurl+'img/boats.png', pos);
+            }
+            stock.setSelectionMode(0);
+            stock.onItemCreate = dojo.hitch(this, 'addCaptainDiv');
+            return stock;
+        },
+
+        addCaptainDiv: function(card_div, card_type_id, card_id)
+        {
+            var player_id = parseInt(card_div.id.split('_')[1]);
+            var id = card_id.split('_');
+            id = id[id.length - 1];
+            dojo.place(this.format_block('jstpl_captain', {id:id}), card_div.id);
+        },
+
         ajaxAction: function (action, args)
         {
             if (!args) {
@@ -374,7 +404,7 @@ function (dojo, declare) {
         {
             // Update bids table
             // Use player tables list to always get all players
-            for (var player in this.player_tables) {
+            for (var player in this.player_licenses) {
                 var txt = this.auction.bids[player];
                 if (!txt) {
                     txt = '-';
@@ -699,7 +729,7 @@ function (dojo, declare) {
             }
 
             // Player takes license card
-            this.player_tables[notif.args.player_id].addToStockWithId(
+            this.player_licenses[notif.args.player_id].addToStockWithId(
                 notif.args.license_type,
                 notif.args.license_id,
                 this.auction.table.getItemDivId(notif.args.license_id)

@@ -93,3 +93,14 @@
 .flt_auction_done {
     display: none ! important;
 }
+
+.flt_player_table {
+    width: 48%;
+    position: relative;
+}
+
+.flt_captain {
+    background-position: -600px 0px;
+    top: 30px;
+    display: none;
+}
