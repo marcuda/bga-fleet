@@ -203,6 +203,7 @@ $this->card_types = array(
     BOAT_CRAB => array(
         'name' => clienttranslate("King Crab Boat"),
         'type' => CARD_BOAT,
+        'license' => array(LICENSE_CRAB_C, LICENSE_CRAB_F, LICENSE_CRAB_L),
         'cost' => 3,
         'points' => 3,
         'coins' => 1,

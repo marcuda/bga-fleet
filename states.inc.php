@@ -75,7 +75,7 @@ $machinestates = array(
 
     STATE_AUCTION => array(
         "name" => "auction",
-        "description" => clienttranslate('${actplayer} may select a license to bid on'),
+        "description" => clienttranslate('${actplayer} must bid or pass'),
         "descriptionmyturn" => clienttranslate('${you} may select a license to bid on'),
         "type" => "activeplayer",
         "possibleactions" => array("bid", "buyLicense", "pass"),
@@ -101,7 +101,7 @@ $machinestates = array(
         "name" => "fishing",
         "type" => "game",
         "action" => "stFishing",
-        "transitions" => array("" => STATE_PROCESSING, "gameEnd" => 99)
+        "transitions" => array("next" => STATE_PROCESSING, "gameEnd" => 99)
     ),
     STATE_PROCESSING => array(
         "name" => "processing",
