@@ -15,7 +15,7 @@
     <div id="auction_wrap" class="flt_auction whiteblock">
         <h3>{AUCTION_LABEL}</h3>
         <div id="auctiontable"></div>
-        <div id="auctionbids">
+        <div id="auctionbids" style="display: none;">
             <b>Bids</b>
             <!-- BEGIN bid -->
             <div id="playerbid_{PLAYER_ID}_wrap">

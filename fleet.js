@@ -43,6 +43,7 @@ function (dojo, declare) {
             this.player_coins = 0;
             this.player_licenses = [];
             this.player_boats = [];
+            this.possible_moves = null;
         },
         
         /*
@@ -66,6 +67,7 @@ function (dojo, declare) {
             this.player_coins = parseInt(gamedatas.coins);
             this.auction.high_bid = parseInt(gamedatas.auction_bid);
             this.auction.winner = parseInt(gamedatas.auction_winner);
+            this.possible_moves = gamedatas.moves;
             
             // Setting up player boards
             for( var player_id in gamedatas.players )
@@ -88,12 +90,13 @@ function (dojo, declare) {
                 for (var i in boats) {
                     var card = boats[i];
                     this.player_boats[player_id].addToStockWithId(card.type_arg, card.id);
-                    if (card.has_captain) {
+                    if (parseInt(card.has_captain)) {
                         dojo.style('captain_' + card.id, 'display', 'block');
                     }
                     //TODO: fish
                     //      need additional div on captain... use stock?
                 }
+                dojo.connect(this.player_boats[player_id], 'onChangeSelection', this, 'onPlayerBoatsSelectionChanged');
 
                 // Auction
                 var bid = parseInt(player.bid);
@@ -214,7 +217,17 @@ function (dojo, declare) {
                     this.playerHand.setSelectionMode(2);
                     break;
                 case 'launch':
+                    this.client_state_args = {};
+                    this.playerHand.setSelectionMode(1);
+                    break;
+                case 'client_launchPay':
+                    this.playerHand.setSelectionMode(2);
+                    break;
                 case 'hire':
+                    this.client_state_args = {};
+                    this.playerHand.setSelectionMode(1);
+                    this.player_boats[this.player_id].setSelectionMode(1);
+                    break;
                 case 'processing':
                 case 'trading':
                 case 'draw':
@@ -244,17 +257,16 @@ function (dojo, declare) {
 
             dojo.style('auctionbids', 'display', 'none');
             dojo.query('.flt_disabled').removeClass('flt_disabled');
+            this.auction.table.setSelectionMode(0);
+            this.playerHand.setSelectionMode(0);
+            this.player_boats[this.player_id].setSelectionMode(0);
             
             switch( stateName )
             {
                 case 'auction':
                 case 'client_auctionSelect':
-                    this.auction.table.setSelectionMode(0);
-                    break;
                 case 'client_auctionBid':
                 case 'client_auctionWin':
-                    this.playerHand.setSelectionMode(0);
-                    break;
                 case 'launch':
                 case 'hire':
                 case 'processing':
@@ -310,8 +322,14 @@ function (dojo, declare) {
                         this.addActionButton('button_1', _('Discard selected'), 'onBuy', null, false, 'gray');
                         break;
                     case 'launch':
+                        this.addActionButton('button_1', _('Pass'), 'onPass');
+                        break;
+                    case 'client_launchPay':
+                        this.addActionButton('button_1', _('Discard selected'), 'onBuy', null, false, 'gray');
+                        this.addActionButton('button_2', _('Cancel'), 'onCancel', null, false, 'red');
                         break;
                     case 'hire':
+                        this.addActionButton('button_1', _('Pass'), 'onPass');
                         break;
                     case 'processing':
                         this.addActionButton('button_1', _('Done'), 'onProcess');
@@ -474,23 +492,75 @@ function (dojo, declare) {
             }
         },
 
+        updateBuy: function (items, cost)
+        {
+            console.log('UPDATE BUY');
+            console.log(items);
+            var coins = 0;
+            for (var i in items) {
+                var card = items[i];
+                coins += this.card_infos[card.type]['coins'];
+            }
+            this.gamedatas.gamestate.descriptionmyturn = _('${you} must discard cards to pay ') + coins + '/' + cost;
+            this.updatePageTitle();
+            this.removeActionButtons();
+            var color = coins >= this.auction.high_bid ? 'blue' : 'gray';
+            this.addActionButton('button_1', _('Discard selected'), 'onBuy', null, false, color);
+            this.addActionButton('button_2', _('Cancel'), 'onCancel', null, false, 'red');
+        },
+
         onPlayerHandSelectionChanged: function()
         {
             var items = this.playerHand.getSelectedItems();
 
+            console.log('hand select ' + this.gamedatas.gamestate.name);
+            console.log(items);
             switch(this.gamedatas.gamestate.name)
             {
                 case 'client_auctionWin':
-                    var coins = 0;
-                    for (var i in items) {
-                        var card = items[i];
-                        coins += this.card_infos[card.type]['coins'];
+                    this.updateBuy(items, this.auction.high_bid);
+                    break;
+                case 'launch':
+                    if (this.checkAction('launchBoat') && items.length > 0) {
+                        var card = items[0];
+                        console.log('launch select');console.log(card);
+                        if (!this.possible_moves[card.id].can_play) {
+                            this.showMessage(this.possible_moves[card.id].error, 'error');
+                        } else {
+                            var card_info = this.card_infos[card.type];
+                            this.client_state_args.boat_id = card.id;
+                            this.client_state_args.cost = card_info.cost;
+                            this.client_state_args.boat_type = card.type;
+
+                            // Play boat card from hand
+                            this.player_boats[this.player_id].addToStockWithId(
+                                card.type,
+                                card.id,
+                                this.playerHand.getItemDivId(card.id)
+                            );
+                            this.playerHand.removeFromStockById(card.id);
+
+                            //TODO: with client state user can refresh and clear selection
+                            //      is that what we want? or make it permanent? allow use to change w/o refresh?
+                            this.setClientState('client_launchPay', {
+                                descriptionmyturn: _('${name}: ${you} must discard cards to pay 0/${cost}'),
+                                args: card_info
+                            });
+                        }
                     }
-                    this.gamedatas.gamestate.descriptionmyturn = _('${you} must discard cards to pay ') + coins + '/' + this.auction.high_bid;
-                    this.updatePageTitle();
-                    this.removeActionButtons();
-                    var color = coins >= this.auction.high_bid ? 'blue' : 'gray';
-                    this.addActionButton('button_1', _('Discard selected'), 'onBuy', null, false, color);
+                    this.playerHand.unselectAll();
+                    break;
+                case 'client_launchPay':
+                    this.updateBuy(items, this.client_state_args.cost);
+                    break;
+                case 'hire':
+                    if (this.checkAction('hireCaptain') && items.length > 0) {
+                        this.player_boats[this.player_id].setSelectionMode(1);
+                        this.client_state_args.card_id = items[0].id;
+                        if (this.client_state_args.boat_id) {
+                            this.hireCaptain();
+                        }
+                    }
                     break;
                 default:
                     this.playerHand.unselectAll();
@@ -498,8 +568,16 @@ function (dojo, declare) {
             }
         },
 
-        onPlayerTableSelectionChange: function()
+        onPlayerBoatsSelectionChanged: function()
         {
+            var items = this.player_boats[this.player_id].getSelectedItems();
+
+            if (items.length > 0 && this.checkAction('hireCaptain')) {
+                this.client_state_args.boat_id = items[0].id;
+                if (this.client_state_args.card_id) {
+                    this.hireCaptain();
+                }
+            }
         },
 
         onPass: function(evt)
@@ -583,7 +661,20 @@ function (dojo, declare) {
         onBuy: function(evt)
         {
             dojo.stopEvent(evt);
-            if (!this.checkAction('buyLicense'))
+
+            //TODO: prevent player spending too much?
+
+            var state = this.gamedatas.gamestate.name;
+            if (state == 'client_auctionWin') {
+                var action = 'buyLicense';
+            } else if (state == 'client_launchPay') {
+                var action = 'launchBoat';
+            } else {
+                this.showMessage('Impossible buy action', 'error');
+                return;
+            }
+
+            if (!this.checkAction(action))
                 return;
 
             var items = this.playerHand.getSelectedItems();
@@ -594,7 +685,16 @@ function (dojo, declare) {
 
             //TODO: fish crates
 
-            this.ajaxAction('buyLicense', this.client_state_args);
+            this.ajaxAction(action, this.client_state_args);
+        },
+
+        hireCaptain: function()
+        {
+            if (!this.checkAction('hireCaptain'))
+                return;
+
+            console.log(this.client_state_args);
+            this.ajaxAction('hireCaptain', this.client_state_args);
         },
 
         onProcess: function(evt)
@@ -609,41 +709,26 @@ function (dojo, declare) {
         {
         },
 
-        
-        /* Example:
-        
-        onMyMethodToCall1: function( evt )
+        onCancel: function(evt)
         {
-            console.log( 'onMyMethodToCall1' );
-            
-            // Preventing default browser reaction
-            dojo.stopEvent( evt );
+            dojo.stopEvent(evt);
 
-            // Check that this action is possible (see "possibleactions" in states.inc.php)
-            if( ! this.checkAction( 'myAction' ) )
-            {   return; }
+            var state = this.gamedatas.gamestate.name;
+            if (state == 'client_launchPay') {
+                // Undo boat launch
+                var card_id = this.client_state_args.boat_id
+                this.playerHand.addToStockWithId(
+                    this.client_state_args.boat_type,
+                    this.client_state_args.boat_id,
+                    this.player_boats[this.player_id].getItemDivId(this.client_state_args.boat_id)
+                );
+                this.player_boats[this.player_id].removeFromStockById(this.client_state_args.boat_id);
+                delete this.client_state_args.boat_id;
+            }
 
-            this.ajaxcall( "/fleet/fleet/myAction.html", { 
-                                                                    lock: true, 
-                                                                    myArgument1: arg1, 
-                                                                    myArgument2: arg2,
-                                                                    ...
-                                                                 }, 
-                         this, function( result ) {
-                            
-                            // What to do after the server call if it succeeded
-                            // (most of the time: nothing)
-                            
-                         }, function( is_error) {
-
-                            // What to do after the server call in anyway (success or failure)
-                            // (most of the time: nothing)
-
-                         } );        
-        },        
-        
-        */
-
+            // Reset to main state
+            this.restoreServerGameState();
+        },
         
         ///////////////////////////////////////////////////
         //// Reaction to cometD notifications
@@ -673,12 +758,15 @@ function (dojo, declare) {
             // this.notifqueue.setSynchronous( 'cardPlayed', 3000 );
             // 
             dojo.subscribe('pass', this, 'notif_pass');
+            dojo.subscribe('possibleMoves', this, 'notif_possibleMoves');
             dojo.subscribe('auctionSelect', this, 'notif_auctionSelect');
             dojo.subscribe('auctionBid', this, 'notif_auctionBid');
             dojo.subscribe('auctionWin', this, 'notif_auctionWin');
             dojo.subscribe('buyLicense', this, 'notif_buyLicense');
             this.notifqueue.setSynchronous('buyLicense', 1000);
             dojo.subscribe('drawLicenses', this, 'notif_drawLicenses');
+            dojo.subscribe('launchBoat', this, 'notif_launchBoat');
+            dojo.subscribe('hireCaptain', this, 'notif_hireCaptain');
         },  
         
         // TODO: from this point and below, you can write your game notifications handling methods
@@ -687,6 +775,13 @@ function (dojo, declare) {
             console.log('notify_pass');
             console.log(notif);
             this.auction.bids[parseInt(notif.args.player_id)] = 'pass';
+        },
+
+        notif_possibleMoves: function (notif)
+        {
+            console.log('notify_possibleMoves');
+            console.log(notif);
+            this.possible_moves = notif.args;
         },
 
         notif_auctionSelect: function (notif)
@@ -754,6 +849,46 @@ function (dojo, declare) {
             for (var i in notif.args.cards) {
                 var card = notif.args.cards[i];
                 this.auction.table.addToStockWithId(card.type_arg, card.id, 'licensecount');
+            }
+        },
+        
+        notif_launchBoat: function (notif)
+        {
+            console.log('notify_launchBoat');
+            console.log(notif);
+
+            if (notif.args.player_id == this.player_id) {
+                // Discard from hand
+                for (var i in notif.args.card_ids) {
+                    this.playerHand.removeFromStockById(notif.args.card_ids[i], 'boatcount');
+                }
+                // Boat already played during client state
+            } else {
+                // Animate cards from other player
+                // TODO: discards?
+                this.player_boats[notif.args.player_id].addToStockWithId(
+                    notif.args.boat_type,
+                    notif.args.boat_id,
+                    'overall_player_board_' + notif.args.player_id
+                );
+            }
+        },
+
+        notif_hireCaptain: function (notif)
+        {
+            console.log('notify_hireCaptain');
+            console.log(notif);
+
+            // Show card back for captian
+            // TODO: timing, card flip anim?
+            dojo.style('captain_' + notif.args.boat_id, 'display', 'block');
+
+            if (notif.args.player_id == this.player_id) {
+                // Player plays card onto boat
+                this.playerHand.removeFromStockById(notif.args.card_id, 'captain_' + notif.args.boat_id);
+            } else {
+                // Animate cards from other player
+                // TODO
             }
         },
 
