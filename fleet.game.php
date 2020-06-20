@@ -884,6 +884,7 @@ class fleet extends Table
 
     function stNextPlayer()
     {
+        // Determine next player and phase
         $current_phase = $this->getCurrentPhase();
         $next_state = $current_phase;
         if ($current_phase == PHASE_AUCTION) {
@@ -907,20 +908,44 @@ class fleet extends Table
             }
         }
 
-        if ($next_state == PHASE_DRAW) {
+        // Perform game actions
+        if ($next_state == PHASE_FISHING) {
+            // Fishing is automatic, move to next phase (or end)
+            $next_state = $this->doFishing();
+        } else if ($next_state == PHASE_DRAW) {
             // Draw cards for next player
             $this->drawCards($player_id);
         }
 
-        self::notifyPlayer($player_id, 'possibleMoves', '', $this->possibleMoves($player_id, $next_state));
-        // TODO: auto pass if no action (and would not reveal private info)
+        // When possible automatically skip players without a valid play
+        // but _NOT_ when it would reveal private information
+        if ($next_state == PHASE_PROCESSING) {
+            // Verify player has processing vessel license and at least one fish crate
+            $license = $this->getLicenses($player_id, LICENSE_PROCESSING);
+            $sql = "SELECT SUM(nbr_fish) FROM card WHERE card_location = 'table' ";
+            $sql .= "AND card_location_arg = $player_id AND card_type = '" . CARD_BOAT ."'";
+            if (count($license) == 0 || self::getUniqueValueFromDB($sql) == 0) {
+                $next_state = 'cantPlay';
+            }
+        } else if ($next_state == PHASE_TRADING) {
+            // Verify player has at least one fish crate on license
+            $sql = "SELECT fish_crates FROM player WHERE player_id = $player_id";
+            if (self::getUniqueValueFromDB($sql) == 0) {
+                $next_state = 'cantPlay';
+            }
+        }
 
-        // Forward progress
-        self::giveExtraTime($player_id);
+        if ($next_state != 'cantPlay') {
+            self::notifyPlayer($player_id, 'possibleMoves', '', $this->possibleMoves($player_id, $next_state));
+            // TODO: auto pass if no action (and would not reveal private info)
+            self::giveExtraTime($player_id);
+        }
+        //TODO: notify if skipped?
+
         $this->gamestate->nextState($next_state);
     }
 
-    function stFishing()
+    function doFishing()
     {
         $fish = self::getGameStateValue('fish_crates');
         $players = self::loadPlayersBasicInfos();
@@ -949,12 +974,10 @@ class fleet extends Table
         if ($fish <= 0) {
             // No more fish crates, game is over!
             // TODO: notify
-            $this->gamestate->nextState('gameEnd');
+            return 'gameEnd';
         } else {
             // Next phase
-            // First player already activated in previous stNextPlayer
-            $this->nextPhase();
-            $this->gamestate->nextState('next');
+            return $this->nextPhase();
         }
     }
 
