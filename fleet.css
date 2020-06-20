@@ -101,6 +101,12 @@
 
 .flt_captain {
     background-position: -600px 0px;
-    top: 30px;
+    top: 22px;
     display: none;
+}
+
+.flt_fish {
+    width: 100px;
+    height: 30px;
+    top: 113px;
 }

@@ -19,7 +19,8 @@ define([
     "dojo","dojo/_base/declare",
     "ebg/core/gamegui",
     "ebg/counter",
-    "ebg/stock"
+    "ebg/stock",
+    "ebg/zone"
 ],
 function (dojo, declare) {
     return declare("bgagame.fleet", ebg.core.gamegui, {
@@ -44,6 +45,7 @@ function (dojo, declare) {
             this.player_licenses = [];
             this.player_boats = [];
             this.possible_moves = null;
+            this.fish_zones = [];
         },
         
         /*
@@ -93,8 +95,12 @@ function (dojo, declare) {
                     if (parseInt(card.has_captain)) {
                         dojo.style('captain_' + card.id, 'display', 'block');
                     }
-                    //TODO: fish
-                    //      need additional div on captain... use stock?
+
+                    // Fish cubes
+                    this.createFishZone(card.id);
+                    for (var j = 0; j < parseInt(card.fish); j++) {
+                        this.addFishCube(card.id);
+                    }
                 }
                 dojo.connect(this.player_boats[player_id], 'onChangeSelection', this, 'onPlayerBoatsSelectionChanged');
 
@@ -369,6 +375,47 @@ function (dojo, declare) {
         
         */
 
+        createFishZone: function(id)
+        {
+            console.log('CREATE FISH: ' + id);
+            console.log($('fish_' + id));
+            var zone = new ebg.zone();
+            zone.create(this, 'fish_' + id, 30, 30); //TODO: width/height
+            zone.setPattern('horizontalfit');
+            this.fish_zones[id] = zone;
+        },
+
+        addFishCube: function(card_id)
+        {
+            if (!this.fish_zones[card_id]) {
+                // JIT zone creation
+                this.createFishZone(card_id);
+            }
+
+            var nbr_fish = this.fish_zones[card_id].getItemNumber();
+            if (nbr_fish == 4) {
+                this.showMessage(_('Boat fish crates maxed out'), 'error');//TODO
+                return;
+            }
+
+            var fish_div = 'fish_' + card_id + '_' + nbr_fish;
+            dojo.place(this.format_block('jstpl_fish', {card_id:card_id, fish_id:nbr_fish}), 'fishcount');
+            //TODO: why does this come from bottom of screen?
+            this.fish_zones[card_id].placeInZone(fish_div);
+        },
+
+        removeFishCube: function(card_id)
+        {
+            var nbr_fish = this.fish_zones[card_id].getItemNumber() - 1;
+            if (nbr_fish < 0) {
+                this.showMessage(_('No fish cubes to remove'), 'error');//TODO
+                return;
+            }
+
+            var fish_div = 'fish_' + card_id + '_' + nbr_fish;
+            this.fish_zones[card_id].removeFromZone(fish_div, true, 'somewhereoffboard');
+        },
+
         createStockLicense: function (div_id)
         {
             var stock = new ebg.stock();
@@ -393,16 +440,16 @@ function (dojo, declare) {
                 stock.addItemType(type, type, g_gamethemeurl+'img/boats.png', pos);
             }
             stock.setSelectionMode(0);
-            stock.onItemCreate = dojo.hitch(this, 'addCaptainDiv');
+            stock.onItemCreate = dojo.hitch(this, 'setupBoatDiv');
             return stock;
         },
 
-        addCaptainDiv: function(card_div, card_type_id, card_id)
+        setupBoatDiv: function(card_div, card_type_id, card_id)
         {
             var player_id = parseInt(card_div.id.split('_')[1]);
             var id = card_id.split('_');
             id = id[id.length - 1];
-            dojo.place(this.format_block('jstpl_captain', {id:id}), card_div.id);
+            dojo.place(this.format_block('jstpl_boat', {id:id}), card_div.id);
         },
 
         ajaxAction: function (action, args)
@@ -767,6 +814,8 @@ function (dojo, declare) {
             dojo.subscribe('drawLicenses', this, 'notif_drawLicenses');
             dojo.subscribe('launchBoat', this, 'notif_launchBoat');
             dojo.subscribe('hireCaptain', this, 'notif_hireCaptain');
+            this.notifqueue.setSynchronous('hireCaptain', 1000);
+            dojo.subscribe('fishing', this, 'notif_fishing');
         },  
         
         // TODO: from this point and below, you can write your game notifications handling methods
@@ -890,6 +939,18 @@ function (dojo, declare) {
                 // Animate cards from other player
                 // TODO
             }
+        },
+
+        notif_fishing: function (notif)
+        {
+            console.log('notify_fishing');
+            console.log(notif);
+
+            for (var i in notif.args.card_ids) {
+                this.addFishCube(notif.args.card_ids[i]);
+            }
+
+            this.fish_counter.incValue(-notif.args.nbr_fish);
         },
 
    });             

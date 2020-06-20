@@ -794,8 +794,7 @@ class fleet extends Table
 
             // Boat is valid
             // Transactions will prevent this from taking if any other boat is invalid
-            $nbr_fish = $boat['fish'] - 1;
-            self::DbQuery("UPDATE card SET nbr_fish = $nbr_fish WHERE card_id = $boat_id");
+            self::DbQuery("UPDATE card SET nbr_fish = nbr_fish - 1 WHERE card_id = $boat_id");
         }
 
         // Add fish to PV
@@ -927,18 +926,24 @@ class fleet extends Table
         $players = self::loadPlayersBasicInfos();
         foreach ($players as $player_id => $player) {
             $boats = $this->getBoats($player_id);
-            $crate_ids = array();
+            $boat_ids = array();
             foreach ($boats as $card_id => $boat) {
                 if ($boat['has_captain'] && $boat['fish'] < 4) {
                     // Add fish crate to boat
-                    $nbr_fish = $boat['fish'] + 1;
-                    $sql = "UPDATE card SET nbr_fish = $nbr_fish WHERE card_id = $card_id";
+                    $sql = "UPDATE card SET nbr_fish = nbr_fish + 1 WHERE card_id = $card_id";
                     self::DbQuery($sql);
                     $fish = self::incGameStateValue('fish_crates', -1);
-                    $crate_ids[] = $card_id;
+                    $boat_ids[] = $card_id;
                 }
             }
-            //TODO: notify
+
+            //TODO: notify if zero?
+            $msg = '${player_name} gains ${nbr_fish} fish crate(s)';
+            self::notifyAllPlayers('fishing', $msg, array(
+                'player_name' => $player['player_name'],
+                'nbr_fish' => count($boat_ids),
+                'card_ids' => $boat_ids
+            ));
         }
 
         if ($fish <= 0) {

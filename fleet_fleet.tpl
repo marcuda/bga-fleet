@@ -67,7 +67,12 @@
 <script type="text/javascript">
 
 // Javascript HTML templates
-var jstpl_captain = '<div id="captain_${id}" class="flt_boat flt_captain"></div>';
+var jstpl_boat = 
+    '<div id="card_content_${id}">' +
+        '<div id="captain_${id}" class="flt_boat flt_captain"></div>' +
+        '<div id="fish_${id}" class="flt_fish"></div>' +
+    '</div>';
+var jstpl_fish = '<div id="fish_${card_id}_${fish_id}" class="flt_icon_fish"></div>';
 
 /*
 // Example:
