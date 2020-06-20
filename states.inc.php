@@ -97,12 +97,6 @@ $machinestates = array(
         "possibleactions" => array("hireCaptain", "pass"),
         "transitions" => array("" => STATE_NEXT_PLAYER)
     ),
-    STATE_FISHING => array(
-        "name" => "fishing",
-        "type" => "game",
-        "action" => "stFishing",
-        "transitions" => array("next" => STATE_PROCESSING, "gameEnd" => 99)
-    ),
     STATE_PROCESSING => array(
         "name" => "processing",
         "description" => clienttranslate('${actplayer} may process fish crates'),
@@ -135,10 +129,10 @@ $machinestates = array(
             "auction" => STATE_AUCTION,
             "launch" => STATE_LAUNCH,
             "hire" => STATE_HIRE,
-            "fishing" => STATE_FISHING,
             "processing" => STATE_PROCESSING,
             "trading" => STATE_TRADING,
             "draw" => STATE_DRAW,
+            "cantPlay" => STATE_NEXT_PLAYER,
             "gameEnd" => 99
         )
     ),
