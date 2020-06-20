@@ -12,6 +12,10 @@
 
 
 <div id="flt_game_area">
+    <div id="draw_wrap" class="whiteblock" style="width:740px; display:none;">
+        <h3>{DRAW_LABEL}</h3>
+        <div id="drawarea"></div>
+    </div>
     <div id="auction_wrap" class="flt_auction whiteblock">
         <h3>{AUCTION_LABEL}</h3>
         <div id="auctiontable"></div>
