@@ -46,6 +46,7 @@ function (dojo, declare) {
             this.player_boats = [];
             this.possible_moves = null;
             this.fish_zones = [];
+            this.draw_table = null;
         },
         
         /*
@@ -122,6 +123,14 @@ function (dojo, declare) {
                 this.auction.table.addToStockWithId(card.type_arg, card.id);
             }
             dojo.connect(this.auction.table, 'onChangeSelection', this, 'onAuctionSelectionChanged');
+
+            // Draw area
+            this.draw_table = this.createStockBoat('drawarea');
+            for (var i in gamedatas.draw) {
+                var card = gamedatas.draw[i];
+                this.draw_table.addToStockWithId(card.type_arg, card.id);
+            }
+            dojo.connect(this.draw_table, 'onChangeSelection', this, 'onDrawSelectionChanged');
 
             this.license_counter = new ebg.counter();
             this.license_counter.create('licensecount');
@@ -213,6 +222,7 @@ function (dojo, declare) {
                     this.showActiveAuction();
                     this.auction.table.setSelectionMode(1);
                     //TODO: if last player change title to say buy vs bid?
+                    //TODO: possible actions
                     break;
                 case 'client_auctionBid':
                     this.showActiveAuction();
@@ -237,6 +247,11 @@ function (dojo, declare) {
                 case 'processing':
                 case 'trading':
                 case 'draw':
+                    if (this.isCurrentPlayerActive()) {
+                        dojo.style('draw_wrap', 'display', 'block');
+                        this.draw_table.setSelectionMode(1);
+                    }
+                    break;
             
             /* Example:
             
@@ -266,11 +281,13 @@ function (dojo, declare) {
             this.auction.table.setSelectionMode(0);
             this.playerHand.setSelectionMode(0);
             this.player_boats[this.player_id].setSelectionMode(0);
-            
+            this.draw_table.setSelectionMode(0);
+
             switch( stateName )
             {
                 case 'auction':
                 case 'client_auctionSelect':
+                    //TODO: clear auction vars if passed here
                 case 'client_auctionBid':
                 case 'client_auctionWin':
                 case 'launch':
@@ -278,6 +295,11 @@ function (dojo, declare) {
                 case 'processing':
                 case 'trading':
                 case 'draw':
+                    setTimeout(function() {
+                        //TODO: make this smooth
+                        dojo.style('draw_wrap', 'display', 'none');
+                    }, 800);
+                    break;
             
             
             /* Example:
@@ -413,7 +435,7 @@ function (dojo, declare) {
             }
 
             var fish_div = 'fish_' + card_id + '_' + nbr_fish;
-            this.fish_zones[card_id].removeFromZone(fish_div, true, 'somewhereoffboard');
+            this.fish_zones[card_id].removeFromZone(fish_div, true, 'site-logo'); //TODO: discard area
         },
 
         createStockLicense: function (div_id)
@@ -535,6 +557,20 @@ function (dojo, declare) {
                 } else {
                     // Cannot select new auction card
                     this.auction.table.unselectAll();
+                }
+            }
+        },
+
+        onDrawSelectionChanged: function()
+        {
+            var items = this.draw_table.getSelectedItems();
+
+            if (items.length > 0) {
+                if (this.checkAction('discard')) {
+                    this.client_state_args.card_id = items[0].id;
+                    this.ajaxAction('discard', this.client_state_args);
+                } else {
+                    this.draw_table.unselectAll();
                 }
             }
         },
@@ -752,10 +788,6 @@ function (dojo, declare) {
         {
         },
 
-        onDiscard: function(evt)
-        {
-        },
-
         onCancel: function(evt)
         {
             dojo.stopEvent(evt);
@@ -816,6 +848,8 @@ function (dojo, declare) {
             dojo.subscribe('hireCaptain', this, 'notif_hireCaptain');
             this.notifqueue.setSynchronous('hireCaptain', 1000);
             dojo.subscribe('fishing', this, 'notif_fishing');
+            dojo.subscribe('draw', this, 'notif_draw');
+            dojo.subscribe('discard', this, 'notif_discard');
         },  
         
         // TODO: from this point and below, you can write your game notifications handling methods
@@ -953,5 +987,29 @@ function (dojo, declare) {
             this.fish_counter.incValue(-notif.args.nbr_fish);
         },
 
+        notif_draw: function (notif)
+        {
+            console.log('notify_draw');
+            console.log(notif);
+
+            //TODO: why do cards get added to stock vertically???
+            for (var i in notif.args.cards) {
+                var card = notif.args.cards[i];
+                this.draw_table.addToStockWithId(card.type_arg, card.id, 'boatcount');
+            }
+        },
+
+        notif_discard: function (notif)
+        {
+            console.log('notify_discard');
+            console.log(notif);
+
+            this.draw_table.removeFromStockById(notif.args.discard.id, 'site-logo'); //TODO: discard area
+            for (var i in notif.args.keep) {
+                var card = notif.args.keep[i];
+                this.playerHand.addToStockWithId(card.type_arg, card.id, this.draw_table.getItemDivId(card.id));
+                this.draw_table.removeFromStockById(card.id);
+            }
+        },
    });             
 });

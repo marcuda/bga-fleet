@@ -212,6 +212,7 @@ class fleet extends Table
 
         $result['hand'] = $this->cards->getPlayerHand($current_player_id);
         $result['coins'] = $this->getCoins($current_player_id);
+        $result['draw'] = $this->cards->getCardsInLocation('draw', $current_player_id);
 
         $result['cards'] = $this->cards->countCardsInLocations();
 
@@ -754,7 +755,7 @@ class fleet extends Table
         $msg = clienttranslate('${player_name} hires a captain for their ${card_name}');
         self::notifyAllPlayers('hireCaptain', $msg, array(
             'player_name' => self::getActivePlayerName(),
-            'card_name' => $this->getCardName($card),
+            'card_name' => $this->getCardName($boat),
             'player_id' => $player_id,
             'boat_id' => $boat_id,
             'card_id' => $card_id,
@@ -801,6 +802,8 @@ class fleet extends Table
         $this->incFishCrates($player_id, count($boat_ids));
 
         //TODO: notify
+
+        $this->gamestate->nextState();
     }
 
     function tradeFish()
@@ -825,6 +828,8 @@ class fleet extends Table
         $cards = $this->cards->pickCards(count($license), 'hand', $player_id);
 
         //TODO: notify
+
+        $this->gamestate->nextState();
     }
 
     function discard($card_id)
@@ -841,10 +846,18 @@ class fleet extends Table
 
         // Discard card and take other(s)
         $this->cards->playCard($card_id);
-        $this->moveAllCardsInLocation('draw', 'hand', $player_id, $player_id);
+        $kept = $this->cards->getCardsInLocation('draw', $player_id);
+        $this->cards->moveAllCardsInLocation('draw', 'hand', $player_id, $player_id);
 
-        //TODO: notify all players of discard
-        //TODO: notify active player of kept card (private)
+        self::notifyAllPlayers('log', clienttranslate('${player_name} discards a card'), array(
+            'player_name' => self::getActivePlayerName(),
+        ));
+        self::notifyPlayer($player_id, 'discard', '', array(
+            'discard' => $card,
+            'keep' => $kept,
+        ));
+
+        $this->gamestate->nextState();
 
         //TODO: license bonus
         //      tuna allows discard from hand
@@ -934,6 +947,7 @@ class fleet extends Table
                 $next_state = 'cantPlay';
             }
         }
+        //TODO: skip if no cards in hand to launch or hire
 
         if ($next_state != 'cantPlay') {
             self::notifyPlayer($player_id, 'possibleMoves', '', $this->possibleMoves($player_id, $next_state));
@@ -983,8 +997,10 @@ class fleet extends Table
 
     function drawCards($player_id)
     {
-        $cards = $this->cards->pickCards(2, 'draw', $player_id);
-        //TODO: notify only player
+        $cards = $this->cards->pickCardsForLocation(2, 'deck', 'draw', $player_id);
+        self::notifyPlayer($player_id, 'draw', '', array(
+            'cards' => $cards,
+        ));
 
         //TODO: license bonus
         //      tuna: extra draw/keep: 1=>2/2, 2=>3/2, 3=>3/3, 4=>4/3 plus can discard from handextra draw/keep: 1=>2/2, 2=>3/2, 3=>3/3, 4=>4/3 plus can discard from hand
