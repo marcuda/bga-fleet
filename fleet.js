@@ -256,6 +256,7 @@ function (dojo, declare) {
                     dojo.query('div[id^="fish_' + this.player_id + '_"]').style('cursor', 'pointer');
                     break;
                 case 'trading':
+                    dojo.query('div[id^="' + this.player_id + '_fish_"]').style('cursor', 'pointer');
                     break;
                 case 'draw':
                     if (this.isCurrentPlayerActive()) {
@@ -313,6 +314,7 @@ function (dojo, declare) {
                     dojo.query('div[id^="fish_' + this.player_id + '_"]').style('cursor', '');
                     break;
                 case 'trading':
+                    dojo.query('div[id^="' + this.player_id + '_fish_"]').style('cursor', '');
                     break;
                 case 'draw':
                     setTimeout(function() {
@@ -466,18 +468,9 @@ function (dojo, declare) {
                 {player_id:player_id, card_id:card_id, fish_id:nbr_fish}), 'playerfish_' + player_id);
             this.placeOnObject(fish_div, 'fishicon');
             this.player_fish[player_id].placeInZone(fish_div); //TODO: why does this come from bottom of screen?
-        },
-
-        removePlayerFish: function(player_id)
-        {
-            var nbr_fish = this.player_fish[player_id].getItemNubmer() - 1;
-            if (nbr_fish < 0) {
-                this.showMessage(_('No fish cubes to remove'), 'error');//TODO
-                return;
+            if (player_id == this.player_id) {
+                dojo.connect($(fish_div), 'onclick', this, 'onTrade');
             }
-
-            var fish_div = player_id + '_fish_' + nbr_fish;
-            this.player_fish[player_id].removeFromZone(fish_div, true, 'site-logo');//TODO: discard area
         },
 
         createStockLicense: function (div_id)
@@ -865,6 +858,15 @@ function (dojo, declare) {
 
         onTrade: function(evt)
         {
+            if (!this.checkAction('tradeFish', true)) {
+                // Ignore click if not the right time
+                return;
+            }
+
+            // Allow click to fall thru to card above
+            dojo.stopEvent(evt);
+
+            this.ajaxAction('tradeFish', null);
         },
 
         onCancel: function(evt)
@@ -935,7 +937,9 @@ function (dojo, declare) {
             dojo.subscribe('hireCaptain', this, 'notif_hireCaptain');
             this.notifqueue.setSynchronous('hireCaptain', 1000);
             dojo.subscribe('fishing', this, 'notif_fishing');
+            this.notifqueue.setSynchronous('fishing', 1000);
             dojo.subscribe('processFish', this, 'notif_processFish');
+            dojo.subscribe('tradeFish', this, 'notif_tradeFish');
             dojo.subscribe('draw', this, 'notif_draw');
             dojo.subscribe('discard', this, 'notif_discard');
         },  
@@ -1088,15 +1092,33 @@ function (dojo, declare) {
             }
         },
 
+        notif_tradeFish: function (notif)
+        {
+            console.log('notify_tradeFish');
+            console.log(notif);
+
+            var zone = this.player_fish[notif.args.player_id];
+            var nbr_fish = zone.getItemNumber() - 1;
+            if (nbr_fish < 0) {
+                // Shouldn't be able to get here?
+                alert("ERROR: no fish cubes to trade");
+                return;
+            }
+
+            var fish_div = notif.args.player_id + '_fish_' + nbr_fish;
+            zone.removeFromZone(fish_div, true, 'site-logo');//TODO: discard area
+        },
+
         notif_draw: function (notif)
         {
             console.log('notify_draw');
             console.log(notif);
 
             //TODO: why do cards get added to stock vertically???
+            var stock = notif.args.hand ? this.playerHand : this.draw_table;
             for (var i in notif.args.cards) {
                 var card = notif.args.cards[i];
-                this.draw_table.addToStockWithId(card.type_arg, card.id, 'boatcount');
+                stock.addToStockWithId(card.type_arg, card.id, 'boatcount');
             }
         },
 
