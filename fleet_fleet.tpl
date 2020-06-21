@@ -41,7 +41,7 @@
             <span id="boatcount"></span>
         </div>
         <div style="display: inline-block">
-            <div class="flt_icon_fish"></div>
+            <div id="fishicon" class="flt_icon_fish"></div>
             <span id="fishcount"></span>
         </div>
     </div>
@@ -57,6 +57,7 @@
         <div class="whiteblock flt_player_table">
             <h3 style="color:#{PLAYER_COLOR}">{PLAYER_NAME}'s {LICENSES}</h3>
             <div id="playerlicenses_{PLAYER_ID}"></div>
+            <div id="playerfish_{PLAYER_ID}" style="width:180px;"></div>
         </div>
         &nbsp;
         <div class="whiteblock flt_player_table">
@@ -76,7 +77,8 @@ var jstpl_boat =
         '<div id="captain_${id}" class="flt_boat flt_captain"></div>' +
         '<div id="fish_${id}" class="flt_fish"></div>' +
     '</div>';
-var jstpl_fish = '<div id="fish_${card_id}_${fish_id}" class="flt_icon_fish"></div>';
+var jstpl_fish = '<div id="fish_${player_id}_${card_id}_${fish_id}" class="flt_icon_fish"></div>';
+var jstpl_pfish = '<div id="${player_id}_fish_${fish_id}" class="flt_icon_fish"></div>';
 
 /*
 // Example:

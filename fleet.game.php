@@ -767,7 +767,7 @@ class fleet extends Table
         //      lobster: +1 captain, complicated draw bonus
     }
 
-    function processFish($boat_ids)
+    function processFish($card_ids)
     {
         self::checkAction('processFish');
 
@@ -783,10 +783,10 @@ class fleet extends Table
 
         // Verify selected boats have fish
         $boats = $this->getBoats($player_id);
-        foreach ($boat_ids as $boat_id) {
-            $boat = $boats[$boat_id];
+        foreach ($card_ids as $card_id) {
+            $boat = $boats[$card_id];
             if ($boat == null) { // getBoats verifies card owned by player
-                throw new feException("Impossible process: invalid card $boat_id");
+                throw new feException("Impossible process: invalid card $card_id");
             }
 
             if (!$boat['has_captain'] || $boat['fish'] == 0) {
@@ -795,13 +795,20 @@ class fleet extends Table
 
             // Boat is valid
             // Transactions will prevent this from taking if any other boat is invalid
-            self::DbQuery("UPDATE card SET nbr_fish = nbr_fish - 1 WHERE card_id = $boat_id");
+            self::DbQuery("UPDATE card SET nbr_fish = nbr_fish - 1 WHERE card_id = $card_id");
         }
 
         // Add fish to PV
-        $this->incFishCrates($player_id, count($boat_ids));
+        $this->incFishCrates($player_id, count($card_ids));
 
         //TODO: notify
+        $msg = clienttranslate('${player_name} processes ${nbr_fish} fish crate(s)');
+        self::notifyAllPlayers('processFish', $msg, array(
+            'player_name' => self::getActivePlayerName(),
+            'nbr_fish' => count($card_ids),
+            'card_ids' => $card_ids,
+            'player_id' => $player_id,
+        ));
 
         $this->gamestate->nextState();
     }
@@ -981,6 +988,7 @@ class fleet extends Table
             self::notifyAllPlayers('fishing', $msg, array(
                 'player_name' => $player['player_name'],
                 'nbr_fish' => count($boat_ids),
+                'player_id' => $player_id,
                 'card_ids' => $boat_ids
             ));
         }

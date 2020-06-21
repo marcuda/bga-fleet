@@ -46,6 +46,7 @@ function (dojo, declare) {
             this.player_boats = [];
             this.possible_moves = null;
             this.fish_zones = [];
+            this.player_fish = [];
             this.draw_table = null;
         },
         
@@ -87,6 +88,12 @@ function (dojo, declare) {
                     this.player_licenses[player_id].addToStockWithId(card.type_arg, card.id);
                 }
 
+                // Player processed fish
+                this.player_fish[player_id] = new ebg.zone();
+                this.player_fish[player_id].create(this, 'playerfish_' + player_id, 30, 30); //TODO: width/height
+                this.player_fish[player_id].setPattern('horizontalfit');
+                //TODO: add fish cubes
+
                 // Player boat cards
                 this.player_boats[player_id] = this.createStockBoat('playerboats_' + player_id);
                 var boats = gamedatas.boats[player_id];
@@ -100,7 +107,7 @@ function (dojo, declare) {
                     // Fish cubes
                     this.createFishZone(card.id);
                     for (var j = 0; j < parseInt(card.fish); j++) {
-                        this.addFishCube(card.id);
+                        this.addFishCube(card.id, player_id);
                     }
                 }
                 dojo.connect(this.player_boats[player_id], 'onChangeSelection', this, 'onPlayerBoatsSelectionChanged');
@@ -245,7 +252,11 @@ function (dojo, declare) {
                     this.player_boats[this.player_id].setSelectionMode(1);
                     break;
                 case 'processing':
+                    this.client_state_args = {fish_ids:[]};
+                    dojo.query('div[id^="fish_' + this.player_id + '_"]').style('cursor', 'pointer');
+                    break;
                 case 'trading':
+                    break;
                 case 'draw':
                     if (this.isCurrentPlayerActive()) {
                         dojo.style('draw_wrap', 'display', 'block');
@@ -286,14 +297,23 @@ function (dojo, declare) {
             switch( stateName )
             {
                 case 'auction':
+                    break;
                 case 'client_auctionSelect':
                     //TODO: clear auction vars if passed here
+                    break;
                 case 'client_auctionBid':
+                    break;
                 case 'client_auctionWin':
+                    break;
                 case 'launch':
+                    break;
                 case 'hire':
+                    break;
                 case 'processing':
+                    dojo.query('div[id^="fish_' + this.player_id + '_"]').style('cursor', '');
+                    break;
                 case 'trading':
+                    break;
                 case 'draw':
                     setTimeout(function() {
                         //TODO: make this smooth
@@ -360,9 +380,8 @@ function (dojo, declare) {
                         this.addActionButton('button_1', _('Pass'), 'onPass');
                         break;
                     case 'processing':
-                        this.addActionButton('button_1', _('Done'), 'onProcess');
-                        this.addActionButton('button_2', _('Pass'), 'onPass');
-                        this.addActionButton('button_2', _('Cancel'), 'onCancel');
+                        this.addActionButton('button_1', _('Pass'), 'onProcess');
+                        this.addActionButton('button_2', _('Cancel'), 'onCancel', null, false, 'red');
                         break;
                     case 'trading':
                         this.addActionButton('button_1', _('Trade'), 'onTrade');
@@ -407,7 +426,7 @@ function (dojo, declare) {
             this.fish_zones[id] = zone;
         },
 
-        addFishCube: function(card_id)
+        addFishCube: function(card_id, player_id)
         {
             if (!this.fish_zones[card_id]) {
                 // JIT zone creation
@@ -420,22 +439,45 @@ function (dojo, declare) {
                 return;
             }
 
-            var fish_div = 'fish_' + card_id + '_' + nbr_fish;
-            dojo.place(this.format_block('jstpl_fish', {card_id:card_id, fish_id:nbr_fish}), 'fishcount');
-            //TODO: why does this come from bottom of screen?
-            this.fish_zones[card_id].placeInZone(fish_div);
+            var fish_div = 'fish_' + player_id + '_' + card_id + '_' + nbr_fish;
+            dojo.place(this.format_block('jstpl_fish',
+                {player_id:player_id, card_id:card_id, fish_id:nbr_fish}), 'fish_' + card_id);
+            this.placeOnObject(fish_div, 'fishicon');
+            this.fish_zones[card_id].placeInZone(fish_div); //TODO: why does this come from bottom of screen?
+            if (player_id == this.player_id) {
+                dojo.connect($(fish_div), 'onclick', this, 'onClickFishCube');
+            }
         },
 
-        removeFishCube: function(card_id)
+        processFishCube: function(card_id, player_id)
         {
             var nbr_fish = this.fish_zones[card_id].getItemNumber() - 1;
+            if (nbr_fish < 0) {
+                this.showMessage(_('No fish crates to process'), 'error');//TODO
+                return;
+            }
+
+            var fish_div = 'fish_' + player_id + '_' + card_id + '_' + nbr_fish;
+            this.fish_zones[card_id].removeFromZone(fish_div, true, 'playerfish_' + player_id);
+
+            nbr_fish = this.player_fish[player_id].getItemNumber();
+            fish_div = player_id + '_fish_' + nbr_fish;
+            dojo.place(this.format_block('jstpl_pfish',
+                {player_id:player_id, card_id:card_id, fish_id:nbr_fish}), 'playerfish_' + player_id);
+            this.placeOnObject(fish_div, 'fishicon');
+            this.player_fish[player_id].placeInZone(fish_div); //TODO: why does this come from bottom of screen?
+        },
+
+        removePlayerFish: function(player_id)
+        {
+            var nbr_fish = this.player_fish[player_id].getItemNubmer() - 1;
             if (nbr_fish < 0) {
                 this.showMessage(_('No fish cubes to remove'), 'error');//TODO
                 return;
             }
 
-            var fish_div = 'fish_' + card_id + '_' + nbr_fish;
-            this.fish_zones[card_id].removeFromZone(fish_div, true, 'site-logo'); //TODO: discard area
+            var fish_div = player_id + '_fish_' + nbr_fish;
+            this.player_fish[player_id].removeFromZone(fish_div, true, 'site-logo');//TODO: discard area
         },
 
         createStockLicense: function (div_id)
@@ -643,6 +685,8 @@ function (dojo, declare) {
                         if (this.client_state_args.boat_id) {
                             this.hireCaptain();
                         }
+                    } else {
+                        delete this.client_state_args.card_id;
                     }
                     break;
                 default:
@@ -660,7 +704,30 @@ function (dojo, declare) {
                 if (this.client_state_args.card_id) {
                     this.hireCaptain();
                 }
+            } else {
+                delete this.client_state_args.boat_id;
             }
+        },
+
+        onClickFishCube: function(evt)
+        {
+            if (!this.checkAction('processFish', true)) {
+                // Ignore click if not the right time
+                return;
+            }
+
+            // Allow click to fall thru to card above
+            dojo.stopEvent(evt);
+
+            var cube = evt.currentTarget.id;
+            var boat_id = cube.split('_')[2];
+            if (this.client_state_args.fish_ids[boat_id]) {
+                this.showMessage(_('You may only process one fish crate per boat'), 'error');
+                return;
+            }
+
+            this.client_state_args.fish_ids[boat_id] = true;
+            this.processFishCube(boat_id, this.player_id);
         },
 
         onPass: function(evt)
@@ -782,6 +849,18 @@ function (dojo, declare) {
 
         onProcess: function(evt)
         {
+            if (!this.checkAction('processFish'))
+                return;
+
+            if (this.client_state_args.fish_ids.length > 0) {
+                this.client_state_args.card_ids = '';
+                for (var id in this.client_state_args.fish_ids) {
+                    this.client_state_args.card_ids += id + ';';
+                }
+                this.ajaxAction('processFish', this.client_state_args);
+            } else {
+                this.onPass(evt);
+            }
         },
 
         onTrade: function(evt)
@@ -793,6 +872,7 @@ function (dojo, declare) {
             dojo.stopEvent(evt);
 
             var state = this.gamedatas.gamestate.name;
+            console.log('CANCEL: ' + state);
             if (state == 'client_launchPay') {
                 // Undo boat launch
                 var card_id = this.client_state_args.boat_id
@@ -803,6 +883,13 @@ function (dojo, declare) {
                 );
                 this.player_boats[this.player_id].removeFromStockById(this.client_state_args.boat_id);
                 delete this.client_state_args.boat_id;
+            } else if (state == 'processing') {
+                console.log('UNDO PROC');
+                // Undo fish crate processing
+                for (var card_id in this.client_state_args.fish_ids) {
+                    console.log('READD FISH ' + card_id);
+                    this.addFishCube(card_id, this.player_id);
+                }
             }
 
             // Reset to main state
@@ -848,6 +935,7 @@ function (dojo, declare) {
             dojo.subscribe('hireCaptain', this, 'notif_hireCaptain');
             this.notifqueue.setSynchronous('hireCaptain', 1000);
             dojo.subscribe('fishing', this, 'notif_fishing');
+            dojo.subscribe('processFish', this, 'notif_processFish');
             dojo.subscribe('draw', this, 'notif_draw');
             dojo.subscribe('discard', this, 'notif_discard');
         },  
@@ -981,10 +1069,23 @@ function (dojo, declare) {
             console.log(notif);
 
             for (var i in notif.args.card_ids) {
-                this.addFishCube(notif.args.card_ids[i]);
+                this.addFishCube(notif.args.card_ids[i], notif.args.player_id);
             }
 
             this.fish_counter.incValue(-notif.args.nbr_fish);
+        },
+
+        notif_processFish: function (notif)
+        {
+            console.log('notify_processFish');
+            console.log(notif);
+
+            if (notif.args.player_id != this.player_id) {
+                // Active player already moved cubes
+                for (var i in notif.args.card_ids) {
+                    this.processFishCube(notif.args.card_ids[i], notif.args.player_id);
+                }
+            }
         },
 
         notif_draw: function (notif)

@@ -57,7 +57,6 @@
     width: 100px;
     height: 143px;
     background-image: url('img/boats.png');
-    cursor: pointer;
 }
 
 .flt_license {
@@ -65,7 +64,6 @@
     width: 180px;
     height: 125px;
     background-image: url('img/licenses.png');
-    cursor: pointer;
 }
 
 .flt_icon_boat {
