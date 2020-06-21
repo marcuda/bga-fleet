@@ -834,7 +834,16 @@ class fleet extends Table
         $this->incFishCrates($player_id, -1);
         $cards = $this->cards->pickCards(count($license), 'hand', $player_id);
 
-        //TODO: notify
+        $msg = clienttranslate('${player_name} trades a fish crate for ${nbr_cards} card(s)');
+        self::notifyAllPlayers('tradeFish', $msg, array(
+            'player_name' => self::getActivePlayerName(),
+            'nbr_cards' => count($cards),
+            'player_id' => $player_id,
+        ));
+        self::notifyPlayer($player_id, 'draw', '', array(
+            'cards' => $cards,
+            'hand' => true,
+        ));
 
         $this->gamestate->nextState();
     }
