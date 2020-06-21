@@ -320,7 +320,7 @@ function (dojo, declare) {
                     setTimeout(function() {
                         //TODO: make this smooth
                         dojo.style('draw_wrap', 'display', 'none');
-                    }, 800);
+                    }, 400);
                     break;
             
             
