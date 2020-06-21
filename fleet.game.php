@@ -948,29 +948,44 @@ class fleet extends Table
 
         // When possible automatically skip players without a valid play
         // but _NOT_ when it would reveal private information
-        if ($next_state == PHASE_PROCESSING) {
-            // Verify player has processing vessel license and at least one fish crate
-            $license = $this->getLicenses($player_id, LICENSE_PROCESSING);
-            $sql = "SELECT SUM(nbr_fish) FROM card WHERE card_location = 'table' ";
-            $sql .= "AND card_location_arg = $player_id AND card_type = '" . CARD_BOAT ."'";
-            if (count($license) == 0 || self::getUniqueValueFromDB($sql) == 0) {
-                $next_state = 'cantPlay';
-            }
-        } else if ($next_state == PHASE_TRADING) {
-            // Verify player has at least one fish crate on license
-            $sql = "SELECT fish_crates FROM player WHERE player_id = $player_id";
-            if (self::getUniqueValueFromDB($sql) == 0) {
-                $next_state = 'cantPlay';
-            }
+        $skip = false;
+        switch ($next_state) {
+            case PHASE_LAUNCH:
+                // Skip player _only_ if hand is empty (ignore no legal play)
+                $skip = $this->cards->countCardInLocation('hand', $player_id) == 0;
+                break;
+            case PHASE_HIRE:
+                // Skip player if hand empty or no open boats
+                $hand = $this->cards->countCardInLocation('hand', $player_id);
+                $sql = "SELECT COUNT(*) FROM card WHERE card_location = 'table' ";
+                $sql .= "AND card_location_arg = $player_id AND card_type = '";
+                $sql .= CARD_BOAT . "' AND has_captain = 0";
+                $skip = $hand == 0 || self::getUniqueValueFromDB($sql) == 0;
+                break;
+            case PHASE_PROCESSING:
+                // Skip player if no license or fish to process
+                $license = $this->getLicenses($player_id, LICENSE_PROCESSING);
+                $sql = "SELECT SUM(nbr_fish) FROM card WHERE card_location = 'table' ";
+                $sql .= "AND card_location_arg = $player_id AND card_type = '" . CARD_BOAT ."'";
+                $skip = count($license) == 0 || self::getUniqueValueFromDB($sql) == 0;
+                break;
+            case PHASE_TRADING:
+                // Skip player if no processed fish to trade
+                $sql = "SELECT fish_crates FROM player WHERE player_id = $player_id";
+                if (self::getUniqueValueFromDB($sql) == 0) {
+                    $skip = true;
+                }
+                break;
         }
-        //TODO: skip if no cards in hand to launch or hire
 
-        if ($next_state != 'cantPlay') {
+        if ($skip) {
+            //TODO: notify if skipped?
+            $next_state = 'cantPlay';
+        } else {
             self::notifyPlayer($player_id, 'possibleMoves', '', $this->possibleMoves($player_id, $next_state));
             // TODO: auto pass if no action (and would not reveal private info)
             self::giveExtraTime($player_id);
         }
-        //TODO: notify if skipped?
 
         $this->gamestate->nextState($next_state);
     }
