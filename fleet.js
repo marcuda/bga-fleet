@@ -477,7 +477,7 @@ function (dojo, declare) {
         {
             var stock = new ebg.stock();
             stock.create(this, $(div_id), this.license_width, this.license_height);
-            stock.images_items_per_row = this.license_row_size;
+            stock.image_items_per_row = this.license_row_size;
             for (var i = 0; i < 10; i++) {
                 stock.addItemType(i, i, g_gamethemeurl+'img/licenses.png', i);
             }

@@ -124,7 +124,7 @@ $this->card_types = array(
         'cost' => 10,
         'points' => 10,
         'nbr' => 3,
-        'text' => clienttranslate(""),
+        'text' => clienttranslate("+10VP (no bonus)"),
     ),
     LICENSE_CRAB_C => array(
         'name' => clienttranslate("King Crab License"),
