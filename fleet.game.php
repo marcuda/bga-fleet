@@ -438,6 +438,7 @@ class fleet extends Table
     {
         self::checkAction('pass');
 
+        $auction = false;
         if ($this->getCurrentPhase() == PHASE_AUCTION) {
             // Keep track of which players pass during auction
             $player_id = self::getActivePlayerId();
@@ -446,6 +447,8 @@ class fleet extends Table
             if (self::getGameStateValue('auction_card') == 0) {
                 // No active auction, player chooses not to buy
                 $sql .= ', auction_done = 1';
+                // Tell client to remove player
+                $auction = true;
             }
 
             $sql .= " WHERE player_id = $player_id";
@@ -455,6 +458,7 @@ class fleet extends Table
         self::notifyAllPlayers('pass', clienttranslate('${player_name} passes'), array(
             'player_name' => self::getActivePlayerName(),
             'player_id' => self::getActivePlayerId(),
+            'auction' => $auction,
         ));
 
         $this->gamestate->nextState();

@@ -545,6 +545,21 @@ function (dojo, declare) {
             }
         },
 
+        resetAuction: function(player_id)
+        {
+            if (player_id !== null) {
+                // Remove player from auction
+                dojo.addClass('playerbid_' + player_id + '_wrap', 'flt_auction_done');
+            }
+
+            // Reset auction globals
+            this.auction.bids = [];
+            this.auction.high_bid = 0;
+            this.auction.card_id = 0;
+            this.auction.winner = 0;
+            this.auction.table.unselectAll();
+        },
+
         ///////////////////////////////////////////////////
         //// Player's action
         
@@ -729,6 +744,12 @@ function (dojo, declare) {
             if (!this.checkAction('pass'))
                 return;
 
+            if (this.gamedatas.gamestate.name == 'client_auctionSelect') {
+                // Player chooses to pass auction phase
+                this.resetAuction(this.player_id);
+            }
+
+            this.client_state_args = {};
             this.ajaxAction('pass');
         },
 
@@ -950,6 +971,10 @@ function (dojo, declare) {
             console.log('notify_pass');
             console.log(notif);
             this.auction.bids[parseInt(notif.args.player_id)] = 'pass';
+            if (notif.args.auction) {
+                // Player leaves auction
+                this.resetAuction(notif.args.player_id);
+            }
         },
 
         notif_possibleMoves: function (notif)
@@ -1006,14 +1031,7 @@ function (dojo, declare) {
             );
             this.auction.table.removeFromStockById(notif.args.license_id);
 
-            // Remove player from auction
-            dojo.addClass('playerbid_' + notif.args.player_id + '_wrap', 'flt_auction_done');
-
-            // Reset auction globals
-            this.auction.bids = [];
-            this.auction.high_bid = 0;
-            this.auction.card_id = 0;
-            this.auction.winner = 0;
+            this.resetAuction(notif.args.player_id);
         },
 
         notif_drawLicenses: function (notif)
