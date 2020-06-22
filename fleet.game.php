@@ -214,6 +214,9 @@ class fleet extends Table
         $result['coins'] = $this->getCoins($current_player_id);
         $result['draw'] = $this->cards->getCardsInLocation('draw', $current_player_id);
 
+        // Each Shrimp License reduces the cost by one
+        $result['discount'] = count($this->getLicenses($player_id, LICENSE_SHRIMP));
+
         $result['cards'] = $this->cards->countCardsInLocations();
 
         $result['auction'] = $this->cards->getCardsInLocation('auction');
@@ -542,11 +545,19 @@ class fleet extends Table
     function getCoins($player_id)
     {
         $coins = 0;
+
+        // Add up coins from all cards in hand
         $cards = $this->cards->getPlayerHand($player_id);
         foreach ($cards as $card) {
             $card_info = $this->getCardInfo($card);
             $coins += $card_info['coins'];
         }
+
+        // Add one for each Shrimp License as it effectively
+        // increases the player's buying power
+        $shrimp = $this->getLicenses($player_id, LICENSE_SHRIMP);
+        $coins += count($shrimp);
+        
         return $coins;
     }
 
@@ -593,8 +604,11 @@ class fleet extends Table
             }
         }
 
+        // Each Shrimp License reduces the cost by one
+        $discount = count($this->getLicenses($player_id, LICENSE_SHRIMP));
+
         // Verify player paid enough
-        if ($coins < $license_info['cost']) {
+        if ($coins < ($license_info['cost'] - $discount)) {
             throw new feException("Impossible buy: not enough");
         }
 
@@ -631,9 +645,6 @@ class fleet extends Table
         ));
 
         $this->gamestate->nextState();
-
-        //TODO: license bonus
-        //      shrimp: -1 cost/license (could be free?)
     }
 
     function launchBoat($boat_id, $card_ids, $fish=0)
@@ -685,8 +696,11 @@ class fleet extends Table
             }
         }
 
+        // Each Shrimp License reduces the cost by one
+        $discount = count($this->getLicenses($player_id, LICENSE_SHRIMP));
+
         // Verify player paid enough
-        if ($coins < $boat_info['cost']) {
+        if ($coins < ($boat_info['cost'] - $discount)) {
             throw new feException("Impossible launch: not enough");
         }
 
@@ -701,14 +715,14 @@ class fleet extends Table
         // Play boat
         $this->cards->moveCard($boat_id, 'table', $player_id);
 
-        $msg = clienttranslate('${player_name} discards ${nbr_cards}');
+        $msg = clienttranslate('${player_name} discards ${nbr_cards} card(s)');
         if ($fish > 0) {
             $msg .= clienttranslate(' and ${nbr_fish} fish crates');
         }
         $msg .= clienttranslate(' to launch a ${card_name}');
         self::notifyAllPlayers('launchBoat', $msg, array(
             'player_name' => self::getActivePlayerName(),
-            'nbr_cards' => count($card_ids), //TODO: fish
+            'nbr_cards' => count($card_ids),
             'nbr_fish' => $fish,
             'card_name' => $boat_info['name'],
             'player_id' => $player_id,
@@ -721,7 +735,6 @@ class fleet extends Table
 
         //TODO: license bonus
         //      cod: +1 launch, +1 card/license
-        //      shrimp: -1 cost/license
     }
 
     function hireCaptain($boat_id, $card_id)
