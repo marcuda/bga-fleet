@@ -1126,15 +1126,17 @@ class fleet extends Table
         $nbr_players = self::getPlayersNumber();
         $nbr_left = $this->cards->countCardInLocation('auction');
         $nbr_draw = $nbr_players - $nbr_left;
+        $discard = false;
         if ($nbr_draw == 0) {
             // No license bought this round, remove all from game and redraw
             $this->cards->moveAllCardsInLocation('auction', 'box');
             $nbr_draw = $nbr_players;
+            $discard = true;
         }
 
         // Draw new licenses
         $cards = $this->cards->pickCardsForLocation($nbr_draw, 'licenses', 'auction', 0, true);
-        self::notifyAllPlayers('drawLicenses', '', array('cards' => $cards));
+        self::notifyAllPlayers('drawLicenses', '', array('cards' => $cards, 'discard' => $discard));
 
         if (count($cards) < $nbr_draw) {
             // Not enough cards left to fill license auction
