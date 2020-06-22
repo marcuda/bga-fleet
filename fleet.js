@@ -1021,6 +1021,10 @@ function (dojo, declare) {
             console.log('notify_drawLicenses');
             console.log(notif);
 
+            if (notif.args.discard) {
+                this.auction.table.removeAllTo('site-logo'); //TODO: discard pile
+            }
+
             for (var i in notif.args.cards) {
                 var card = notif.args.cards[i];
                 this.auction.table.addToStockWithId(card.type_arg, card.id, 'licensecount');
