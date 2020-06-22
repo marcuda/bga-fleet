@@ -48,6 +48,7 @@ function (dojo, declare) {
             this.fish_zones = [];
             this.player_fish = [];
             this.draw_table = null;
+            this.discount = 0;
         },
         
         /*
@@ -72,6 +73,7 @@ function (dojo, declare) {
             this.auction.high_bid = parseInt(gamedatas.auction_bid);
             this.auction.winner = parseInt(gamedatas.auction_winner);
             this.possible_moves = gamedatas.moves;
+            this.discount = parseInt(gamedatas.discount);
             
             // Setting up player boards
             for( var player_id in gamedatas.players )
@@ -205,10 +207,16 @@ function (dojo, declare) {
                     this.client_state_args = {};
                     if (this.auction.winner == this.player_id) {
                         // Current player won auction
-                        this.setClientState('client_auctionWin', {
-                            descriptionmyturn: _('${you} must discard cards to pay ') + '0/' + this.auction.high_bid
-                            //TODO: fish crates
-                        });
+                        this.auction.high_bid -= this.discount; // Shrimp License reduction
+                        if (this.auction.high_bid <= 0) {
+                            // Shrimp discount enough that license is free (unlikely)
+                            this.buyAction('buyLicense');
+                        } else {
+                            this.setClientState('client_auctionWin', {
+                                descriptionmyturn: _('${you} must discard cards to pay ') + '0/' + this.auction.high_bid
+                                //TODO: fish crates
+                            });
+                        }
                     } else if (this.auction.card_id) {
                         // Bid on selected license
                         var card = this.auction.table.getItemById(this.auction.card_id);
@@ -317,10 +325,8 @@ function (dojo, declare) {
                     dojo.query('div[id^="' + this.player_id + '_fish_"]').style('cursor', '');
                     break;
                 case 'draw':
-                    setTimeout(function() {
-                        //TODO: make this smooth
-                        dojo.style('draw_wrap', 'display', 'none');
-                    }, 400);
+                    //TODO: make this smooth
+                    dojo.style('draw_wrap', 'display', 'none');
                     break;
             
             
@@ -660,7 +666,10 @@ function (dojo, declare) {
                         if (!this.possible_moves[card.id].can_play) {
                             this.showMessage(this.possible_moves[card.id].error, 'error');
                         } else {
-                            var card_info = this.card_infos[card.type];
+                            var card_info = dojo.clone(this.card_infos[card.type]);
+                            console.log(card_info);
+                            card_info.cost -= this.discount; // Shrimp License reduction
+                            console.log(card_info);
                             this.client_state_args.boat_id = card.id;
                             this.client_state_args.cost = card_info.cost;
                             this.client_state_args.boat_type = card.type;
@@ -673,12 +682,15 @@ function (dojo, declare) {
                             );
                             this.playerHand.removeFromStockById(card.id);
 
-                            //TODO: with client state user can refresh and clear selection
-                            //      is that what we want? or make it permanent? allow use to change w/o refresh?
-                            this.setClientState('client_launchPay', {
-                                descriptionmyturn: _('${name}: ${you} must discard cards to pay 0/${cost}'),
-                                args: card_info
-                            });
+                            if (card_info.cost <= 0) {
+                                // Shrimp discount enough launch is free
+                                this.buyAction('launchBoat');
+                            } else {
+                                this.setClientState('client_launchPay', {
+                                    descriptionmyturn: _('${name}: ${you} must discard cards to pay 0/${cost}'),
+                                    args: card_info
+                                });
+                            }
                         }
                     }
                     this.playerHand.unselectAll();
@@ -838,6 +850,11 @@ function (dojo, declare) {
                 return;
             }
 
+            this.buyAction(action);
+        },
+
+        buyAction: function(action)
+        {
             if (!this.checkAction(action))
                 return;
 
@@ -1017,6 +1034,11 @@ function (dojo, declare) {
                 // Discard from hand
                 for (var i in notif.args.card_ids) {
                     this.playerHand.removeFromStockById(notif.args.card_ids[i], 'boatcount');
+                }
+
+                // Increase discount if Shrimp License
+                if (notif.args.license_type == 0) { //TODO: constants
+                    this.discount += 1;
                 }
             } else {
                 // Animate cards from other player
