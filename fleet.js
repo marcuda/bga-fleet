@@ -49,6 +49,7 @@ function (dojo, declare) {
             this.player_fish = [];
             this.draw_table = null;
             this.discount = 0;
+            this.hand_discard = false;
         },
         
         /*
@@ -74,6 +75,7 @@ function (dojo, declare) {
             this.auction.winner = parseInt(gamedatas.auction_winner);
             this.possible_moves = gamedatas.moves;
             this.discount = parseInt(gamedatas.discount);
+            this.hand_discard = gamedatas.hand_discard;
             
             // Setting up player boards
             for( var player_id in gamedatas.players )
@@ -229,7 +231,7 @@ function (dojo, declare) {
                     } else {
                         // Select license for bid
                         this.setClientState('client_auctionSelect', {
-                            descriptionmyturn: _('${you} may choose a card to bid on')
+                            descriptionmyturn: _('${you} may choose a license to bid on')
                         });
                     }
                     break;
@@ -268,24 +270,14 @@ function (dojo, declare) {
                     break;
                 case 'draw':
                     if (this.isCurrentPlayerActive()) {
-                        dojo.style('draw_wrap', 'display', 'block');
-                        this.draw_table.setSelectionMode(1);
+                        if (this.hand_discard) {
+                            this.playerHand.setSelectionMode(1);
+                        } else {
+                            dojo.style('draw_wrap', 'display', 'block');
+                            this.draw_table.setSelectionMode(1);
+                        }
                     }
                     break;
-            
-            /* Example:
-            
-            case 'myGameState':
-            
-                // Show some HTML block at this game state
-                dojo.style( 'my_html_block_id', 'display', 'block' );
-                
-                break;
-           */
-           
-           
-            case 'dummmy':
-                break;
             }
         },
 
@@ -622,13 +614,18 @@ function (dojo, declare) {
             var items = this.draw_table.getSelectedItems();
 
             if (items.length > 0) {
-                if (this.checkAction('discard')) {
-                    this.client_state_args.card_id = items[0].id;
-                    this.ajaxAction('discard', this.client_state_args);
-                } else {
-                    this.draw_table.unselectAll();
-                }
+                this.discardAction(items[0]);
+                this.draw_table.unselectAll();
             }
+        },
+
+        discardAction: function(card)
+        {
+            if (!this.checkAction('discard'))
+                return;
+
+            this.client_state_args.card_id = card.id;
+            this.ajaxAction('discard', this.client_state_args);
         },
 
         updateBuy: function (items, cost)
@@ -708,6 +705,12 @@ function (dojo, declare) {
                     } else {
                         delete this.client_state_args.card_id;
                     }
+                    break;
+                case 'draw':
+                    if (items.length > 0) {
+                        this.discardAction(items[0]);
+                    }
+                    this.playerHand.unselectAll();
                     break;
                 default:
                     this.playerHand.unselectAll();
@@ -1036,9 +1039,12 @@ function (dojo, declare) {
                     this.playerHand.removeFromStockById(notif.args.card_ids[i], 'boatcount');
                 }
 
-                // Increase discount if Shrimp License
                 if (notif.args.license_type == 0) { //TODO: constants
+                    // Each Shrimp Licenses increases transaction discount
                     this.discount += 1;
+                } else if (notif.args.license_type == 3) {
+                    // Any Tuna License allows discard from hand
+                    this.hand_discard = true;
                 }
             } else {
                 // Animate cards from other player
@@ -1159,7 +1165,7 @@ function (dojo, declare) {
             console.log(notif);
 
             //TODO: why do cards get added to stock vertically???
-            var stock = notif.args.hand ? this.playerHand : this.draw_table;
+            var stock = notif.args.to_hand ? this.playerHand : this.draw_table;
             for (var i in notif.args.cards) {
                 var card = notif.args.cards[i];
                 stock.addToStockWithId(card.type_arg, card.id, 'boatcount');
@@ -1171,9 +1177,13 @@ function (dojo, declare) {
             console.log('notify_discard');
             console.log(notif);
 
-            this.draw_table.removeFromStockById(notif.args.discard.id, 'site-logo'); //TODO: discard area
-            for (var i in notif.args.keep) {
-                var card = notif.args.keep[i];
+            // Discard selected
+            var stock = notif.args.in_hand ? this.playerHand : this.draw_table;
+            stock.removeFromStockById(notif.args.discard.id, 'site-logo'); //TODO: discard area
+
+            if (!notif.args.in_hand) {
+                // Move kept card to hand
+                var card = notif.args.keep;
                 this.playerHand.addToStockWithId(card.type_arg, card.id, this.draw_table.getItemDivId(card.id));
                 this.draw_table.removeFromStockById(card.id);
             }

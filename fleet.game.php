@@ -216,6 +216,7 @@ class fleet extends Table
 
         // Each Shrimp License reduces the cost by one
         $result['discount'] = count($this->getLicenses($player_id, LICENSE_SHRIMP));
+        $result['hand_discard'] = count($this->getLicenses($player_id, LICENSE_TUNA)) > 0;
 
         $result['cards'] = $this->cards->countCardsInLocations();
 
@@ -871,13 +872,17 @@ class fleet extends Table
 
         $player_id = self::getActivePlayerId();
 
+        // Tuna license gives bonus to discard from hand
+        $bonus = count($this->getLicenses($player_id, LICENSE_TUNA));
+        $loc = $bonus > 0 ? 'hand' : 'draw';
+
         // Verify card
         $card = $this->cards->getCard($card_id);
-        if ($card == null || $card['location'] != 'draw' || $card['location_arg'] != $player_id) {
+        if ($card == null || $card['location'] != $loc || $card['location_arg'] != $player_id) {
             throw new feException("Impossible discard: invalid card $card_id");
         }
 
-        // Discard card and take other(s)
+        // Discard card and take remainder
         $this->cards->playCard($card_id);
         $kept = $this->cards->getCardsInLocation('draw', $player_id);
         $this->cards->moveAllCardsInLocation('draw', 'hand', $player_id, $player_id);
@@ -887,13 +892,11 @@ class fleet extends Table
         ));
         self::notifyPlayer($player_id, 'discard', '', array(
             'discard' => $card,
-            'keep' => $kept,
+            'keep' => count($kept) > 0 ? array_shift($kept) : null,
+            'in_hand' => $bonus > 0,
         ));
 
         $this->gamestate->nextState();
-
-        //TODO: license bonus
-        //      tuna allows discard from hand
     }
 
     
@@ -989,9 +992,12 @@ class fleet extends Table
             case PHASE_TRADING:
                 // Skip player if no processed fish to trade
                 $sql = "SELECT fish_crates FROM player WHERE player_id = $player_id";
-                if (self::getUniqueValueFromDB($sql) == 0) {
-                    $skip = true;
-                }
+                $skip = self::getUniqueValueFromDB($sql) == 0;
+                break;
+            case PHASE_DRAW:
+                // Skip if player has Tuna bonus to not discard
+                $bonus = count($this->getLicenses($player_id, LICENSE_TUNA));
+                $skip = $bonus == 1 || $bonus == 3;
                 break;
         }
 
@@ -1046,13 +1052,35 @@ class fleet extends Table
 
     function drawCards($player_id)
     {
-        $cards = $this->cards->pickCardsForLocation(2, 'deck', 'draw', $player_id);
+        // Tuna license gives draw bonus
+        $bonus = count($this->getLicenses($player_id, LICENSE_TUNA));
+        if ($bonus == 0) {
+            $dest = 'draw';
+            $nbr = 2;
+            $to_hand = false;
+        } else {
+            $dest = 'hand';
+            $to_hand = true;
+            if ($bonus < 3) {
+                // 1 => 2, 2 => 3
+                $nbr = $bonus + 1;
+            } else {
+                // 3 => 3, 4 => 4
+                $nbr = $bonus;
+            }
+        }
+
+        // Draw cards
+        $cards = $this->cards->pickCardsForLocation($nbr, 'deck', $dest, $player_id);
+
+        self::notifyAllPlayers('log', clienttranslate('${player_name} draws ${nbr} cards'), array(
+            'player_name' => self::getActivePlayerName(),
+            'nbr' => $nbr,
+        ));
         self::notifyPlayer($player_id, 'draw', '', array(
             'cards' => $cards,
+            'to_hand' => $to_hand,
         ));
-
-        //TODO: license bonus
-        //      tuna: extra draw/keep: 1=>2/2, 2=>3/2, 3=>3/3, 4=>4/3 plus can discard from handextra draw/keep: 1=>2/2, 2=>3/2, 3=>3/3, 4=>4/3 plus can discard from hand
     }
 
     function rotateFirstPlayer()
