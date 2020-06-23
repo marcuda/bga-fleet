@@ -39,6 +39,8 @@ class fleet extends Table
             'first_player' => 13,
             'final_round' => 14,
             'auction_winner' => 15,
+            'current_player_launches' => 16,
+            'current_player_hires' => 17,
         ) );
 
         $this->cards = self::getNew("module.common.deck");
@@ -100,6 +102,8 @@ class fleet extends Table
         self::setGameStateInitialValue('auction_winner', 0);
         self::setGameStateInitialValue("current_phase", 0);
         self::setGameStateInitialValue("final_round", 0);
+        self::setGameStateInitialValue("current_player_launches", 0);
+        self::setGameStateInitialValue("current_player_hires", 0);
         
         // Init game statistics
         // (note: statistics used in this file must be defined in your stats.inc.php file)
@@ -197,7 +201,7 @@ class fleet extends Table
     
         // Get information about players
         // Note: you can retrieve some extra field you added for "player" table in "dbmodel.sql" if you need it.
-        $sql = "SELECT player_id id, player_score score, auction_bid bid, auction_pass pass, auction_done done FROM player ";
+        $sql = "SELECT player_id id, player_score score, auction_bid bid, auction_pass pass, passed done FROM player ";
         $result['players'] = self::getCollectionFromDb( $sql );
 
         // Get player cards on table
@@ -216,8 +220,8 @@ class fleet extends Table
         $result['draw'] = $this->cards->getCardsInLocation('draw', $current_player_id);
 
         // Each Shrimp License reduces the cost by one
-        $result['discount'] = count($this->getLicenses($player_id, LICENSE_SHRIMP));
-        $result['hand_discard'] = count($this->getLicenses($player_id, LICENSE_TUNA)) > 0;
+        $result['discount'] = count($this->getLicenses($current_player_id, LICENSE_SHRIMP));
+        $result['hand_discard'] = count($this->getLicenses($current_player_id, LICENSE_TUNA)) > 0;
 
         $result['cards'] = $this->cards->countCardsInLocations();
 
@@ -287,6 +291,7 @@ class fleet extends Table
 
     function nextPhase()
     {
+        self::DbQuery("UPDATE player SET passed = 0");
         $phase = self::incGameStateValue('current_phase', 1) % $this->nbr_phases;
         return $this->phases[$phase];
     }
@@ -332,7 +337,7 @@ class fleet extends Table
      */
     function canBid($player_id)
     {
-        $sql = "SELECT (auction_pass + auction_done) AS passed FROM player WHERE player_id = $player_id";
+        $sql = "SELECT (auction_pass + passed) AS passed FROM player WHERE player_id = $player_id";
         return self::getUniqueValueFromDB($sql) == 0;
     }
 
@@ -443,21 +448,23 @@ class fleet extends Table
     {
         self::checkAction('pass');
 
+        $player_id = self::getActivePlayerId();
         $auction = false;
         if ($this->getCurrentPhase() == PHASE_AUCTION) {
             // Keep track of which players pass during auction
-            $player_id = self::getActivePlayerId();
             $sql = 'UPDATE player SET auction_bid = 0, auction_pass = 1';
 
             if (self::getGameStateValue('auction_card') == 0) {
                 // No active auction, player chooses not to buy
-                $sql .= ', auction_done = 1';
+                $sql .= ', passed = 1';
                 // Tell client to remove player
                 $auction = true;
             }
 
             $sql .= " WHERE player_id = $player_id";
             self::DbQuery($sql);
+        } else {
+            self::DbQuery("UPDATE player SET passed = 1 WHERE player_id = $player_id");
         }
 
         self::notifyAllPlayers('pass', clienttranslate('${player_name} passes'), array(
@@ -628,7 +635,7 @@ class fleet extends Table
         // Reset auction
         self::setGameStateValue('auction_card', 0);
         self::setGameStateValue('auction_winner', 0);
-        $sql = 'UPDATE player SET auction_bid = 0, auction_pass = 1, auction_done = 1';
+        $sql = 'UPDATE player SET auction_bid = 0, auction_pass = 1, passed = 1';
         $sql .= " WHERE player_id = $player_id";
         self::DbQuery($sql);
 
@@ -714,8 +721,9 @@ class fleet extends Table
             $this->incFishCrates($player_id, $fish);
         }
 
-        // Play boat
+        // Play boat card
         $this->cards->moveCard($boat_id, 'table', $player_id);
+        self::incGameStateValue('current_player_launches', 1);
 
         $msg = clienttranslate('${player_name} discards ${nbr_cards} card(s)');
         if ($fish > 0) {
@@ -734,9 +742,6 @@ class fleet extends Table
         ));
 
         $this->gamestate->nextState();
-
-        //TODO: license bonus
-        //      cod: +1 launch, +1 card/license
     }
 
     function hireCaptain($boat_id, $card_id)
@@ -770,6 +775,7 @@ class fleet extends Table
         // Place card on boat
         $this->cards->moveCard($card_id, 'captain', $boat_id);
         self::DbQuery("UPDATE card SET has_captain = 1 WHERE card_id = $boat_id");
+        self::incGameStateValue('current_player_hires', 1);
 
         $msg = clienttranslate('${player_name} hires a captain for their ${card_name}');
         self::notifyAllPlayers('hireCaptain', $msg, array(
@@ -781,9 +787,6 @@ class fleet extends Table
         ));
 
         $this->gamestate->nextState();
-
-        //TODO: license bonus
-        //      lobster: +1 captain, complicated draw bonus
     }
 
     function processFish($card_ids)
@@ -932,6 +935,13 @@ class fleet extends Table
 //////////// Game state actions
 ////////////
 
+    function hasPassed($player_id)
+    {
+        $sql = "SELECT passed FROM player WHERE player_id = $player_id";
+        return self::getUniqueValueFromDB($sql) == 1;
+    }
+
+    //TODO: this function is too large
     function stNextPlayer()
     {
         // Determine next player and phase
@@ -944,15 +954,95 @@ class fleet extends Table
             $next_state = $player_and_state[1];
         } else {
             // All other phases proceed in order
-            $player_id = self::activeNextPlayer();
-            if ($player_id == self::getGameStateValue('first_player')) {
-                // Back to first player => next phase
-                $next_state = $this->nextPhase();
-                if ($next_state == PHASE_AUCTION) {
-                    // New round, advance first player token
-                    $player_id = $this->rotateFirstPlayer();
-                    if (self::getGameStateValue('final_round')) {
-                        $next_state = "gameEnd";
+            // But some bonuses allow multiple actions
+            if ($current_phase == PHASE_LAUNCH) {
+                // Cod license gives bonus boat launch
+                // Allow extra turn if player has license and legal play
+                $player_id = self::getActivePlayerId();
+                $nbr_license = count($this->getLicenses($player_id, LICENSE_COD));
+                if ($nbr_license > 0 &&
+                    self::getGameStateValue('current_player_launches') < 2 &&
+                    $this->cards->countCardInLocation('hand', $player_id) > 0 &&
+                    !$this->hasPassed($player_id))
+                {
+                    // Player gets bonus action
+                    $has_bonus = true;
+                } else {
+                    // No bonus action, but license also
+                    // gives draw bonus after any launch
+                    $has_bonus = false;
+                    if ($nbr_license > 0 &&
+                        self::getGameStateValue('current_player_launches') > 0)
+                    {
+                        $this->drawCards($player_id, $nbr_license, 'hand');
+                    }
+                }
+            } else if ($current_phase == PHASE_HIRE) {
+                // Lobster license gives bonus captain hire
+                // Allow extra turn if player has license and legal play
+                $player_id = self::getActivePlayerId();
+                $nbr_license = count($this->getLicenses($player_id, LICENSE_LOBSTER));
+                $sql = "SELECT COUNT(*) FROM card WHERE card_location = 'table' ";
+                $sql .= "AND card_location_arg = $player_id AND card_type = '";
+                $sql .= CARD_BOAT . "' AND has_captain = 0";
+                if ($nbr_license > 0 &&
+                    self::getGameStateValue('current_player_hires') < 2 &&
+                    $this->cards->countCardInLocation('hand', $player_id) > 0 &&
+                    self::getUniqueValueFromDB($sql) > 0 &&
+                    !$this->hasPassed($player_id))
+                {
+                    // Player gets bonus action
+                    $has_bonus = true;
+                } else {
+                    // No bonus action, but license also
+                    // gives draw bonus for hired captains
+                    $has_bonus = false;
+                    if ($nbr_license > 0) {
+                        // Bonus depends on both number of licenses and captained boats
+                        $sql = "SELECT SUM(has_captain) FROM card WHERE card_location = 'table' ";
+                        $sql .= "AND card_location_arg = $player_id AND card_type = '" . CARD_BOAT ."'";
+                        $nbr_captain = self::getUniqueValueFromDB($sql);
+                        if ($nbr_captain > 0) {
+                            if ($nbr_license == 1) {
+                                $nbr_cards = $nbr_captain < 4 ? 1 : 2;
+                            } else {
+                                if ($nbr_captain < 3) {
+                                    $nbr_cards = 1;
+                                } else if ($nbr_captain < 7) {
+                                    $nbr_cards = 2;
+                                } else  {
+                                    $nbr_cards = 3;
+                                }
+                            }
+                        } else {
+                            $nbr_cards = 0;
+                        }
+
+                        $this->drawCards($player_id, $nbr_cards, 'hand');
+                    }
+                }
+            } else {
+                // Other phases have no bonus action
+                $has_bonus = false;
+            }
+
+            if (!$has_bonus) {
+                // Clear bonus counters
+                // TODO: only clear when needed?
+                self::setGameStateValue('current_player_launches', 0);
+                self::setGameStateValue('current_player_hires', 0);
+
+                // Next player
+                $player_id = self::activeNextPlayer();
+                if ($player_id == self::getGameStateValue('first_player')) {
+                    // Back to first player => next phase
+                    $next_state = $this->nextPhase();
+                    if ($next_state == PHASE_AUCTION) {
+                        // New round, advance first player token
+                        $player_id = $this->rotateFirstPlayer();
+                        if (self::getGameStateValue('final_round')) {
+                            $next_state = "gameEnd";
+                        }
                     }
                 }
             }
@@ -964,12 +1054,11 @@ class fleet extends Table
             $next_state = $this->doFishing();
         } else if ($next_state == PHASE_DRAW) {
             // Draw cards for next player
-            $this->drawCards($player_id);
+            $this->drawPhase($player_id);
         }
 
         // When possible automatically skip players without a valid play
         // but _NOT_ when it would reveal private information
-        $skip = false;
         switch ($next_state) {
             case PHASE_LAUNCH:
                 // Skip player _only_ if hand is empty (ignore no legal play)
@@ -1000,6 +1089,9 @@ class fleet extends Table
                 $bonus = count($this->getLicenses($player_id, LICENSE_TUNA));
                 $skip = $bonus == 1 || $bonus == 3;
                 break;
+            default:
+                $skip = false;
+                break;
         }
 
         if ($skip) {
@@ -1007,7 +1099,6 @@ class fleet extends Table
             $next_state = 'cantPlay';
         } else {
             self::notifyPlayer($player_id, 'possibleMoves', '', $this->possibleMoves($player_id, $next_state));
-            // TODO: auto pass if no action (and would not reveal private info)
             self::giveExtraTime($player_id);
         }
 
@@ -1051,17 +1142,15 @@ class fleet extends Table
         }
     }
 
-    function drawCards($player_id)
+    function drawPhase($player_id)
     {
         // Tuna license gives draw bonus
         $bonus = count($this->getLicenses($player_id, LICENSE_TUNA));
         if ($bonus == 0) {
             $dest = 'draw';
             $nbr = 2;
-            $to_hand = false;
         } else {
             $dest = 'hand';
-            $to_hand = true;
             if ($bonus < 3) {
                 // 1 => 2, 2 => 3
                 $nbr = $bonus + 1;
@@ -1071,17 +1160,25 @@ class fleet extends Table
             }
         }
 
-        // Draw cards
-        $cards = $this->cards->pickCardsForLocation($nbr, 'deck', $dest, $player_id);
+        $this->drawCards($player_id, $nbr, $dest);
+    }
 
-        self::notifyAllPlayers('log', clienttranslate('${player_name} draws ${nbr} cards'), array(
-            'player_name' => self::getActivePlayerName(),
-            'nbr' => $nbr,
-        ));
-        self::notifyPlayer($player_id, 'draw', '', array(
-            'cards' => $cards,
-            'to_hand' => $to_hand,
-        ));
+    function drawCards($player_id, $nbr, $dest)
+    {
+        if ($nbr > 0) {
+            // Draw cards
+            $cards = $this->cards->pickCardsForLocation($nbr, 'deck', $dest, $player_id);
+
+            // All players get log notice but only current player gets card details
+            self::notifyAllPlayers('log', clienttranslate('${player_name} draws ${nbr} card(s)'), array(
+                'player_name' => self::getActivePlayerName(),
+                'nbr' => $nbr,
+            ));
+            self::notifyPlayer($player_id, 'draw', '', array(
+                'cards' => $cards,
+                'to_hand' => $dest == 'hand' ? true : false,
+            ));
+        }
     }
 
     function rotateFirstPlayer()
@@ -1133,7 +1230,7 @@ class fleet extends Table
             // Start new auction
             // Reset bids and pass count for those still in auction
             self::DbQuery('UPDATE player SET auction_bid = 0');
-            self::DbQuery('UPDATE player SET auction_pass = 0 WHERE auction_done = 0');
+            self::DbQuery('UPDATE player SET auction_pass = 0 WHERE passed = 0');
 
             // Determine player to start auction
             $first_player = self::getGameStateValue('first_player');
@@ -1154,7 +1251,7 @@ class fleet extends Table
                     // All players finished auction
                     // Reset auction and go to next phase
                     $this->drawLicenses();
-                    self::DbQuery('UPDATE player SET auction_bid = 0, auction_pass = 0, auction_done = 0');
+                    self::DbQuery('UPDATE player SET auction_bid = 0, auction_pass = 0, passed = 0');
                     $next_state = $this->nextPhase();
                 }
             } else {

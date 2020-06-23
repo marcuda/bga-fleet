@@ -33,7 +33,9 @@ CREATE TABLE IF NOT EXISTS `card` (
 -- Auction values
 ALTER TABLE `player` ADD COLUMN `auction_bid` tinyint(1) unsigned NOT NULL DEFAULT 0;
 ALTER TABLE `player` ADD COLUMN `auction_pass` tinyint(1) unsigned NOT NULL DEFAULT 0;
-ALTER TABLE `player` ADD COLUMN `auction_done` tinyint(1) unsigned NOT NULL DEFAULT 0;
+
+-- Track when player is done with phase
+ALTER TABLE `player` ADD COLUMN `passed` tinyint(1) unsigned NOT NULL DEFAULT 0;
 
 -- Processed fish crates for selling
 ALTER TABLE `player` ADD COLUMN `fish_crates` tinyint(1) unsigned NOT NULL DEFAULT 0;
