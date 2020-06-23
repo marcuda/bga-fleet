@@ -443,7 +443,7 @@ function (dojo, declare) {
             dojo.place(this.format_block('jstpl_fish',
                 {player_id:player_id, card_id:card_id, fish_id:nbr_fish}), 'fish_' + card_id);
             this.placeOnObject(fish_div, 'fishicon');
-            this.fish_zones[card_id].placeInZone(fish_div); //TODO: why does this come from bottom of screen?
+            this.fish_zones[card_id].placeInZone(fish_div);
             if (player_id == this.player_id) {
                 dojo.connect($(fish_div), 'onclick', this, 'onClickFishCube');
             }
@@ -457,17 +457,17 @@ function (dojo, declare) {
                 return;
             }
 
-            var fish_div = 'fish_' + player_id + '_' + card_id + '_' + nbr_fish;
-            this.fish_zones[card_id].removeFromZone(fish_div, true, 'playerfish_' + player_id);
-
+            var src = 'fish_' + player_id + '_' + card_id + '_' + nbr_fish;
             nbr_fish = this.player_fish[player_id].getItemNumber();
-            fish_div = player_id + '_fish_' + nbr_fish;
+            var dest = player_id + '_fish_' + nbr_fish;
+
             dojo.place(this.format_block('jstpl_pfish',
                 {player_id:player_id, card_id:card_id, fish_id:nbr_fish}), 'playerfish_' + player_id);
-            this.placeOnObject(fish_div, 'fishicon');
-            this.player_fish[player_id].placeInZone(fish_div); //TODO: why does this come from bottom of screen?
+            this.placeOnObject(dest, src);
+            this.player_fish[player_id].placeInZone(dest);
+            this.fish_zones[card_id].removeFromZone(src, true);
             if (player_id == this.player_id) {
-                dojo.connect($(fish_div), 'onclick', this, 'onTrade');
+                dojo.connect($(dest), 'onclick', this, 'onTrade');
             }
         },
 
