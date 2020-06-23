@@ -123,17 +123,18 @@ class fleet extends Table
         $this->cards->shuffle('licenses');
 
         // Setup license deck
-        // Separate all premium and 8 common licenses
+        // Separate all premium and 8-10 common licenses
+        $nbr_players = count($players);
         foreach ($this->premium_license_types as $type_arg) {
             $cards = $this->cards->getCardsOfType(CARD_LICENSE, $type_arg);
             $this->cards->moveCards(array_column($cards, 'id'), 'setup_premium');
         }
-        $this->cards->pickCardsForLocation(8, 'licenses', 'setup_common');
+        $nbr_common = $nbr_players == 2 ? 10 : 8;
+        $this->cards->pickCardsForLocation($nbr_common, 'licenses', 'setup_common');
         $this->cards->shuffle('setup_premium');
         $this->cards->shuffle('setup_common');
 
         // Remove some licenses from game based on number of players
-        $nbr_players = count($players);
         if ($nbr_players == 2) {
             $this->cards->pickCardsForLocation(3, 'setup_premium', 'box');
             $this->cards->pickCardsForLocation(6, 'setup_common', 'box');
