@@ -861,7 +861,7 @@ class fleet extends Table
         ));
         self::notifyPlayer($player_id, 'draw', '', array(
             'cards' => $cards,
-            'hand' => true,
+            'to_hand' => true,
         ));
 
         $this->gamestate->nextState();
