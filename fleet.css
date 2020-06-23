@@ -76,6 +76,11 @@
     width: 30px;
     height: 30px;
     background-image: url('img/cube.png');
+    position: absolute;
+}
+
+#fishicon {
+    position: relative;
 }
 
 .flt_icon_license {
