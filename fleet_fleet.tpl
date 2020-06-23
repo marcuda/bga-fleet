@@ -73,7 +73,7 @@
 
 // Javascript HTML templates
 var jstpl_boat = 
-    '<div id="card_content_${id}">' +
+    '<div id="cardcontent_${id}">' +
         '<div id="captain_${id}" class="flt_boat flt_captain"></div>' +
         '<div id="fish_${id}" class="flt_fish"></div>' +
     '</div>';

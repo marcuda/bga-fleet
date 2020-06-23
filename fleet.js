@@ -1036,8 +1036,9 @@ function (dojo, declare) {
             if (notif.args.player_id == this.player_id) {
                 // Discard from hand
                 for (var i in notif.args.card_ids) {
-                    this.playerHand.removeFromStockById(notif.args.card_ids[i], 'boatcount');
+                    this.playerHand.removeFromStockById(notif.args.card_ids[i], 'boatcount', true);
                 }
+                this.playerHand.updateDisplay();
 
                 if (notif.args.license_type == 0) { //TODO: constants
                     // Each Shrimp Licenses increases transaction discount
@@ -1085,8 +1086,9 @@ function (dojo, declare) {
             if (notif.args.player_id == this.player_id) {
                 // Discard from hand
                 for (var i in notif.args.card_ids) {
-                    this.playerHand.removeFromStockById(notif.args.card_ids[i], 'boatcount');
+                    this.playerHand.removeFromStockById(notif.args.card_ids[i], 'boatcount', true);
                 }
+                this.playerHand.updateDisplay();
                 // Boat already played during client state
             } else {
                 // Animate cards from other player
