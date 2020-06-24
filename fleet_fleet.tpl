@@ -75,7 +75,7 @@
 var jstpl_boat = 
     '<div id="cardcontent_${id}">' +
         '<div id="captain_${id}" class="flt_boat flt_captain"></div>' +
-        '<div id="fish_${id}" class="flt_fish"></div>' +
+        '<div id="fish_${id}" class="flt_fish_zone"></div>' +
     '</div>';
 var jstpl_fish = '<div id="fish_${player_id}_${card_id}_${fish_id}" class="flt_icon_fish"></div>';
 var jstpl_pfish = '<div id="${player_id}_fish_${fish_id}" class="flt_icon_fish"></div>';

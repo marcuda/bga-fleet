@@ -108,8 +108,13 @@
     display: none;
 }
 
-.flt_fish {
+.flt_fish_zone {
     width: 100px;
     height: 30px;
     top: 113px;
+}
+
+.flt_fish_selected {
+    /*TODO: make this more interesting*/
+    border: 1px solid red ! important;
 }
