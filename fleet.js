@@ -485,6 +485,8 @@ function (dojo, declare) {
             if (player_id == this.player_id) {
                 dojo.connect($(dest), 'onclick', this, 'onClickFishCube');
             }
+
+            playSound('move');
         },
 
         removeFishCube: function(player_id)
@@ -710,6 +712,7 @@ function (dojo, declare) {
                                 this.playerHand.getItemDivId(card.id)
                             );
                             this.playerHand.removeFromStockById(card.id);
+                            playSound('move');
 
                             if (card_info.cost <= 0) {
                                 // Shrimp discount enough launch is free
@@ -1006,6 +1009,8 @@ function (dojo, declare) {
 
             // Unselect any fish cubes
             dojo.query('.flt_fish_selected').removeClass('flt_fish_selected')
+
+            playSound('move');
 
             // Reset to main state
             this.restoreServerGameState();
