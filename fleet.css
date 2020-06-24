@@ -108,10 +108,22 @@
     display: none;
 }
 
-.flt_fish_zone {
+.flt_fish_boat {
     width: 100px;
     height: 30px;
     top: 113px;
+}
+
+.flt_fish_player {
+    width: 180px;
+    height: 30px;
+    margin-top: 5px;
+    margin-bottom: 5px;
+    padding-left: 5px;
+    padding-top: 5px;
+    background-color: #8096e6;
+    border: 2px solid #0037ff;
+    border-radius: 5px;
 }
 
 .flt_fish_selected {
