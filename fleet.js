@@ -216,9 +216,11 @@ function (dojo, declare) {
                             // Shrimp discount enough that license is free (unlikely)
                             this.buyAction('buyLicense');
                         } else {
+                            this.client_state_args.cost = this.auction.high_bid;
+                            this.client_state_args.fish_crates = 0;
+                            dojo.query('div[id^="' + this.player_id + '_fish_"]').style('cursor', 'pointer');
                             this.setClientState('client_auctionWin', {
-                                descriptionmyturn: _('${you} must discard cards to pay ') + '0/' + this.auction.high_bid
-                                //TODO: fish crates
+                                descriptionmyturn: _('${you} must discard cards to pay ') + '0/' + this.client_state_args.cost
                             });
                         }
                     } else if (this.auction.card_id) {
@@ -257,6 +259,8 @@ function (dojo, declare) {
                     break;
                 case 'client_launchPay':
                     this.playerHand.setSelectionMode(2);
+                    this.client_state_args.fish_crates = 0;
+                    dojo.query('div[id^="' + this.player_id + '_fish_"]').style('cursor', 'pointer');
                     break;
                 case 'hire':
                     this.client_state_args = {};
@@ -478,7 +482,7 @@ function (dojo, declare) {
             }
 
             if (player_id == this.player_id) {
-                dojo.connect($(dest), 'onclick', this, 'onTrade');
+                dojo.connect($(dest), 'onclick', this, 'onClickFishCube');
             }
         },
 
@@ -639,8 +643,9 @@ function (dojo, declare) {
             this.ajaxAction('discard', this.client_state_args);
         },
 
-        updateBuy: function (items, cost)
+        updateBuy: function()
         {
+            var items = this.playerHand.getSelectedItems();
             console.log('UPDATE BUY');
             console.log(items);
             var coins = 0;
@@ -648,10 +653,11 @@ function (dojo, declare) {
                 var card = items[i];
                 coins += this.card_infos[card.type]['coins'];
             }
-            this.gamedatas.gamestate.descriptionmyturn = _('${you} must discard cards to pay ') + coins + '/' + cost;
+            coins += this.client_state_args.fish_crates;
+            this.gamedatas.gamestate.descriptionmyturn = _('${you} must discard cards to pay ') + coins + '/' + this.client_state_args.cost;
             this.updatePageTitle();
             this.removeActionButtons();
-            var color = coins >= this.auction.high_bid ? 'blue' : 'gray';
+            var color = coins >= this.client_state_args.cost ? 'blue' : 'gray';
             this.addActionButton('button_1', _('Discard selected'), 'onBuy', null, false, color);
             this.addActionButton('button_2', _('Cancel'), 'onCancel', null, false, 'red');
         },
@@ -665,7 +671,7 @@ function (dojo, declare) {
             switch(this.gamedatas.gamestate.name)
             {
                 case 'client_auctionWin':
-                    this.updateBuy(items, this.auction.high_bid);
+                    this.updateBuy();
                     break;
                 case 'launch':
                     if (this.checkAction('launchBoat') && items.length > 0) {
@@ -704,7 +710,7 @@ function (dojo, declare) {
                     this.playerHand.unselectAll();
                     break;
                 case 'client_launchPay':
-                    this.updateBuy(items, this.client_state_args.cost);
+                    this.updateBuy();
                     break;
                 case 'hire':
                     if (this.checkAction('hireCaptain') && items.length > 0) {
@@ -745,23 +751,34 @@ function (dojo, declare) {
 
         onClickFishCube: function(evt)
         {
-            if (!this.checkAction('processFish', true)) {
-                // Ignore click if not the right time
-                return;
+            var state = this.gamedatas.gamestate.name;
+            console.log('PROC FISH: ' + state);
+            if (state == 'processing') {
+                if (!this.checkAction('processFish', true)) {
+                    // Ignore click if not the right time
+                    return;
+                }
+
+                // Allow click to fall thru to card above
+                dojo.stopEvent(evt);
+
+                var cube = evt.currentTarget.id;
+                var boat_id = cube.split('_')[2];
+                if (this.client_state_args.fish_ids[boat_id]) {
+                    this.showMessage(_('You may only process one fish crate per boat'), 'error');
+                    return;
+                }
+
+                this.client_state_args.fish_ids[boat_id] = true;
+                this.processFishCube(boat_id, this.player_id);
+            } else if (state == 'trading') {
+                this.onTrade(evt);
+            } else if (state == 'client_auctionWin' || state == 'client_launchPay') {
+                dojo.toggleClass(evt.currentTarget, 'flt_fish_selected');
+                this.client_state_args.fish_crates = dojo.query('.flt_fish_selected').length;
+                this.updateBuy();
+                //Pay $1
             }
-
-            // Allow click to fall thru to card above
-            dojo.stopEvent(evt);
-
-            var cube = evt.currentTarget.id;
-            var boat_id = cube.split('_')[2];
-            if (this.client_state_args.fish_ids[boat_id]) {
-                this.showMessage(_('You may only process one fish crate per boat'), 'error');
-                return;
-            }
-
-            this.client_state_args.fish_ids[boat_id] = true;
-            this.processFishCube(boat_id, this.player_id);
         },
 
         onPass: function(evt)
@@ -945,6 +962,9 @@ function (dojo, declare) {
                     this.addFishCube(card_id, this.player_id);
                 }
             }
+
+            // Unselect any fish cubes
+            dojo.query('.flt_fish_selected').removeClass('flt_fish_selected')
 
             // Reset to main state
             this.restoreServerGameState();
