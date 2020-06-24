@@ -33,7 +33,7 @@ class fleet extends Table
         parent::__construct();
         
         self::initGameStateLabels( array( 
-            'fish_crates' => 10,
+            'fish_cubes' => 10,
             'auction_card' => 11,
             'current_phase' => 12,         // current phase number, always increasing
             'first_player' => 13,
@@ -175,7 +175,7 @@ class fleet extends Table
         $this->cards->autoreshuffle = true;
 
         // 25 fish crates in the game for each player
-        self::setGameStateInitialValue("fish_crates", $nbr_players * 25);
+        self::setGameStateInitialValue("fish_cubes", $nbr_players * 25);
 
         // Activate first player (which is in general a good idea :) )
         $player_id = $this->activeNextPlayer();
@@ -208,12 +208,15 @@ class fleet extends Table
         $players = self::loadPlayersBasicInfos();
         $boats = array();
         $licenses = array();
+        $fish = array();
         foreach ($players as $player_id => $player) {
             $boats[$player_id] = $this->getBoats($player_id);
             $licenses[$player_id] = $this->getLicenses($player_id);
+            $fish[$player_id] = $this->getFishCrates($player_id);
         }
         $result['boats'] = $boats;
         $result['licenses'] = $licenses;
+        $result['processed_fish'] = $fish;
 
         $result['hand'] = $this->cards->getPlayerHand($current_player_id);
         $result['coins'] = $this->getCoins($current_player_id);
@@ -230,7 +233,7 @@ class fleet extends Table
         $result['auction_winner'] = self::getGameStateValue('auction_winner');
         $result['auction_bid'] = $this->getHighBid();
 
-        $result['fish'] = self::getGameStateValue('fish_crates');
+        $result['fish_cubes'] = self::getGameStateValue('fish_cubes');
 
         $result['card_infos'] = $this->card_types;
 
@@ -1107,7 +1110,7 @@ class fleet extends Table
 
     function doFishing()
     {
-        $fish = self::getGameStateValue('fish_crates');
+        $fish = self::getGameStateValue('fish_cubes');
         $players = self::loadPlayersBasicInfos();
         foreach ($players as $player_id => $player) {
             $boats = $this->getBoats($player_id);
@@ -1117,7 +1120,7 @@ class fleet extends Table
                     // Add fish crate to boat
                     $sql = "UPDATE card SET nbr_fish = nbr_fish + 1 WHERE card_id = $card_id";
                     self::DbQuery($sql);
-                    $fish = self::incGameStateValue('fish_crates', -1);
+                    $fish = self::incGameStateValue('fish_cubes', -1);
                     $boat_ids[] = $card_id;
                 }
             }

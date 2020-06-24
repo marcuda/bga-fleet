@@ -96,7 +96,9 @@ function (dojo, declare) {
                 this.player_fish[player_id] = new ebg.zone();
                 this.player_fish[player_id].create(this, 'playerfish_' + player_id, 30, 30); //TODO: width/height
                 this.player_fish[player_id].setPattern('horizontalfit');
-                //TODO: add fish cubes
+                for (var i = 0; i < parseInt(gamedatas.processed_fish[player_id]); i++) {
+                    this.processFishCube(null, player_id);
+                }
 
                 // Player boat cards
                 this.player_boats[player_id] = this.createStockBoat('playerboats_' + player_id);
@@ -151,7 +153,7 @@ function (dojo, declare) {
             this.boat_counter.setValue(gamedatas.cards['deck']);
             this.fish_counter = new ebg.counter();
             this.fish_counter.create('fishcount');
-            this.fish_counter.setValue(gamedatas.fish);
+            this.fish_counter.setValue(gamedatas.fish_cubes);
             
             // TODO: Set up your game interface here, according to "gamedatas"
             /*
@@ -451,21 +453,30 @@ function (dojo, declare) {
 
         processFishCube: function(card_id, player_id)
         {
-            var nbr_fish = this.fish_zones[card_id].getItemNumber() - 1;
-            if (nbr_fish < 0) {
-                this.showMessage(_('No fish crates to process'), 'error');//TODO
-                return;
+            if (card_id !== null) {
+                var card_fish = this.fish_zones[card_id].getItemNumber() - 1;
+                if (card_fish < 0) {
+                    this.showMessage(_('No fish crates to process'), 'error');//TODO
+                    return;
+                }
+
+                var src = 'fish_' + player_id + '_' + card_id + '_' + card_fish;
+            } else {
+                var src = 'fishicon';
             }
 
-            var src = 'fish_' + player_id + '_' + card_id + '_' + nbr_fish;
-            nbr_fish = this.player_fish[player_id].getItemNumber();
+            var nbr_fish = this.player_fish[player_id].getItemNumber();
             var dest = player_id + '_fish_' + nbr_fish;
 
             dojo.place(this.format_block('jstpl_pfish',
                 {player_id:player_id, card_id:card_id, fish_id:nbr_fish}), 'playerfish_' + player_id);
             this.placeOnObject(dest, src);
             this.player_fish[player_id].placeInZone(dest);
-            this.fish_zones[card_id].removeFromZone(src, true);
+
+            if (card_id !== null) {
+                this.fish_zones[card_id].removeFromZone(src, true);
+            }
+
             if (player_id == this.player_id) {
                 dojo.connect($(dest), 'onclick', this, 'onTrade');
             }
