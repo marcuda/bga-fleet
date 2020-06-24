@@ -296,6 +296,7 @@ function (dojo, declare) {
 
             dojo.style('auctionbids', 'display', 'none');
             dojo.query('.flt_disabled').removeClass('flt_disabled');
+            dojo.query('.flt_fish_selected').removeClass('flt_fish_selected');
             this.auction.table.setSelectionMode(0);
             this.playerHand.setSelectionMode(0);
             this.player_boats[this.player_id].setSelectionMode(0);
@@ -484,6 +485,20 @@ function (dojo, declare) {
             if (player_id == this.player_id) {
                 dojo.connect($(dest), 'onclick', this, 'onClickFishCube');
             }
+        },
+
+        removeFishCube: function(player_id)
+        {
+            var zone = this.player_fish[player_id];
+            var nbr_fish = zone.getItemNumber() - 1;
+            if (nbr_fish < 0) {
+                // Shouldn't be able to get here?
+                alert("ERROR: no fish cubes to trade");
+                return;
+            }
+
+            var fish_div = player_id + '_fish_' + nbr_fish;
+            zone.removeFromZone(fish_div, true, 'site-logo');//TODO: discard area
         },
 
         createStockLicense: function (div_id)
@@ -751,6 +766,10 @@ function (dojo, declare) {
 
         onClickFishCube: function(evt)
         {
+            // Determine which type of fish cube clicked
+            var div = evt.target.id;
+            var is_processed = div.split('_')[0] == 'fish' ? false : true;
+
             var state = this.gamedatas.gamestate.name;
             console.log('PROC FISH: ' + state);
             if (state == 'processing') {
@@ -762,6 +781,11 @@ function (dojo, declare) {
                 // Allow click to fall thru to card above
                 dojo.stopEvent(evt);
 
+                if (is_processed) {
+                    this.showMessage(_('You may only process fish crates from boats'), 'error');
+                    return;
+                }
+
                 var cube = evt.currentTarget.id;
                 var boat_id = cube.split('_')[2];
                 if (this.client_state_args.fish_ids[boat_id]) {
@@ -772,8 +796,22 @@ function (dojo, declare) {
                 this.client_state_args.fish_ids[boat_id] = true;
                 this.processFishCube(boat_id, this.player_id);
             } else if (state == 'trading') {
+                if (!is_processed) {
+                    this.showMessage(_('You may only trade processed fish crates'), 'error');
+                    return;
+                }
+
                 this.onTrade(evt);
             } else if (state == 'client_auctionWin' || state == 'client_launchPay') {
+                if (!this.checkAction('buyLicense', true) && !this.checkAction('launchBoat', true))
+                    return;
+                dojo.stopEvent(evt);
+
+                if (!is_processed) {
+                    this.showMessage(_('You may only trade processed fish crates'), 'error');
+                    return;
+                }
+
                 dojo.toggleClass(evt.currentTarget, 'flt_fish_selected');
                 this.client_state_args.fish_crates = dojo.query('.flt_fish_selected').length;
                 this.updateBuy();
@@ -895,7 +933,9 @@ function (dojo, declare) {
                 this.client_state_args.card_ids += items[i].id + ';';
             }
 
-            //TODO: fish crates
+            // Selected and traded fish crates may differ for ease of bookkeeping
+            // Remove selection early to avoid confusion
+            dojo.query('.flt_fish_selected').removeClass('flt_fish_selected')
 
             this.ajaxAction(action, this.client_state_args);
         },
@@ -1083,6 +1123,11 @@ function (dojo, declare) {
                 // TODO
             }
 
+            // Remove any traded fish crates
+            for (var i = 0; i < parseInt(notif.args.nbr_fish); i++) {
+                this.removeFishCube(notif.args.player_id);
+            }
+
             // Player takes license card
             this.player_licenses[notif.args.player_id].addToStockWithId(
                 notif.args.license_type,
@@ -1129,6 +1174,11 @@ function (dojo, declare) {
                     notif.args.boat_id,
                     'overall_player_board_' + notif.args.player_id
                 );
+            }
+
+            // Remove any traded fish crates
+            for (var i = 0; i < parseInt(notif.args.nbr_fish); i++) {
+                this.removeFishCube(notif.args.player_id);
             }
         },
 
@@ -1180,16 +1230,7 @@ function (dojo, declare) {
             console.log('notify_tradeFish');
             console.log(notif);
 
-            var zone = this.player_fish[notif.args.player_id];
-            var nbr_fish = zone.getItemNumber() - 1;
-            if (nbr_fish < 0) {
-                // Shouldn't be able to get here?
-                alert("ERROR: no fish cubes to trade");
-                return;
-            }
-
-            var fish_div = notif.args.player_id + '_fish_' + nbr_fish;
-            zone.removeFromZone(fish_div, true, 'site-logo');//TODO: discard area
+            this.removeFishCube(notif.args.player_id);
         },
 
         notif_draw: function (notif)
