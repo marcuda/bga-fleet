@@ -388,7 +388,6 @@ class fleet extends Table
             if (self::getGameStateValue('auction_winner')) {
                 // Auction won
                 // All cards in hand can be used
-                // TODO: fish crates
                 $moves = $this->cards->getPlayerHand($player_id);
             } else if (!self::getGameStateValue('auction_card')) {
                 // Start new auction
@@ -565,11 +564,14 @@ class fleet extends Table
             $coins += $card_info['coins'];
         }
 
+        // Each processed fish crate can be sold for $1
+        $coins += $this->getFishCrates($player_id);
+
         // Add one for each Shrimp License as it effectively
         // increases the player's buying power
         $shrimp = $this->getLicenses($player_id, LICENSE_SHRIMP);
         $coins += count($shrimp);
-        
+
         return $coins;
     }
 
