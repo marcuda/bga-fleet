@@ -56,8 +56,8 @@
     <div id="playertable_{PLAYER_ID}_wrap" style="display:flex; flex-wrap:wrap">
         <div class="whiteblock flt_player_table">
             <h3 style="color:#{PLAYER_COLOR}">{PLAYER_NAME}'s {LICENSES}</h3>
+            <div id="playerfish_{PLAYER_ID}" class="flt_fish_player"></div>
             <div id="playerlicenses_{PLAYER_ID}"></div>
-            <div id="playerfish_{PLAYER_ID}" style="width:180px;"></div>
         </div>
         &nbsp;
         <div class="whiteblock flt_player_table">
@@ -75,7 +75,7 @@
 var jstpl_boat = 
     '<div id="cardcontent_${id}">' +
         '<div id="captain_${id}" class="flt_boat flt_captain"></div>' +
-        '<div id="fish_${id}" class="flt_fish_zone"></div>' +
+        '<div id="fish_${id}" class="flt_fish_boat"></div>' +
     '</div>';
 var jstpl_fish = '<div id="fish_${player_id}_${card_id}_${fish_id}" class="flt_icon_fish"></div>';
 var jstpl_pfish = '<div id="${player_id}_fish_${fish_id}" class="flt_icon_fish"></div>';
