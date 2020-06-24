@@ -629,7 +629,7 @@ class fleet extends Table
         // Discard cards and fish crates
         $this->cards->moveCards($card_ids, 'discard');
         if ($fish > 0) {
-            $this->incFishCrates($player_id, $fish);
+            $this->incFishCrates($player_id, -$fish);
         }
 
         // Take license
@@ -721,7 +721,7 @@ class fleet extends Table
         // Discard cards and fish crates
         $this->cards->moveCards($card_ids, 'discard');
         if ($fish > 0) {
-            $this->incFishCrates($player_id, $fish);
+            $this->incFishCrates($player_id, -$fish);
         }
 
         // Play boat card
