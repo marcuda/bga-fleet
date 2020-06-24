@@ -999,6 +999,7 @@ function (dojo, declare) {
                 // Undo fish crate processing
                 for (var card_id in this.client_state_args.fish_ids) {
                     console.log('READD FISH ' + card_id);
+                    this.removeFishCube(this.player_id);
                     this.addFishCube(card_id, this.player_id);
                 }
             }
