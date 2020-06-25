@@ -147,7 +147,7 @@ function (dojo, declare) {
 
             this.license_counter = new ebg.counter();
             this.license_counter.create('licensecount');
-            this.license_counter.setValue(gamedatas.cards['licenses']);
+            this.license_counter.setValue(gamedatas.cards['licenses'] || 0);
             this.boat_counter = new ebg.counter();
             this.boat_counter.create('boatcount');
             this.boat_counter.setValue(gamedatas.cards['deck']);
@@ -1060,6 +1060,7 @@ function (dojo, declare) {
             this.notifqueue.setSynchronous('fishing', 1000);
             dojo.subscribe('processFish', this, 'notif_processFish');
             dojo.subscribe('tradeFish', this, 'notif_tradeFish');
+            dojo.subscribe('drawLog', this, 'notif_drawLog');
             dojo.subscribe('draw', this, 'notif_draw');
             this.notifqueue.setSynchronous('draw', 1000);
             dojo.subscribe('discard', this, 'notif_discard');
@@ -1166,6 +1167,7 @@ function (dojo, declare) {
             for (var i in notif.args.cards) {
                 var card = notif.args.cards[i];
                 this.auction.table.addToStockWithId(card.type_arg, card.id, 'licensecount');
+                this.license_counter.incValue(-1);
             }
         },
         
@@ -1265,6 +1267,7 @@ function (dojo, declare) {
             if (notif.args.player_id == this.player_id) {
                 this.player_coins -= 1;
             }
+            this.boat_counter.incValue(-notif.args.nbr_cards);
         },
 
         notif_draw: function (notif)
@@ -1279,6 +1282,14 @@ function (dojo, declare) {
                 stock.addToStockWithId(card.type_arg, card.id, 'boatcount');
                 this.player_coins += this.card_infos[card.type_arg]['coins'];
             }
+        },
+
+        notif_drawLog: function (notif)
+        {
+            console.log('notify_drawLog');
+            console.log(notif);
+            this.boat_counter.incValue(-notif.args.nbr);
+            //TODO: animate draw for other players?
         },
 
         notif_discard: function (notif)
