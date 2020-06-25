@@ -1213,7 +1213,7 @@ class fleet extends Table
                 $msg = $bonus . ': ';
             }
             $msg .= clienttranslate('${player_name} draws ${nbr} card(s)');
-            self::notifyAllPlayers('log', $msg, array(
+            self::notifyAllPlayers('drawLog', $msg, array(
                 'player_name' => self::getActivePlayerName(),
                 'nbr' => $nbr,
             ));
