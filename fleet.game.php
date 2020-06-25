@@ -658,6 +658,10 @@ class fleet extends Table
             $msg .= clienttranslate(' and ${nbr_fish} fish crate(s)');
         }
         $msg .= clienttranslate(' for $${coins}');
+        if ($discount > 0) {
+            $msg .= " (with $$discount " . $this->card_types[LICENSE_SHRIMP]['name'] . ' ';
+            $msg .= clienttranslate('discount') . ')';
+        }
         self::notifyAllPlayers('buyLicense', $msg, array(
             'player_name' => self::getActivePlayerName(),
             'nbr_cards' => count($card_ids),
@@ -749,6 +753,10 @@ class fleet extends Table
             $msg .= clienttranslate(' and ${nbr_fish} fish crates');
         }
         $msg .= clienttranslate(' for $${coins} to launch a ${card_name}');
+        if ($discount > 0) {
+            $msg .= " (with $$discount " . $this->card_types[LICENSE_SHRIMP]['name'] . ' ';
+            $msg .= clienttranslate('discount') . ')';
+        }
         self::notifyAllPlayers('launchBoat', $msg, array(
             'player_name' => self::getActivePlayerName(),
             'nbr_cards' => count($card_ids),
@@ -845,7 +853,6 @@ class fleet extends Table
         $this->incFishCrates($player_id, count($card_ids));
         $this->incScore($player_id, -count($card_ids));
 
-        //TODO: notify
         $msg = clienttranslate('${player_name} processes ${nbr_fish} fish crate(s)');
         self::notifyAllPlayers('processFish', $msg, array(
             'player_name' => self::getActivePlayerName(),
@@ -996,7 +1003,8 @@ class fleet extends Table
                     if ($nbr_license > 0 &&
                         self::getGameStateValue('current_player_launches') > 0)
                     {
-                        $this->drawCards($player_id, $nbr_license, 'hand');
+                        $this->drawCards($player_id, $nbr_license, 'hand',
+                            $this->card_types[LICENSE_COD]['name']);
                     }
                 }
             } else if ($current_phase == PHASE_HIRE) {
@@ -1040,7 +1048,8 @@ class fleet extends Table
                             $nbr_cards = 0;
                         }
 
-                        $this->drawCards($player_id, $nbr_cards, 'hand');
+                        $this->drawCards($player_id, $nbr_cards, 'hand',
+                            $this->card_types[LICENSE_LOBSTER]['name']);
                     }
                 }
             } else {
@@ -1188,17 +1197,23 @@ class fleet extends Table
             }
         }
 
-        $this->drawCards($player_id, $nbr, $dest);
+        $this->drawCards($player_id, $nbr, $dest,
+            $bonus == 0 ? null : $this->card_types[LICENSE_TUNA]['name']);
     }
 
-    function drawCards($player_id, $nbr, $dest)
+    function drawCards($player_id, $nbr, $dest, $bonus=null)
     {
         if ($nbr > 0) {
             // Draw cards
             $cards = $this->cards->pickCardsForLocation($nbr, 'deck', $dest, $player_id);
 
             // All players get log notice but only current player gets card details
-            self::notifyAllPlayers('log', clienttranslate('${player_name} draws ${nbr} card(s)'), array(
+            $msg = '';
+            if ($bonus != null) {
+                $msg = $bonus . ': ';
+            }
+            $msg .= clienttranslate('${player_name} draws ${nbr} card(s)');
+            self::notifyAllPlayers('log', $msg, array(
                 'player_name' => self::getActivePlayerName(),
                 'nbr' => $nbr,
             ));
