@@ -883,7 +883,7 @@ class fleet extends Table
 
         // Remove fish crate and draw card(s)
         $this->incFishCrates($player_id, -1);
-        $cards = $this->cards->pickCards(count($license), 'hand', $player_id);
+        $cards = $this->cards->pickCards(count($license), 'deck', $player_id);
 
         $msg = clienttranslate('${player_name} trades a fish crate for ${nbr_cards} card(s)');
         self::notifyAllPlayers('tradeFish', $msg, array(
