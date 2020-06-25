@@ -1061,7 +1061,9 @@ function (dojo, declare) {
             dojo.subscribe('processFish', this, 'notif_processFish');
             dojo.subscribe('tradeFish', this, 'notif_tradeFish');
             dojo.subscribe('draw', this, 'notif_draw');
+            this.notifqueue.setSynchronous('draw', 1000);
             dojo.subscribe('discard', this, 'notif_discard');
+            this.notifqueue.setSynchronous('discard', 500);
         },  
         
         // TODO: from this point and below, you can write your game notifications handling methods
