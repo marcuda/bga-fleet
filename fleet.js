@@ -1142,6 +1142,9 @@ function (dojo, declare) {
             );
             this.auction.table.removeFromStockById(notif.args.license_id);
 
+            // Score VP from license
+            this.scoreCtrl[notif.args.player_id].incValue(notif.args.points);
+
             this.resetAuction(notif.args.player_id);
         },
 
@@ -1182,6 +1185,9 @@ function (dojo, declare) {
                 );
             }
 
+            // Score VP from boat
+            this.scoreCtrl[notif.args.player_id].incValue(notif.args.points);
+
             // Remove any traded fish crates
             for (var i = 0; i < parseInt(notif.args.nbr_fish); i++) {
                 this.removeFishCube(notif.args.player_id);
@@ -1216,6 +1222,9 @@ function (dojo, declare) {
             }
 
             this.fish_counter.incValue(-notif.args.nbr_fish);
+
+            // Score 1 VP per fish crate
+            this.scoreCtrl[notif.args.player_id].incValue(notif.args.nbr_fish);
         },
 
         notif_processFish: function (notif)
@@ -1229,6 +1238,9 @@ function (dojo, declare) {
                     this.processFishCube(notif.args.card_ids[i], notif.args.player_id);
                 }
             }
+
+            // Score -1 VP per fish crate removed
+            this.scoreCtrl[notif.args.player_id].incValue(-notif.args.nbr_fish);
         },
 
         notif_tradeFish: function (notif)
