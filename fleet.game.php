@@ -657,10 +657,12 @@ class fleet extends Table
         if ($fish > 0) {
             $msg .= clienttranslate(' and ${nbr_fish} fish crate(s)');
         }
+        $msg .= clienttranslate(' for $${coins}');
         self::notifyAllPlayers('buyLicense', $msg, array(
             'player_name' => self::getActivePlayerName(),
             'nbr_cards' => count($card_ids),
             'nbr_fish' => $fish,
+            'coins' => $coins,
             'player_id' => $player_id,
             'card_ids' => $card_ids,
             'license_id' => $license_id,
@@ -746,11 +748,12 @@ class fleet extends Table
         if ($fish > 0) {
             $msg .= clienttranslate(' and ${nbr_fish} fish crates');
         }
-        $msg .= clienttranslate(' to launch a ${card_name}');
+        $msg .= clienttranslate(' for $${coins} to launch a ${card_name}');
         self::notifyAllPlayers('launchBoat', $msg, array(
             'player_name' => self::getActivePlayerName(),
             'nbr_cards' => count($card_ids),
             'nbr_fish' => $fish,
+            'coins' => $coins,
             'card_name' => $boat_info['name'],
             'player_id' => $player_id,
             'boat_id' => $boat_id,
