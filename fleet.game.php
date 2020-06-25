@@ -407,8 +407,7 @@ class fleet extends Table
             foreach ($cards as $card_id => $card) {
                 $move = array('can_play' => false);
                 $card_info = $this->getCardInfo($card);
-                if (!in_array($card_info['license'], $licenses)) {
-                    //TODO: king crab?
+                if (!$this->isLicenseInList($card['type_arg'], $card_info['license'], $licenses)) {
                     $move['error'] = clienttranslate('You do not have the required license');
                 } else if (($coins - $card_info['coins']) < $card_info['cost']) {
                     $move['error'] = clienttranslate('You cannot afford this boat');
@@ -440,6 +439,22 @@ class fleet extends Table
         }
 
         return $moves;
+    }
+
+    // Separate function because logic was getting too complicated...
+    function isLicenseInList($card_type, $license_type, $licenses)
+    {
+        if ($card_type == BOAT_CRAB) {
+            // Crab has three unique licenses that all launch the same boat
+            foreach ($license_type as $crab_type) {
+                if (in_array($crab_type, $licenses)) {
+                    return true;
+                }
+            }
+            return false;
+        } else {
+            return in_array($license_type, $licenses);
+        }
     }
 
     function incScore($player_id, $inc)
