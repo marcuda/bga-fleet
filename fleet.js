@@ -622,7 +622,9 @@ function (dojo, declare) {
                     this.auction.card_id = items[0].id;
                     this.client_state_args.card_id = this.auction.card_id;
                     this.client_state_args.bid = card_info['cost'];
-                    this.auction.high_bid = card_info['cost'];
+                    // Bid logic sets min at high_bid+1 so reduce it by one to start
+                    // This will sort itself out through the bid action
+                    this.auction.high_bid = card_info['cost'] - 1;
 
                     // Update page title and buttons for bidding
                     // Do not change state to allow player to change selection
