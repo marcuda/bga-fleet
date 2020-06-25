@@ -442,6 +442,14 @@ class fleet extends Table
         return $moves;
     }
 
+    function incScore($player_id, $inc)
+    {
+        if ($inc > 0) {
+            $inc = "+ $inc";
+        }
+        self::DbQuery("UPDATE player SET player_score = player_score $inc WHERE player_id = $player_id");
+    }
+
 //////////////////////////////////////////////////////////////////////////////
 //////////// Player actions
 //////////// 
@@ -634,8 +642,9 @@ class fleet extends Table
             $this->incFishCrates($player_id, -$fish);
         }
 
-        // Take license
+        // Take license and score VP
         $this->cards->moveCard($license_id, 'table', $player_id);
+        $this->incScore($player_id, $license_info['points']);
 
         // Reset auction
         self::setGameStateValue('auction_card', 0);
@@ -656,6 +665,7 @@ class fleet extends Table
             'card_ids' => $card_ids,
             'license_id' => $license_id,
             'license_type' => $license['type_arg'],
+            'points' => $license_info['points'],
         ));
 
         $this->gamestate->nextState();
@@ -726,9 +736,11 @@ class fleet extends Table
             $this->incFishCrates($player_id, -$fish);
         }
 
-        // Play boat card
+        // Play boat card and score VP
         $this->cards->moveCard($boat_id, 'table', $player_id);
+        $this->incScore($player_id, $boat_info['points']);
         self::incGameStateValue('current_player_launches', 1);
+
 
         $msg = clienttranslate('${player_name} discards ${nbr_cards} card(s)');
         if ($fish > 0) {
@@ -744,6 +756,7 @@ class fleet extends Table
             'boat_id' => $boat_id,
             'boat_type' => $boat['type_arg'],
             'card_ids' => $card_ids,
+            'points' => $boat_info['points'],
         ));
 
         $this->gamestate->nextState();
@@ -825,8 +838,9 @@ class fleet extends Table
             self::DbQuery("UPDATE card SET nbr_fish = nbr_fish - 1 WHERE card_id = $card_id");
         }
 
-        // Add fish to PV
+        // Add fish to PV and reduce score
         $this->incFishCrates($player_id, count($card_ids));
+        $this->incScore($player_id, -count($card_ids));
 
         //TODO: notify
         $msg = clienttranslate('${player_name} processes ${nbr_fish} fish crate(s)');
@@ -1127,11 +1141,17 @@ class fleet extends Table
                 }
             }
 
+            $nbr_fish = count($boat_ids);
+            if ($nbr_fish > 0) {
+                // Score 1 VP per fish crate
+                $this->incScore($player_id, $nbr_fish);
+            }
+
             //TODO: notify if zero?
             $msg = '${player_name} gains ${nbr_fish} fish crate(s)';
             self::notifyAllPlayers('fishing', $msg, array(
                 'player_name' => $player['player_name'],
-                'nbr_fish' => count($boat_ids),
+                'nbr_fish' => $nbr_fish,
                 'player_id' => $player_id,
                 'card_ids' => $boat_ids
             ));
