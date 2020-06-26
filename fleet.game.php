@@ -203,20 +203,24 @@ class fleet extends Table
         // Note: you can retrieve some extra field you added for "player" table in "dbmodel.sql" if you need it.
         $sql = "SELECT player_id id, player_score score, auction_bid bid, auction_pass pass, passed done FROM player ";
         $result['players'] = self::getCollectionFromDb( $sql );
+        $result['first_player'] = self::getGameStateValue('first_player');
 
         // Get player cards on table
         $players = self::loadPlayersBasicInfos();
         $boats = array();
         $licenses = array();
         $fish = array();
+        $hands = array();
         foreach ($players as $player_id => $player) {
             $boats[$player_id] = $this->getBoats($player_id);
             $licenses[$player_id] = $this->getLicenses($player_id);
             $fish[$player_id] = $this->getFishCrates($player_id);
+            $hands[$player_id] = count($this->cards->getPlayerHand($player_id));
         }
         $result['boats'] = $boats;
         $result['licenses'] = $licenses;
         $result['processed_fish'] = $fish;
+        $result['hand_cards'] = $hands;
 
         $result['hand'] = $this->cards->getPlayerHand($current_player_id);
         $result['coins'] = $this->getCoins($current_player_id);
@@ -935,8 +939,9 @@ class fleet extends Table
         $kept = $this->cards->getCardsInLocation('draw', $player_id);
         $this->cards->moveAllCardsInLocation('draw', 'hand', $player_id, $player_id);
 
-        self::notifyAllPlayers('log', clienttranslate('${player_name} discards a card'), array(
+        self::notifyAllPlayers('discardLog', clienttranslate('${player_name} discards a card'), array(
             'player_name' => self::getActivePlayerName(),
+            'player_id' => $player_id,
         ));
         self::notifyPlayer($player_id, 'discard', '', array(
             'discard' => $card,
@@ -1230,6 +1235,7 @@ class fleet extends Table
             $msg .= clienttranslate('${player_name} draws ${nbr} card(s)');
             self::notifyAllPlayers('drawLog', $msg, array(
                 'player_name' => self::getActivePlayerName(),
+                'player_id' => $player_id,
                 'nbr' => $nbr,
             ));
             self::notifyPlayer($player_id, 'draw', '', array(
@@ -1246,7 +1252,10 @@ class fleet extends Table
         $first_player = $next_player[$player_id];
         self::setGameStateValue('first_player', $first_player);
 
-        //TODO: notify for token
+        self::notifyAllPlayers('firstPlayer', '', array(
+            'current_player_id' => $player_id,
+            'next_player_id' => $first_player,
+        ));
 
         return $first_player;
     }
