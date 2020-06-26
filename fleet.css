@@ -130,3 +130,35 @@
     /*TODO: make this more interesting*/
     border: 1px solid red ! important;
 }
+
+.flt_board {
+    display: inline-block;
+    margin-top: 5px;
+    margin-left: 5px;
+}
+
+.flt_board > .imgtext {
+    margin-right: 3px;
+}
+
+.flt_board > span {
+    margin-right: 5px;
+}
+
+.flt_board > div {
+    display: inline-block;
+}
+
+.flt_boat_token {
+    position: relative;
+    display: none;
+    width: 39px;
+    height: 28px;
+    background-image: url('img/firsttoken.png');
+    margin-right: 5px;
+    margin-left: 10px;
+}
+
+.flt_first_player {
+    display: inline-block ! important;
+}

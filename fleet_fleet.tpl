@@ -79,6 +79,15 @@ var jstpl_boat =
     '</div>';
 var jstpl_fish = '<div id="fish_${player_id}_${card_id}_${fish_id}" class="flt_icon_fish"></div>';
 var jstpl_pfish = '<div id="${player_id}_fish_${fish_id}" class="flt_icon_fish"></div>';
+var jstpl_player_board =
+    '<div class="flt_board">' +
+        '<img id="handcount_icon_p${id}" class="imgtext" src="${url}/img/hand.png">' +
+        '<span id="handcount_p${id}">0</span>' +
+        '&nbsp;' +
+        '<div id="first_anchor_p${id}" style="height:28px; width:54px;">' +
+            '<div id="first_player_p${id}" class="flt_boat_token"></div>' +
+        '</div>' +
+    '</div>';
 
 /*
 // Example:

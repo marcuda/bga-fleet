@@ -39,6 +39,7 @@ function (dojo, declare) {
             this.license_counter = null;
             this.boat_counter = null;
             this.fish_counter = null;
+            this.hand_counters = [];
             this.client_state_args = {};
             this.card_infos = null;
             this.player_coins = 0;
@@ -80,10 +81,16 @@ function (dojo, declare) {
             // Setting up player boards
             for( var player_id in gamedatas.players )
             {
+                // Player board
                 var player = gamedatas.players[player_id];
-                         
-                // TODO: Setting up players boards if needed
+                player.url = g_gamethemeurl;
+                var player_board_div = $('player_board_' + player_id);
+                dojo.place(this.format_block('jstpl_player_board', player), player_board_div);
 
+                this.hand_counters[player_id] = new ebg.counter();
+                this.hand_counters[player_id].create('handcount_p' + player_id);
+                this.hand_counters[player_id].setValue(gamedatas.hand_cards[player_id] || 0);
+                         
                 // Player license cards
                 this.player_licenses[player_id] = this.createStockLicense('playerlicenses_' + player_id);
                 var licenses = gamedatas.licenses[player_id];
@@ -127,6 +134,9 @@ function (dojo, declare) {
                 }
                 this.auction.bids[player_id] = bid;
             }
+
+            // First player
+            dojo.addClass('first_player_p' + gamedatas.first_player, 'flt_first_player');
 
             // License Auction
             this.auction.card_id = parseInt(gamedatas.auction_card);
@@ -1062,6 +1072,8 @@ function (dojo, declare) {
             // dojo.subscribe( 'cardPlayed', this, "notif_cardPlayed" );
             // this.notifqueue.setSynchronous( 'cardPlayed', 3000 );
             // 
+            dojo.subscribe('firstPlayer', this, 'notif_firstPlayer');
+            this.notifqueue.setSynchronous('firstPlayer', 1000);
             dojo.subscribe('pass', this, 'notif_pass');
             dojo.subscribe('possibleMoves', this, 'notif_possibleMoves');
             dojo.subscribe('auctionSelect', this, 'notif_auctionSelect');
@@ -1080,11 +1092,31 @@ function (dojo, declare) {
             dojo.subscribe('drawLog', this, 'notif_drawLog');
             dojo.subscribe('draw', this, 'notif_draw');
             this.notifqueue.setSynchronous('draw', 1000);
+            dojo.subscribe('discardLog', this, 'notif_discardLog');
             dojo.subscribe('discard', this, 'notif_discard');
             this.notifqueue.setSynchronous('discard', 500);
         },  
         
         // TODO: from this point and below, you can write your game notifications handling methods
+        notif_firstPlayer: function(notif)
+        {
+            var durration = 1000; // 1s animation
+
+            // Clear existing token
+            dojo.query('.flt_first_player').removeClass('flt_first_player');
+            var curr = 'first_anchor_p' + notif.args.current_player_id;
+            var next = 'first_anchor_p' + notif.args.next_player_id;
+
+            // Create temporary token to animate rotation
+            var tmp = '<div id="tmp_first_token" style="z-index:99" class="flt_boat_token flt_first_player"></div>';
+            this.slideTemporaryObject(tmp, 'overall_player_board_' + notif.args.current_player_id, curr, next, durration, 0);
+
+            // Show token for next player after animation finishes
+            setTimeout(function() {
+                dojo.addClass('first_player_p' + notif.args.next_player_id, 'flt_first_player');
+            }, durration);
+        },
+
         notif_pass: function (notif)
         {
             console.log('notify_pass');
@@ -1158,6 +1190,9 @@ function (dojo, declare) {
                 this.removeFishCube(notif.args.player_id);
             }
 
+            // Remove discards from hand count
+            this.hand_counters[notif.args.player_id].incValue(-notif.args.card_ids.length);
+
             // Player takes license card
             this.player_licenses[notif.args.player_id].addToStockWithId(
                 notif.args.license_type,
@@ -1213,6 +1248,9 @@ function (dojo, declare) {
                 );
             }
 
+            // Remove discards and launch from hand count
+            this.hand_counters[notif.args.player_id].incValue(-notif.args.card_ids.length-1);
+
             // Score VP from boat
             this.scoreCtrl[notif.args.player_id].incValue(notif.args.points);
 
@@ -1240,6 +1278,9 @@ function (dojo, declare) {
                 // Animate cards from other player
                 // TODO
             }
+
+            // Remove captain card from hand count
+            this.hand_counters[notif.args.player_id].incValue(-1);
         },
 
         notif_fishing: function (notif)
@@ -1285,6 +1326,7 @@ function (dojo, declare) {
                 this.player_coins -= 1;
             }
             this.boat_counter.incValue(-notif.args.nbr_cards);
+            this.hand_counters[notif.args.player_id].incValue(notif.args.nbr_cards);
         },
 
         notif_draw: function (notif)
@@ -1306,6 +1348,15 @@ function (dojo, declare) {
             console.log('notify_drawLog');
             console.log(notif);
             this.boat_counter.incValue(-notif.args.nbr);
+            this.hand_counters[notif.args.player_id].incValue(notif.args.nbr);
+            //TODO: animate draw for other players?
+        },
+
+        notif_discardLog: function (notif)
+        {
+            console.log('notify_discardLog');
+            console.log(notif);
+            this.hand_counters[notif.args.player_id].incValue(-1);
             //TODO: animate draw for other players?
         },
 
