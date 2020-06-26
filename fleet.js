@@ -209,19 +209,30 @@ function (dojo, declare) {
                     }
                     console.log(debug);
                     this.client_state_args = {};
-                    if (this.auction.winner == this.player_id) {
-                        // Current player won auction
-                        this.auction.high_bid -= this.discount; // Shrimp License reduction
-                        if (this.auction.high_bid <= 0) {
-                            // Shrimp discount enough that license is free (unlikely)
-                            this.buyAction('buyLicense');
+                    if (this.auction.winner) {
+                        // Player won license auction
+                        if (this.isCurrentPlayerActive()) {
+                            // Current player is winner and must pay
+                            this.auction.high_bid -= this.discount; // Shrimp License reduction
+                            if (this.auction.high_bid <= 0) {
+                                // Shrimp discount enough that license is free (unlikely)
+                                this.buyAction('buyLicense');
+                            } else {
+                                this.client_state_args.cost = this.auction.high_bid;
+                                this.client_state_args.fish_crates = 0;
+                                dojo.query('div[id^="' + this.player_id + '_fish_"]').style('cursor', 'pointer');
+                                var desc = _('${you} must discard cards to pay');
+                                desc += ' 0/' + this.client_state_args.cost
+                                this.setClientState('client_auctionWin', {
+                                    descriptionmyturn: desc
+                                });
+                            }
                         } else {
-                            this.client_state_args.cost = this.auction.high_bid;
-                            this.client_state_args.fish_crates = 0;
-                            dojo.query('div[id^="' + this.player_id + '_fish_"]').style('cursor', 'pointer');
-                            this.setClientState('client_auctionWin', {
-                                descriptionmyturn: _('${you} must discard cards to pay ') + '0/' + this.client_state_args.cost
-                            });
+                            // Other player, just update title
+                            var desc = _('${actplayer} must discard to pay');
+                            desc += ' ' + this.auction.high_bid;
+                            this.gamedatas.gamestate.description = desc;
+                            this.updatePageTitle();
                         }
                     } else if (this.auction.card_id) {
                         // Bid on selected license
@@ -369,7 +380,7 @@ function (dojo, declare) {
                             this.addActionButton('button_1', '-1', 'onMinusOne', null, false, 'gray');
                             var color = this.player_coins == this.client_state_args.bid ? 'gray' : 'blue';
                             this.addActionButton('button_2', '+1', 'onPlusOne', null, false, color);
-                            this.addActionButton('button_3', _('Bid') + ' (' + this.client_state_args.bid + ')', 'onBid');
+                            this.addActionButton('button_3', _('Bid') + ': ' + this.client_state_args.bid, 'onBid');
                         }
                         this.addActionButton('button_4', _('Pass'), 'onPass');
                         break;
@@ -633,13 +644,19 @@ function (dojo, declare) {
                     this.removeActionButtons();
                     this.addActionButton('button_1', '-1', 'onMinusOne', null, false, 'gray');
                     this.addActionButton('button_2', '+1', 'onPlusOne');
-                    this.addActionButton('button_3', _('Bid') + ' (' + this.client_state_args.bid + ')', 'onBid');
+                    this.addActionButton('button_3', _('Bid') + ': ' + this.client_state_args.bid, 'onBid');
                     this.addActionButton('button_4', _('Pass'), 'onPass');
 
                 } else {
                     // Cannot select new auction card
                     this.auction.table.unselectAll();
                 }
+            } else if (this.checkAction('bid', true)) {
+                // First player undid selection, change title back
+                this.gamedatas.gamestate.descriptionmyturn = _('${you} may select a license to bid on'),
+                this.updatePageTitle();
+                this.removeActionButtons();
+                this.addActionButton('button_1', _('Pass'), 'onPass');
             }
         },
 
@@ -866,7 +883,7 @@ function (dojo, declare) {
             }
 
             // Update button text with current bid
-            $('button_3').textContent = _('Bid') + ' (' + this.client_state_args.bid + ')';
+            $('button_3').textContent = _('Bid') + ': ' + this.client_state_args.bid;
         },
 
         onMinusOne: function(evt)
@@ -896,7 +913,7 @@ function (dojo, declare) {
             }
 
             // Update button text with current bid
-            $('button_3').textContent = _('Bid') + ' (' + this.client_state_args.bid + ')';
+            $('button_3').textContent = _('Bid') + ': ' + this.client_state_args.bid;
         },
 
         onBid: function(evt)
