@@ -58,6 +58,7 @@ if (!defined("STATE_AUCTION")) {
     define("STATE_TRADING", 7);
     define("STATE_DRAW", 8);
     define("STATE_NEXT_PLAYER", 9);
+    define("STATE_FINAL_SCORE", 10);
 }
  
 $machinestates = array(
@@ -133,8 +134,14 @@ $machinestates = array(
             "trading" => STATE_TRADING,
             "draw" => STATE_DRAW,
             "cantPlay" => STATE_NEXT_PLAYER,
-            "gameEnd" => 99
+            "finalScore" => STATE_FINAL_SCORE,
         )
+    ),
+    STATE_FINAL_SCORE => array(
+        "name" => "finalScore",
+        "type" => "game",
+        "action" => "stFinalScore",
+        "transitions" => array("" => 99)
     ),
 
     // Final state.

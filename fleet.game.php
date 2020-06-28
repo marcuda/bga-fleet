@@ -124,7 +124,6 @@ class fleet extends Table
         // Separate licenses from boats
         $licenses = $this->cards->getCardsOfType(CARD_LICENSE);
         $this->cards->moveCards(array_column($licenses, 'id'), 'licenses');
-        $this->cards->shuffle('licenses');
 
         // Setup license deck
         // Separate all premium and 8-10 common licenses
@@ -1092,7 +1091,7 @@ class fleet extends Table
                         // New round, advance first player token
                         $player_id = $this->rotateFirstPlayer();
                         if (self::getGameStateValue('final_round')) {
-                            $next_state = "gameEnd";
+                            $next_state = 'finalScore';
                         }
                     }
                 }
@@ -1192,7 +1191,7 @@ class fleet extends Table
         if ($fish <= 0) {
             // No more fish crates, game is over!
             // TODO: notify
-            return 'gameEnd';
+            return 'finalScore';
         } else {
             // Next phase
             return $this->nextPhase();
@@ -1354,6 +1353,92 @@ class fleet extends Table
             self::setGameStateValue('final_round', 1);
             //TODO: notify
         }
+    }
+
+    function stFinalScore()
+    {
+        $players = self::loadPlayersBasicInfos();
+
+        // King Crab captain license: +1VP per captained boat (max 10)
+        $crab = $this->cards->getCardsOfType(CARD_LICENSE, LICENSE_CRAB_C);
+        $card = array_shift($crab);
+        if ($card['location'] == 'table') {
+            $player_id = $card['location_arg'];
+            $boats = $this->getBoats($player_id);
+            $captains = array_sum(array_column($boats, 'has_captain'));
+            $points = min($captains, 10);
+            $this->incScore($player_id, $points);
+            $msg = clienttranslate('${card_name}: ${player_name} scores ${points} points for ${nbr} captains');
+            self::notifyAllPlayers('finalScore', $msg, array(
+                'card_name' => $this->getCardName($card),
+                'player_name' => $players[$player_id]['player_name'],
+                'points' => $points,
+                'nbr' => $captains,
+                'player_id' => $player_id,
+            ));
+        }
+
+        // Kig Crab fish crate license: +1VP per 3 fish crates (max 10)
+        $crab = $this->cards->getCardsOfType(CARD_LICENSE, LICENSE_CRAB_F);
+        $card = array_shift($crab);
+        if ($card['location'] == 'table') {
+            $player_id = $card['location_arg'];
+            $boats = $this->getBoats($player_id);
+            $fish = array_sum(array_column($boats, 'fish'));
+            $points = min(intdiv($fish, 3), 10);
+            $this->incScore($player_id, $points);
+            $msg = clienttranslate('${card_name}: ${player_name} scores ${points} points for ${nbr} fish crates');
+            self::notifyAllPlayers('finalScore', $msg, array(
+                'card_name' => $this->getCardName($card),
+                'player_name' => $players[$player_id]['player_name'],
+                'points' => $points,
+                'nbr' => $fish,
+                'player_id' => $player_id,
+            ));
+        }
+
+        // King Crab licenses license: +VP depending on number difference licenses
+        $crab = $this->cards->getCardsOfType(CARD_LICENSE, LICENSE_CRAB_L);
+        $card = array_shift($crab);
+        if ($card['location'] == 'table') {
+            $player_id = $card['location_arg'];
+            $licenses = array_column($this->getLicenses($player_id), 'type_arg');
+            $unique = count(array_unique($licenses));
+            // All King Crab count as one type so do not double count any others
+            if (in_array(LICENSE_CRAB_F, $licenses)) {
+                $unique -= 1;
+            }
+            if (in_array(LICENSE_CRAB_C, $licenses)) {
+                $unique -= 1;
+            }
+
+            if ($unique == 1) {
+                $points = 0;
+            } else if ($unique == 2) {
+                $points = 2;
+            } else if ($unique == 3) {
+                $points = 4;
+            } else if ($unique == 4) {
+                $points = 5;
+            } else if ($unique == 5) {
+                $points = 6;
+            } else if ($unique == 6) {
+                $points = 8;
+            } else if ($unique == 7) {
+                $points = 10;
+            }
+            $this->incScore($player_id, $points);
+            $msg = clienttranslate('${card_name}: ${player_name} scores ${points} points for ${nbr} different licenses');
+            self::notifyAllPlayers('finalScore', $msg, array(
+                'card_name' => $this->getCardName($card),
+                'player_name' => $players[$player_id]['player_name'],
+                'points' => $points,
+                'nbr' => $unique,
+                'player_id' => $player_id,
+            ));
+        }
+
+        $this->gamestate->nextState();
     }
 
 //////////////////////////////////////////////////////////////////////////////

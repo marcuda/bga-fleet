@@ -1095,6 +1095,7 @@ function (dojo, declare) {
             dojo.subscribe('discardLog', this, 'notif_discardLog');
             dojo.subscribe('discard', this, 'notif_discard');
             this.notifqueue.setSynchronous('discard', 500);
+            dojo.subscribe('finalScore', this, 'notif_finalScore');
         },  
         
         // TODO: from this point and below, you can write your game notifications handling methods
@@ -1379,6 +1380,13 @@ function (dojo, declare) {
                 this.playerHand.addToStockWithId(card.type_arg, card.id, this.draw_table.getItemDivId(card.id));
                 this.draw_table.removeFromStockById(card.id);
             }
+        },
+
+        notif_finalScore: function(notif)
+        {
+            console.log('notif_finalScore');
+            console.log(notif);
+            this.scoreCtrl[notif.args.player_id].incValue(notif.args.points);
         },
    });             
 });
