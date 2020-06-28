@@ -110,7 +110,7 @@ class fleet extends Table
         //self::initStat( 'table', 'table_teststat1', 0 );    // Init a table statistics
         //self::initStat( 'player', 'player_teststat1', 0 );  // Init a player statistics (for all players)
 
-        // TODO: setup the initial game situation here
+        // Card decks
         $cards = array();
         foreach ($this->card_types as $idx => $card) {
             $cards[] = array(
@@ -154,11 +154,7 @@ class fleet extends Table
         }
 
         // Draw initial licenses for auction
-        if ($nbr_players == 1) { //TODO XXX
-            $this->cards->pickCardsForLocation(4, 'licenses', 'auction');
-        } else {
-           $this->cards->pickCardsForLocation($nbr_players, 'licenses', 'auction');
-        }
+        $this->cards->pickCardsForLocation($nbr_players, 'licenses', 'auction');
 
         // Give each player one of each boat
         foreach ($this->boat_types as $type_arg) {
@@ -372,10 +368,10 @@ class fleet extends Table
 
     function incFishCrates($player_id, $inc)
     {
-        if ($inc > 0) {
-            $inc = "+ $inc";
+        if ($inc == 0) {
+            return;
         }
-        self::DbQuery("UPDATE player SET fish_crates = fish_crates $inc WHERE player_id = $player_id");
+        self::DbQuery("UPDATE player SET fish_crates = fish_crates + '$inc' WHERE player_id = $player_id");
     }
 
     function getHighBid()
@@ -462,10 +458,10 @@ class fleet extends Table
 
     function incScore($player_id, $inc)
     {
-        if ($inc > 0) {
-            $inc = "+ $inc";
+        if ($inc == 0) {
+            return;
         }
-        self::DbQuery("UPDATE player SET player_score = player_score $inc WHERE player_id = $player_id");
+        self::DbQuery("UPDATE player SET player_score = player_score + '$inc' WHERE player_id = $player_id");
     }
 
 //////////////////////////////////////////////////////////////////////////////
