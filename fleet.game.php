@@ -1252,6 +1252,7 @@ class fleet extends Table
             'next_player_id' => $first_player,
         ));
 
+        $this->gamestate->changeActivePlayer($first_player);
         return $first_player;
     }
 
