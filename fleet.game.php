@@ -416,25 +416,23 @@ class fleet extends Table
                 $moves[$card_id] = $move;
             }
         } else if ($phase == PHASE_HIRE) {
-            $moves['hand'] = $this->cards->getPlayerHand($player_id);
-            $moves['boats'] = array();
             $boats = $this->getBoats($player_id);
-            foreach ($boats as $boat_id => $boat) {
+            foreach ($boats as $card_id => $boat) {
                 if (!$boat['has_captain']) {
-                    $moves['boats'][] = $boat_id;
+                    $moves[$card_id] = true;
                 }
             }
         } else if ($phase == PHASE_PROCESSING) {
             $boats = $this->getBoats($player_id);
-            foreach ($boats as $boat_id => $boat) {
+            foreach ($boats as $card_id => $boat) {
                 if ($boat['fish'] > 0) {
-                    $moves[$boat_id] = true;
+                    $moves[$card_id] = true;
                 }
             }
         } else if ($phase == PHASE_TRADING) {
             //TODO
         } else if ($phase == PHASE_DRAW) {
-            //TODO
+            $moves[] = count($this->getLicenses($player_id, LICENSE_TUNA)) > 0;
         }
 
         return $moves;

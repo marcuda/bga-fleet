@@ -162,3 +162,8 @@
 .flt_first_player {
     display: inline-block ! important;
 }
+
+.flt_selectable {
+    border: 2px solid blue ! important;
+    border-radius: 12px;
+}
