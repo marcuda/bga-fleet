@@ -205,7 +205,9 @@ function (dojo, declare) {
         {
             console.log( 'Entering state: '+stateName );
             console.log(this.gamedatas.gamestate);
-            
+
+            this.showPossibleMoves();
+
             switch( stateName )
             {
                 case 'auction':
@@ -256,7 +258,7 @@ function (dojo, declare) {
                     } else {
                         // Select license for bid
                         this.setClientState('client_auctionSelect', {
-                            descriptionmyturn: _('${you} may choose a license to bid on')
+                            descriptionmyturn: _('${you} may select a license to bid on')
                         });
                     }
                     break;
@@ -318,6 +320,7 @@ function (dojo, declare) {
             dojo.style('auctionbids', 'display', 'none');
             dojo.query('.flt_disabled').removeClass('flt_disabled');
             dojo.query('.flt_fish_selected').removeClass('flt_fish_selected');
+            dojo.query('.flt_selectable').removeClass('flt_selectable');
             this.auction.table.setSelectionMode(0);
             this.playerHand.setSelectionMode(0);
             this.player_boats[this.player_id].setSelectionMode(0);
@@ -444,6 +447,76 @@ function (dojo, declare) {
         
         */
 
+        showPossibleMoves: function()
+        {
+            if (!this.isCurrentPlayerActive() || this.possible_moves.length == 0)
+                return;
+
+            console.log("POSSIBLE MOVES");
+            console.log(this.possible_moves);
+            console.log(this.gamedatas.gamestate.name);
+
+            switch(this.gamedatas.gamestate.name)
+            {
+                case 'client_auctionSelect':
+                    this.updateSelectables(this.auction.table, true);
+                    break;
+                case 'client_auctionWin':
+                    this.updateSelectables(this.playerHand, false);
+                    //highlight fish
+                    break;
+                case 'launch':
+                    this.updateSelectables(this.playerHand, true);
+                    break;
+                case 'client_launchPay':
+                    this.updateSelectables(this.playerHand, false);
+                    //highlight fish
+                    break;
+                case 'hire':
+                    this.updateSelectables(this.playerHand, false);
+                    this.updateSelectables(this.player_boats[this.player_id], true);
+                    break;
+                case 'processing':
+                    this.updateSelectables(this.player_boats[this.player_id], true);
+                    break;
+                case 'trading':
+                    //higlight fish cubes
+                    break;
+                case 'draw':
+                    if (this.hand_discard) {
+                        this.updateSelectables(this.playerHand, false);
+                    } else {
+                        this.updateSelectables(this.draw_table, false);
+                    }
+                    break;
+            }
+        },
+
+        updateSelectables: function(stock, validate)
+        {
+            // Remove additional highlight on selected items
+            var items = stock.getSelectedItems();
+            for (var i in items) {
+                var div = stock.getItemDivId(items[i].id);
+                dojo.removeClass(div, 'flt_selectable');
+            }
+
+            // Highlight all (valid) others as blue possible moves
+            items = stock.getUnselectedItems();
+            for (var i in items) {
+                var card = this.possible_moves[items[i].id];
+                if (validate) {
+                    if (card === undefined)
+                        continue
+                    if (card.hasOwnProperty('can_play') && !card.can_play)
+                        continue
+                }
+                var div = stock.getItemDivId(items[i].id);
+                dojo.addClass(div, 'flt_selectable');
+            }
+        },
+
+
         createFishZone: function(id)
         {
             console.log('CREATE FISH: ' + id);
@@ -549,6 +622,7 @@ function (dojo, declare) {
             }
             stock.setSelectionMode(0);
             stock.onItemCreate = dojo.hitch(this, 'setupBoatDiv');
+            stock.setSelectionAppearance('class');
             return stock;
         },
 
@@ -627,7 +701,7 @@ function (dojo, declare) {
 
         onAuctionSelectionChanged: function()
         {
-            //TODO: error message when unable to select auction
+            this.showPossibleMoves();
             var items = this.auction.table.getSelectedItems();
 
             if (items.length > 0) {
@@ -635,6 +709,12 @@ function (dojo, declare) {
                     if (this.gamedatas.gamestate.name != 'client_auctionSelect') {
                         //TODO: error msg cannot select
                         //      this sould not happen!
+                        return;
+                    }
+
+                    if (!this.possible_moves[items[0].id]) {
+                        this.showMessage(_('You cannot afford the minimum cost for this license'), 'error');
+                        this.auction.table.unselectAll();
                         return;
                     }
 
@@ -710,6 +790,8 @@ function (dojo, declare) {
 
         onPlayerHandSelectionChanged: function()
         {
+            this.showPossibleMoves();
+
             var items = this.playerHand.getSelectedItems();
 
             console.log('hand select ' + this.gamedatas.gamestate.name);
@@ -784,9 +866,16 @@ function (dojo, declare) {
 
         onPlayerBoatsSelectionChanged: function()
         {
+            this.showPossibleMoves();
+
             var items = this.player_boats[this.player_id].getSelectedItems();
 
             if (items.length > 0 && this.checkAction('hireCaptain')) {
+                if (!this.possible_moves[items[0].id]) {
+                    this.showMessage(_('That boat already has a captain'), 'error');
+                    this.player_boats[this.player_id].unselectAll();
+                    return;
+                }
                 this.client_state_args.boat_id = items[0].id;
                 if (this.client_state_args.card_id) {
                     this.hireCaptain();
