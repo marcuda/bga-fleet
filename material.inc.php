@@ -35,6 +35,7 @@ if (!defined("LICENSE_SHRIMP")) {
     define("BOAT_COD", 12);
     define("BOAT_TUNA", 13);
     define("BOAT_CRAB", 14);
+    define("GONE_FISHING", 15);
 
     define("CARD_LICENSE", 'license');
     define("CARD_BOAT", 'boat');
@@ -76,6 +77,16 @@ $this->boat_types = array(
     BOAT_CRAB,
 );
 
+$this->gone_fishing_card = array(
+    'name' => clienttranslate("Gone Fishing"),
+    'type' => CARD_BOAT,
+    'license' => null,
+    'cost' => 0,
+    'points' => 2,
+    'coins' => 2,
+    'nbr' => 100,
+    'text' => clienttranslate("+2VP if in hand at end of game; discard for $2"),
+);
 
 $this->card_types = array(
     LICENSE_SHRIMP => array(
