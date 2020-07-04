@@ -181,6 +181,7 @@ function (dojo, declare) {
             // Player hand
             if (!this.isSpectator) { // Spectator has no hand element
                 this.playerHand = this.createStockBoat('myhand');
+                this.playerHand.vertical_overlap = 0; // remove space for captains
                 for (var i in gamedatas.hand) {
                     var card = gamedatas.hand[i];
                     this.playerHand.addToStockWithId(card.type_arg, card.id);
@@ -629,6 +630,9 @@ function (dojo, declare) {
             stock.setSelectionMode(0);
             stock.onItemCreate = dojo.hitch(this, 'setupBoatDiv');
             stock.setSelectionAppearance('class');
+            // make room for captain cards
+            stock.vertical_overlap = -15;
+            stock.use_vertical_overlap_as_offset = false;
             return stock;
         },
 
