@@ -430,9 +430,9 @@ class fleet extends Table
                 }
             }
         } else if ($phase == PHASE_TRADING) {
-            //TODO
+            $moves[] = true; // Client will track this directly
         } else if ($phase == PHASE_DRAW) {
-            $moves[] = count($this->getLicenses($player_id, LICENSE_TUNA)) > 0;
+            $moves[] = true; // Client will track this directly
         }
 
         return $moves;

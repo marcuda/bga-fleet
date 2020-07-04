@@ -232,7 +232,6 @@ function (dojo, declare) {
                             } else {
                                 this.client_state_args.cost = this.auction.high_bid;
                                 this.client_state_args.fish_crates = 0;
-                                dojo.query('div[id^="' + this.player_id + '_fish_"]').style('cursor', 'pointer');
                                 var desc = _('${you} must discard cards to pay');
                                 desc += ' 0/' + this.client_state_args.cost
                                 this.setClientState('client_auctionWin', {
@@ -283,7 +282,6 @@ function (dojo, declare) {
                 case 'client_launchPay':
                     this.playerHand.setSelectionMode(2);
                     this.client_state_args.fish_crates = 0;
-                    dojo.query('div[id^="' + this.player_id + '_fish_"]').style('cursor', 'pointer');
                     break;
                 case 'hire':
                     this.client_state_args = {};
@@ -292,10 +290,8 @@ function (dojo, declare) {
                     break;
                 case 'processing':
                     this.client_state_args = {fish_ids:[]};
-                    dojo.query('div[id^="fish_' + this.player_id + '_"]').style('cursor', 'pointer');
                     break;
                 case 'trading':
-                    dojo.query('div[id^="' + this.player_id + '_fish_"]').style('cursor', 'pointer');
                     break;
                 case 'draw':
                     if (this.isCurrentPlayerActive()) {
@@ -317,14 +313,16 @@ function (dojo, declare) {
         {
             console.log( 'Leaving state: '+stateName );
 
-            dojo.style('auctionbids', 'display', 'none');
-            dojo.query('.flt_disabled').removeClass('flt_disabled');
-            dojo.query('.flt_fish_selected').removeClass('flt_fish_selected');
-            dojo.query('.flt_selectable').removeClass('flt_selectable');
             this.auction.table.setSelectionMode(0);
             this.playerHand.setSelectionMode(0);
             this.player_boats[this.player_id].setSelectionMode(0);
             this.draw_table.setSelectionMode(0);
+            dojo.style('auctionbids', 'display', 'none');
+            dojo.query('.flt_disabled').removeClass('flt_disabled');
+            dojo.query('.flt_fish_selected').removeClass('flt_fish_selected');
+            dojo.query('.flt_fish_selectable').removeClass('flt_fish_selectable');
+            dojo.query('.flt_selectable').removeClass('flt_selectable');
+            dojo.query('.flt_icon_fish').style('cursor', 'default');
 
             switch( stateName )
             {
@@ -342,10 +340,8 @@ function (dojo, declare) {
                 case 'hire':
                     break;
                 case 'processing':
-                    dojo.query('div[id^="fish_' + this.player_id + '_"]').style('cursor', '');
                     break;
                 case 'trading':
-                    dojo.query('div[id^="' + this.player_id + '_fish_"]').style('cursor', '');
                     break;
                 case 'draw':
                     //TODO: make this smooth
@@ -459,40 +455,40 @@ function (dojo, declare) {
             switch(this.gamedatas.gamestate.name)
             {
                 case 'client_auctionSelect':
-                    this.updateSelectables(this.auction.table, true);
+                    this.updateSelectableCards(this.auction.table, true);
                     break;
                 case 'client_auctionWin':
-                    this.updateSelectables(this.playerHand, false);
-                    //highlight fish
+                    this.updateSelectableCards(this.playerHand, false);
+                    this.updateSelectableFish(this.player_id + '_fish_');
                     break;
                 case 'launch':
-                    this.updateSelectables(this.playerHand, true);
+                    this.updateSelectableCards(this.playerHand, true);
                     break;
                 case 'client_launchPay':
-                    this.updateSelectables(this.playerHand, false);
-                    //highlight fish
+                    this.updateSelectableCards(this.playerHand, false);
+                    this.updateSelectableFish(this.player_id + '_fish_');
                     break;
                 case 'hire':
-                    this.updateSelectables(this.playerHand, false);
-                    this.updateSelectables(this.player_boats[this.player_id], true);
+                    this.updateSelectableCards(this.playerHand, false);
+                    this.updateSelectableCards(this.player_boats[this.player_id], true);
                     break;
                 case 'processing':
-                    this.updateSelectables(this.player_boats[this.player_id], true);
+                    this.updateSelectableFish('fish_' + this.player_id + '_');
                     break;
                 case 'trading':
-                    //higlight fish cubes
+                    this.updateSelectableFish(this.player_id + '_fish_');
                     break;
                 case 'draw':
                     if (this.hand_discard) {
-                        this.updateSelectables(this.playerHand, false);
+                        this.updateSelectableCards(this.playerHand, false);
                     } else {
-                        this.updateSelectables(this.draw_table, false);
+                        this.updateSelectableCards(this.draw_table, false);
                     }
                     break;
             }
         },
 
-        updateSelectables: function(stock, validate)
+        updateSelectableCards: function(stock, validate)
         {
             // Remove additional highlight on selected items
             var items = stock.getSelectedItems();
@@ -516,6 +512,17 @@ function (dojo, declare) {
             }
         },
 
+        updateSelectableFish: function(prefix)
+        {
+            //TODO: make this highlight more interesting/visible
+            dojo.query('div[id^="' + prefix + '"]').forEach(function(node) {
+                console.log(node);
+                if (!dojo.hasClass(node, 'flt_fish_selected')) {
+                    dojo.addClass(node, 'flt_fish_selectable');
+                    dojo.style(node, 'cursor', 'pointer');
+                }
+            });
+        },
 
         createFishZone: function(id)
         {
@@ -933,6 +940,7 @@ function (dojo, declare) {
                     return;
                 }
 
+                dojo.toggleClass(evt.currentTarget, 'flt_fish_selectable');
                 dojo.toggleClass(evt.currentTarget, 'flt_fish_selected');
                 this.client_state_args.fish_crates = dojo.query('.flt_fish_selected').length;
                 this.updateBuy();
