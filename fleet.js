@@ -225,13 +225,12 @@ function (dojo, declare) {
                         // Player won license auction
                         if (this.isCurrentPlayerActive()) {
                             // Current player is winner and must pay
-                            this.auction.high_bid -= this.discount; // Shrimp License reduction
-                            if (this.auction.high_bid <= 0) {
+                            this.client_state_args.fish_crates = 0;
+                            this.client_state_args.cost = this.auction.high_bid - this.discount;
+                            if (this.client_state_args.cost <= 0) {
                                 // Shrimp discount enough that license is free (unlikely)
                                 this.buyAction('buyLicense');
                             } else {
-                                this.client_state_args.cost = this.auction.high_bid;
-                                this.client_state_args.fish_crates = 0;
                                 var desc = _('${you} must discard cards to pay');
                                 desc += ' 0/' + this.client_state_args.cost
                                 this.setClientState('client_auctionWin', {
