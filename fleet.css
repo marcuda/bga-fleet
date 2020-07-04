@@ -131,6 +131,11 @@
     border: 1px solid red ! important;
 }
 
+.flt_fish_selectable {
+    /*TODO: make this more interesting*/
+    border: 1px solid blue ! important;
+}
+
 .flt_board {
     display: inline-block;
     margin-top: 5px;
