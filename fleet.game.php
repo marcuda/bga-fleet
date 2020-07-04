@@ -1139,8 +1139,15 @@ class fleet extends Table
         }
 
         if ($skip) {
-            //TODO: notify if skipped?
             $next_state = 'cantPlay';
+            /*
+             * TODO: notify here? it triggers a lot...
+            $players = self::loadPlayersBasicInfos();
+            $msg = clienttranslate('${player_name} cannot play and passes');
+            self::notifyAllPlayers('log', $msg, array(
+                'player_name' => $players[$player_id]['player_name'],
+            ));
+             */
         } else {
             self::notifyPlayer($player_id, 'possibleMoves', '', $this->possibleMoves($player_id, $next_state));
             self::giveExtraTime($player_id);
@@ -1431,6 +1438,16 @@ class fleet extends Table
                 'nbr' => $unique,
                 'player_id' => $player_id,
             ));
+        }
+
+        // Set tie breaker: boats, then fish on boats
+        // Need single value so combine both with boats as much larger number
+        // TODO: does this need to be kept up during game?
+        foreach ($players as $player_id => $player) {
+            $boats = $this->getBoats($player_id);
+            $fish = array_sum(array_column($boats, 'fish'));
+            $score = (count($boats) * 100) + $fish;
+            self::DbQuery("UPDATE player SET player_score_aux = $score WHERE player_id = $player_id");
         }
 
         $this->gamestate->nextState();
