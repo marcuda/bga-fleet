@@ -1180,7 +1180,7 @@ function (dojo, declare) {
             dojo.subscribe('drawLicenses', this, 'notif_drawLicenses');
             dojo.subscribe('launchBoat', this, 'notif_launchBoat');
             dojo.subscribe('hireCaptain', this, 'notif_hireCaptain');
-            this.notifqueue.setSynchronous('hireCaptain', 1000);
+            this.notifqueue.setSynchronous('hireCaptain', 500);
             dojo.subscribe('fishing', this, 'notif_fishing');
             this.notifqueue.setSynchronous('fishing', 1000);
             dojo.subscribe('processFish', this, 'notif_processFish');
