@@ -144,6 +144,7 @@ function (dojo, declare) {
             // License Auction
             this.auction.card_id = parseInt(gamedatas.auction_card);
             this.auction.table = this.createStockLicense('auctiontable');
+            this.auction.table.centerItems = true;
             for (var i in gamedatas.auction) {
                 var card = gamedatas.auction[i];
                 this.auction.table.addToStockWithId(card.type_arg, card.id);
@@ -211,6 +212,7 @@ function (dojo, declare) {
             console.log(this.gamedatas.gamestate);
 
             this.showPossibleMoves();
+            this.hideAuction(stateName);
 
             switch( stateName )
             {
@@ -678,6 +680,15 @@ function (dojo, declare) {
 
         showActiveAuction: function ()
         {
+            //TODO: player option
+            var node = $('auction').parentNode.id;
+            if (node != 'auction_top') {
+                dojo.style('auction_top', 'display', '');
+                dojo.place('auction', 'auction_top');
+                dojo.style('auction_bottom', 'display', 'none');
+                this.resetAuction();//TODO:double check after adding player option
+            }
+
             // Update bids table
             // Use player tables list to always get all players
             for (var player in this.player_licenses) {
@@ -699,9 +710,28 @@ function (dojo, declare) {
             }
         },
 
+        hideAuction: function(state)
+        {
+            if (state.indexOf('auction') != -1 || state == 'nextPlayer')  {
+                return;
+            }
+
+            //TODO: player option
+            var node = $('auction').parentNode.id;
+            if (node != 'auction_bottom') {
+                dojo.style('auction_bottom', 'display', '');
+                dojo.place('auction', 'auction_bottom');
+                dojo.style('auction_top', 'display', 'none');
+
+                // Reset bidders for next round
+                dojo.query('.flt_auction_done').removeClass('flt_auction_done');
+                this.resetAuction();
+            }
+        },
+
         resetAuction: function(player_id)
         {
-            if (player_id !== null) {
+            if (player_id !== undefined) {
                 // Remove player from auction
                 dojo.addClass('playerbid_' + player_id + '_wrap', 'flt_auction_done');
             }
@@ -1201,6 +1231,7 @@ function (dojo, declare) {
             dojo.subscribe('buyLicense', this, 'notif_buyLicense');
             this.notifqueue.setSynchronous('buyLicense', 1000);
             dojo.subscribe('drawLicenses', this, 'notif_drawLicenses');
+            this.notifqueue.setSynchronous('drawLicense', 500);
             dojo.subscribe('launchBoat', this, 'notif_launchBoat');
             dojo.subscribe('hireCaptain', this, 'notif_hireCaptain');
             this.notifqueue.setSynchronous('hireCaptain', 500);
@@ -1241,10 +1272,13 @@ function (dojo, declare) {
         {
             console.log('notify_pass');
             console.log(notif);
-            this.auction.bids[parseInt(notif.args.player_id)] = 'pass';
-            if (notif.args.auction) {
-                // Player leaves auction
-                this.resetAuction(notif.args.player_id);
+            if (notif.args.in_auction) {
+                // Player passes during auction
+                this.auction.bids[parseInt(notif.args.player_id)] = 'pass';
+                if (notif.args.auction_done) {
+                    // Player passes entirely
+                    this.resetAuction(notif.args.player_id);
+                }
             }
         },
 
