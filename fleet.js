@@ -86,6 +86,9 @@ function (dojo, declare) {
                 player.url = g_gamethemeurl;
                 var player_board_div = $('player_board_' + player_id);
                 dojo.place(this.format_block('jstpl_player_board', player), player_board_div);
+                this.addTooltip('handcount_p' + player_id, _('Number of cards in hand'), '');
+                this.addTooltip('handcount_icon_p' + player_id, _('Number of cards in hand'), '');
+                this.addTooltip('first_player_p' + player_id, _('Starting player'), '');
 
                 this.hand_counters[player_id] = new ebg.counter();
                 this.hand_counters[player_id].create('handcount_p' + player_id);
