@@ -16,19 +16,21 @@
         <h3>{DRAW_LABEL}</h3>
         <div id="drawarea"></div>
     </div>
-    <div id="auction_wrap" class="flt_auction whiteblock">
-        <h3>{AUCTION_LABEL}</h3>
-        <div id="auctiontable"></div>
-        <div id="auctionbids" style="display: none;">
-            <b>Bids</b>
-            <!-- BEGIN bid -->
-            <div id="playerbid_{PLAYER_ID}_wrap">
-                <div style="color:#{PLAYER_COLOR}">
-                    <b>{PLAYER_NAME}</b>&nbsp;
-                    <span id="playerbid_{PLAYER_ID}" style="color:black;">-</span>
+    <div id="auction_top" class="flt_auction whiteblock">
+        <div id="auction">
+            <h3>{AUCTION_LABEL}</h3>
+            <div id="auctiontable"></div>
+            <div id="auctionbids" style="display: none;">
+                <b>Bids</b>
+                <!-- BEGIN bid -->
+                <div id="playerbid_{PLAYER_ID}_wrap">
+                    <div style="color:#{PLAYER_COLOR}">
+                        <b>{PLAYER_NAME}</b>&nbsp;
+                        <span id="playerbid_{PLAYER_ID}" style="color:black;">-</span>
+                    </div>
                 </div>
+                <!-- END bid -->
             </div>
-            <!-- END bid -->
         </div>
     </div>
     <div id="flt_counters">
@@ -67,6 +69,7 @@
     </div>
     <!-- END player -->
 </div>
+<div id="auction_bottom" class="flt_auction whiteblock" style="display:none;"></div>
 
 
 <script type="text/javascript">
