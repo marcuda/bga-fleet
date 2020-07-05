@@ -1084,9 +1084,6 @@ class fleet extends Table
                     if ($next_state == PHASE_AUCTION) {
                         // New round, advance first player token
                         $player_id = $this->rotateFirstPlayer();
-                        if (self::getGameStateValue('final_round')) {
-                            $next_state = 'finalScore';
-                        }
                     }
                 }
             }
@@ -1189,7 +1186,7 @@ class fleet extends Table
             ));
         }
 
-        if ($fish <= 0) {
+        if ($fish <= 0 || self::getGameStateValue('final_round')) {
             // No more fish crates, game is over!
             // TODO: notify
             return 'finalScore';
