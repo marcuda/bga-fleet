@@ -974,8 +974,12 @@ function (dojo, declare) {
                     return;
                 }
 
+                // Record id and animate fish cube
                 this.client_state_args.fish_ids[boat_id] = true;
                 this.processFishCube(boat_id, this.player_id);
+
+                // Remove highlight from remaining fish on this boat
+                dojo.query('div[id^="fish_' + this.player_id + '_' + boat_id + '"]').removeClass('flt_fish_selectable');
             } else if (state == 'trading') {
                 if (!is_processed) {
                     this.showMessage(_('You may only trade processed fish crates'), 'error');

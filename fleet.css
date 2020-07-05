@@ -129,12 +129,14 @@
 
 .flt_fish_selected {
     /*TODO: make this more interesting*/
-    border: 1px solid red ! important;
+    border: 2px solid red ! important;
+    border-radius: 25%;
 }
 
 .flt_fish_selectable {
     /*TODO: make this more interesting*/
-    border: 1px solid blue ! important;
+    border: 2px solid cyan ! important;
+    border-radius: 40%;
 }
 
 .flt_board {
