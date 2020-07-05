@@ -157,13 +157,13 @@ function (dojo, declare) {
 
             this.license_counter = new ebg.counter();
             this.license_counter.create('licensecount');
-            this.license_counter.setValue(gamedatas.cards['licenses'] || 0);
+            this.setCounterValue(this.license_counter, gamedatas.cards['licenses'] || 0);
             this.boat_counter = new ebg.counter();
             this.boat_counter.create('boatcount');
-            this.boat_counter.setValue(gamedatas.cards['deck']);
+            this.setCounterValue(this.boat_counter, gamedatas.cards['deck']);
             this.fish_counter = new ebg.counter();
             this.fish_counter.create('fishcount');
-            this.fish_counter.setValue(gamedatas.fish_cubes);
+            this.setCounterValue(this.fish_counter, gamedatas.fish_cubes);
             
             // TODO: Set up your game interface here, according to "gamedatas"
             /*
@@ -442,6 +442,22 @@ function (dojo, declare) {
             script.
         
         */
+
+        setCounterValue: function(counter, val)
+        {
+            if (val < 0) {
+                val = 0;
+            }
+            counter.setValue(val);
+        },
+
+        incCounterValue: function(counter, inc)
+        {
+            var val = counter.incValue(inc);
+            if (val < 0) {
+                counter.setValue(0);
+            }
+        },
 
         showPossibleMoves: function()
         {
@@ -1320,7 +1336,7 @@ function (dojo, declare) {
             for (var i in notif.args.cards) {
                 var card = notif.args.cards[i];
                 this.auction.table.addToStockWithId(card.type_arg, card.id, 'licensecount');
-                this.license_counter.incValue(-1);
+                this.incCounterValue(this.license_counter, -1);
             }
         },
         
@@ -1393,7 +1409,7 @@ function (dojo, declare) {
                 this.addFishCube(notif.args.card_ids[i], notif.args.player_id);
             }
 
-            this.fish_counter.incValue(-notif.args.nbr_fish);
+            this.incCounterValue(this.fish_counter, -notif.args.nbr_fish);
 
             // Score 1 VP per fish crate
             this.scoreCtrl[notif.args.player_id].incValue(notif.args.nbr_fish);
@@ -1426,7 +1442,7 @@ function (dojo, declare) {
             if (notif.args.player_id == this.player_id) {
                 this.player_coins -= 1;
             }
-            this.boat_counter.incValue(-notif.args.nbr_cards);
+            this.boat_counter.incValue(-notif.args.nbr_cards);//TODO: need to track when deck shuffles
             this.hand_counters[notif.args.player_id].incValue(notif.args.nbr_cards);
         },
 
@@ -1448,7 +1464,7 @@ function (dojo, declare) {
         {
             console.log('notify_drawLog');
             console.log(notif);
-            this.boat_counter.incValue(-notif.args.nbr);
+            this.boat_counter.incValue(-notif.args.nbr);//TODO: need to track when deck shuffles
             this.hand_counters[notif.args.player_id].incValue(notif.args.nbr);
             //TODO: animate draw for other players?
         },
