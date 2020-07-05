@@ -153,6 +153,7 @@ function (dojo, declare) {
 
             // Draw area
             this.draw_table = this.createStockBoat('drawarea');
+            this.draw_table.vertical_overlap = 0; // remove space for captains
             for (var i in gamedatas.draw) {
                 var card = gamedatas.draw[i];
                 this.draw_table.addToStockWithId(card.type_arg, card.id);
@@ -1488,7 +1489,12 @@ function (dojo, declare) {
             console.log('notify_draw');
             console.log(notif);
 
-            //TODO: why do cards get added to stock vertically???
+            // This notif happens before state change
+            // Ensure stock is visible to receive cards
+            if (!notif.args.to_hand) {
+                dojo.style('draw_wrap', 'display', 'block');
+            }
+
             var stock = notif.args.to_hand ? this.playerHand : this.draw_table;
             for (var i in notif.args.cards) {
                 var card = notif.args.cards[i];

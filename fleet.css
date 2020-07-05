@@ -173,3 +173,9 @@
     border: 2px solid blue ! important;
     border-radius: 12px;
 }
+
+.flt_draw_area {
+    width: 210px;
+    margin: auto;
+    display: none;
+}
