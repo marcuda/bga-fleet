@@ -163,6 +163,10 @@ function (dojo, declare) {
             this.license_counter = new ebg.counter();
             this.license_counter.create('licensecount');
             this.setCounterValue(this.license_counter, gamedatas.cards['licenses'] || 0);
+            if (!gamedatas.cards['licenses']) {
+                // Final round
+                dojo.style('licensecount', {'color': 'red', 'font-weight': 'bold'});
+            }
             this.boat_counter = new ebg.counter();
             this.boat_counter.create('boatcount');
             this.setCounterValue(this.boat_counter, gamedatas.cards['deck']);
@@ -1250,6 +1254,8 @@ function (dojo, declare) {
             dojo.subscribe('discardLog', this, 'notif_discardLog');
             dojo.subscribe('discard', this, 'notif_discard');
             this.notifqueue.setSynchronous('discard', 500);
+            dojo.subscribe('finalRound', this, 'notif_finalRound');
+            this.notifqueue.setSynchronous('finalRound', 1500);
             dojo.subscribe('finalScore', this, 'notif_finalScore');
         },  
         
@@ -1543,6 +1549,14 @@ function (dojo, declare) {
                 this.playerHand.addToStockWithId(card.type_arg, card.id, this.draw_table.getItemDivId(card.id));
                 this.draw_table.removeFromStockById(card.id);
             }
+        },
+
+        notif_finalRound: function(notif)
+        {
+            console.log('notif_finalRound');
+            console.log(notif);
+            this.showMessage(_('This is the last round!'), 'info');
+            dojo.style('licensecount', {'color': 'red', 'font-weight': 'bold'});
         },
 
         notif_finalScore: function(notif)
