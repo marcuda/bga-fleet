@@ -237,9 +237,6 @@ class fleet extends Table
         $result['card_infos'] = $this->card_types;
 
         $result['moves'] = $this->possibleMoves($current_player_id, $this->getCurrentPhase());
-
-  
-        // TODO: Gather all information about current game situation (visible by player $current_player_id).
   
         return $result;
     }
@@ -709,7 +706,6 @@ class fleet extends Table
         $boat_info = $this->getCardInfo($boat);
 
         // Verify player owns required license
-        // TODO: license:boat = 1:1 or 1:many?
         if ($boat['type_arg'] == BOAT_CRAB) {
             // Multiple licenses for crab boats
             $licenses1 = $this->getLicenses($player_id, LICENSE_CRAB_C);
@@ -1179,7 +1175,6 @@ class fleet extends Table
                 $this->incScore($player_id, $nbr_fish);
             }
 
-            //TODO: notify if zero?
             $msg = '${player_name} gains ${nbr_fish} fish crate(s)';
             self::notifyAllPlayers('fishing', $msg, array(
                 'player_name' => $player['player_name'],
@@ -1191,7 +1186,6 @@ class fleet extends Table
 
         if ($fish <= 0 || self::getGameStateValue('final_round')) {
             // No more fish crates, game is over!
-            // TODO: notify
             return 'finalScore';
         } else {
             // Next phase
@@ -1353,7 +1347,7 @@ class fleet extends Table
             // Not enough cards left to fill license auction
             // This will be the final round
             self::setGameStateValue('final_round', 1);
-            //TODO: notify
+            self::notifyAllPlayers('finalRound', clienttranslate('No more licenses: this is the last round!'), array());
         }
     }
 
