@@ -39,6 +39,7 @@ if (!defined("LICENSE_SHRIMP")) {
 
     define("CARD_LICENSE", 'license');
     define("CARD_BOAT", 'boat');
+    define("CARD_BONUS", 'bonus');
 
     define("PHASE_AUCTION", "auction");
     define("PHASE_LAUNCH", "launch");
@@ -77,16 +78,6 @@ $this->boat_types = array(
     BOAT_CRAB,
 );
 
-$this->gone_fishing_card = array(
-    'name' => clienttranslate("Gone Fishing"),
-    'type' => CARD_BOAT,
-    'license' => null,
-    'cost' => 0,
-    'points' => 2,
-    'coins' => 2,
-    'nbr' => 100,
-    'text' => clienttranslate("+2VP if in hand at end of game; discard for $2"),
-);
 
 $this->card_types = array(
     LICENSE_SHRIMP => array(
@@ -220,5 +211,15 @@ $this->card_types = array(
         'coins' => 1,
         'nbr' => 12,
         'text' => clienttranslate(""),
+    ),
+    GONE_FISHING => array(
+        'name' => clienttranslate("Gone Fishin'"),
+        'type' => CARD_BONUS,
+        'license' => null,
+        'cost' => 0,
+        'points' => 2,
+        'coins' => 2,
+        'nbr' => 20,
+        'text' => clienttranslate("+2VP if in hand at end of game; discard for $2"),
     ),
 );

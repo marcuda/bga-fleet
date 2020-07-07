@@ -51,6 +51,7 @@ function (dojo, declare) {
             this.draw_table = null;
             this.discount = 0;
             this.hand_discard = false;
+            this.gone_fishing = false;
         },
         
         /*
@@ -77,6 +78,7 @@ function (dojo, declare) {
             this.possible_moves = gamedatas.moves;
             this.discount = parseInt(gamedatas.discount);
             this.hand_discard = gamedatas.hand_discard;
+            this.gone_fishing = gamedatas.gone_fishing;
             
             // Setting up player boards
             for( var player_id in gamedatas.players )
@@ -387,7 +389,11 @@ function (dojo, declare) {
                 switch( stateName )
                 {
                     case 'client_auctionSelect':
-                        this.addActionButton('button_1', _('Pass'), 'onPass');
+                        if (this.gone_fishing) {
+                            this.addActionButton('button_1', _("Go fishin' (pass)"), 'onPass');
+                        } else {
+                            this.addActionButton('button_1', _('Pass'), 'onPass');
+                        }
                         break;
                     case 'client_auctionBid':
                         this.client_state_args.bid = this.auction.high_bid + 1;
@@ -495,7 +501,7 @@ function (dojo, declare) {
                     this.updateSelectableFish(this.player_id + '_fish_');
                     break;
                 case 'hire':
-                    this.updateSelectableCards(this.playerHand, false);
+                    this.updateSelectableCards(this.playerHand, true);
                     this.updateSelectableCards(this.player_boats[this.player_id], true);
                     break;
                 case 'processing':
@@ -799,8 +805,11 @@ function (dojo, declare) {
                     this.addActionButton('button_1', '-1', 'onMinusOne', null, false, 'gray');
                     this.addActionButton('button_2', '+1', 'onPlusOne');
                     this.addActionButton('button_3', _('Bid') + ': ' + this.client_state_args.bid, 'onBid');
-                    this.addActionButton('button_4', _('Pass'), 'onPass');
-
+                    if (this.gone_fishing) {
+                        this.addActionButton('button_4', _("Go fishin' (pass)"), 'onPass');
+                    } else {
+                        this.addActionButton('button_4', _('Pass'), 'onPass');
+                    }
                 } else {
                     // Cannot select new auction card
                     this.auction.table.unselectAll();
@@ -810,7 +819,11 @@ function (dojo, declare) {
                 this.gamedatas.gamestate.descriptionmyturn = _('${you} may select a license to bid on'),
                 this.updatePageTitle();
                 this.removeActionButtons();
-                this.addActionButton('button_1', _('Pass'), 'onPass');
+                if (this.gone_fishing) {
+                    this.addActionButton('button_1', _("Go fishin' (pass)"), 'onPass');
+                } else {
+                    this.addActionButton('button_1', _('Pass'), 'onPass');
+                }
             }
         },
 
@@ -907,6 +920,11 @@ function (dojo, declare) {
                     break;
                 case 'hire':
                     if (this.checkAction('hireCaptain') && items.length > 0) {
+                        if (!this.possible_moves[items[0].id]) {
+                            this.showMessage(_('That card cannot be used to captain'), 'error');
+                            this.playerHand.unselectAll();
+                            break;
+                        }
                         this.player_boats[this.player_id].setSelectionMode(1);
                         this.client_state_args.card_id = items[0].id;
                         if (this.client_state_args.boat_id) {
@@ -1289,6 +1307,10 @@ function (dojo, declare) {
                 if (notif.args.auction_done) {
                     // Player passes entirely
                     this.resetAuction(notif.args.player_id);
+                    if (notif.args.card && notif.args.player_id == this.player_id) {
+                        this.playerHand.addToStockWithId(notif.args.card.type_arg, notif.args.card.id, 'boatcount');
+                        this.hand_counters[notif.args.player_id].incValue(1);
+                    }
                 }
             }
         },

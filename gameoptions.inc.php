@@ -49,6 +49,17 @@ $game_options = array(
             )
 
     */
+    100 => array(
+        'name' => totranslate("Gone Fishin'"),
+        'values' => array(
+            1 => array(
+                'name' => totranslate('Yes'),
+                'tmdisplay' => totranslate("Gone Fishing'"),
+                'description' => totranslate("Include expansion card Gone Fishin'"),
+            ),
+            2 => array('name' => totranslate('No')),
+        ),
+    ),
 
 );
 
