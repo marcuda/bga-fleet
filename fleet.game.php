@@ -41,6 +41,9 @@ class fleet extends Table
             'auction_winner' => 15,
             'current_player_launches' => 16,
             'current_player_hires' => 17,
+
+            // Game options
+            'gone_fishing' => 100,
         ) );
 
         $this->cards = self::getNew("module.common.deck");
@@ -120,6 +123,15 @@ class fleet extends Table
             );
         }
         $this->cards->createCards($cards);
+
+        // Gone Fishin' bonus cards
+        if ($this->gamestate->table_globals[100]) {
+            $loc = 'gonefishing';
+        } else {
+            $loc = 'box';
+        }
+        $cards = $this->cards->getCardsOfType(CARD_BONUS);
+        $this->cards->moveCards(array_column($cards, 'id'), $loc);
 
         // Separate licenses from boats
         $licenses = $this->cards->getCardsOfType(CARD_LICENSE);
@@ -235,6 +247,7 @@ class fleet extends Table
         $result['fish_cubes'] = self::getGameStateValue('fish_cubes');
 
         $result['card_infos'] = $this->card_types;
+        $result['gone_fishing'] = $this->gamestate->table_globals[100];
 
         $result['moves'] = $this->possibleMoves($current_player_id, $this->getCurrentPhase());
   
@@ -403,7 +416,9 @@ class fleet extends Table
             foreach ($cards as $card_id => $card) {
                 $move = array('can_play' => false);
                 $card_info = $this->getCardInfo($card);
-                if (!$this->isLicenseInList($card['type_arg'], $card_info['license'], $licenses)) {
+                if ($card['type'] == CARD_BONUS) {
+                    $move['error'] = clienttranslate("That's not a boat!");
+                } else if (!$this->isLicenseInList($card['type_arg'], $card_info['license'], $licenses)) {
                     $move['error'] = clienttranslate('You do not have the required license');
                 } else if (($coins - $card_info['coins']) < $card_info['cost']) {
                     $move['error'] = clienttranslate('You cannot afford this boat');
@@ -413,6 +428,12 @@ class fleet extends Table
                 $moves[$card_id] = $move;
             }
         } else if ($phase == PHASE_HIRE) {
+            $cards = $this->cards->getPlayerHand($player_id);
+            foreach ($cards as $card_id => $card) {
+                if ($card['type'] == CARD_BOAT) {
+                    $moves[$card_id] = true;
+                }
+            }
             $boats = $this->getBoats($player_id);
             foreach ($boats as $card_id => $boat) {
                 if (!$boat['has_captain']) {
@@ -470,6 +491,8 @@ class fleet extends Table
         $player_id = self::getActivePlayerId();
         $in_auction = false;
         $auction_done = false;
+        $msg = clienttranslate('${player_name} passes');
+        $card = null;
         if ($this->getCurrentPhase() == PHASE_AUCTION) {
             $in_auction = true;
             // Keep track of which players pass during auction
@@ -480,6 +503,13 @@ class fleet extends Table
                 $sql .= ', passed = 1';
                 // Tell client to remove player
                 $auction_done = true;
+
+                if ($this->gamestate->table_globals[100]) {
+                    // Player gets a Gone Fishin' card
+                    $msg = clienttranslate('${player_name} skips the auction to go fishing');
+                    $card = $this->cards->pickCard('gonefishing', $player_id);
+                    //TODO: what if none left?
+                }
             }
 
             $sql .= " WHERE player_id = $player_id";
@@ -488,11 +518,12 @@ class fleet extends Table
             self::DbQuery("UPDATE player SET passed = 1 WHERE player_id = $player_id");
         }
 
-        self::notifyAllPlayers('pass', clienttranslate('${player_name} passes'), array(
+        self::notifyAllPlayers('pass', $msg, array(
             'player_name' => self::getActivePlayerName(),
             'player_id' => self::getActivePlayerId(),
             'in_auction' => $in_auction,
-            'auction_done' => $auction_done
+            'auction_done' => $auction_done,
+            'card' => $card,
         ));
 
         $this->gamestate->nextState();
@@ -649,6 +680,7 @@ class fleet extends Table
         // Purchase is valid
 
         // Discard cards and fish crates
+        //TODO: gone fishin
         $this->cards->moveCards($card_ids, 'discard');
         if ($fish > 0) {
             $this->incFishCrates($player_id, -$fish);
@@ -748,6 +780,7 @@ class fleet extends Table
         // Launch is valid
 
         // Discard cards and fish crates
+        //TODO: gone fishin
         $this->cards->moveCards($card_ids, 'discard');
         if ($fish > 0) {
             $this->incFishCrates($player_id, -$fish);
@@ -792,11 +825,15 @@ class fleet extends Table
 
         // Validate game state and transaction
 
-        // Verify card in player hand
+        // Verify card is boat in player hand
         $card = $this->cards->getCard($card_id);
-        if ($card == null || $card['location'] != 'hand' || $card['location_arg'] != $player_id) {
+        if ($card == null || $card['location'] != 'hand' ||
+            $card['location_arg'] != $player_id || $card['type'] != CARD_BOAT)
+        {
             throw new feException("Impossible hire: invalid card");
         }
+
+
 
         // Verify boat owned by player
         $boat = $this->cards->getCard($boat_id);
