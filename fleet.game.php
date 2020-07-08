@@ -308,6 +308,13 @@ class fleet extends Table
         return $this->phases[$phase];
     }
 
+    function prevPhase()
+    {
+        self::DbQuery("UPDATE player SET passed = 0");
+        $phase = self::incGameStateValue('current_phase', -1) % $this->nbr_phases;
+        return $this->phases[$phase];
+    }
+
     function getCurrentPhase()
     {
         $phase = self::getGameStateValue('current_phase') % $this->nbr_phases;
@@ -1044,97 +1051,27 @@ class fleet extends Table
             $player_and_state = $this->nextAuction();
             $player_id = $player_and_state[0];
             $next_state = $player_and_state[1];
+        } else if ($current_phase == PHASE_LAUNCH) {
+            // Launch has potential bonus action
+            if (!$this->nextLaunch()) {
+                $next_state = $this->nextPhase();
+            }
+            // Go directly into hire with same player
+            $player_id = self::getActivePlayerId();
+        } else if ($current_phase == PHASE_HIRE) {
+            // Hire has potential bonus move
+            $player_and_state = $this->nextHire();
+            $player_id = $player_and_state[0];
+            $next_state = $player_and_state[1];
         } else {
             // All other phases proceed in order
-            // But some bonuses allow multiple actions
-            if ($current_phase == PHASE_LAUNCH) {
-                // Cod license gives bonus boat launch
-                // Allow extra turn if player has license and legal play
-                $player_id = self::getActivePlayerId();
-                $nbr_license = count($this->getLicenses($player_id, LICENSE_COD));
-                if ($nbr_license > 0 &&
-                    self::getGameStateValue('current_player_launches') < 2 &&
-                    $this->cards->countCardInLocation('hand', $player_id) > 0 &&
-                    !$this->hasPassed($player_id))
-                {
-                    // Player gets bonus action
-                    $has_bonus = true;
-                } else {
-                    // No bonus action, but license also
-                    // gives draw bonus after any launch
-                    $has_bonus = false;
-                    if ($nbr_license > 0 &&
-                        self::getGameStateValue('current_player_launches') > 0)
-                    {
-                        $this->drawCards($player_id, $nbr_license, 'hand',
-                            $this->card_types[LICENSE_COD]['name']);
-                    }
-                }
-            } else if ($current_phase == PHASE_HIRE) {
-                // Lobster license gives bonus captain hire
-                // Allow extra turn if player has license and legal play
-                $player_id = self::getActivePlayerId();
-                $nbr_license = count($this->getLicenses($player_id, LICENSE_LOBSTER));
-                $sql = "SELECT COUNT(*) FROM card WHERE card_location = 'table' ";
-                $sql .= "AND card_location_arg = $player_id AND card_type = '";
-                $sql .= CARD_BOAT . "' AND has_captain = 0";
-                if ($nbr_license > 0 &&
-                    self::getGameStateValue('current_player_hires') < 2 &&
-                    $this->cards->countCardInLocation('hand', $player_id) > 0 &&
-                    self::getUniqueValueFromDB($sql) > 0 &&
-                    !$this->hasPassed($player_id))
-                {
-                    // Player gets bonus action
-                    $has_bonus = true;
-                } else {
-                    // No bonus action, but license also
-                    // gives draw bonus for hired captains
-                    $has_bonus = false;
-                    if ($nbr_license > 0) {
-                        // Bonus depends on both number of licenses and captained boats
-                        $sql = "SELECT SUM(has_captain) FROM card WHERE card_location = 'table' ";
-                        $sql .= "AND card_location_arg = $player_id AND card_type = '" . CARD_BOAT ."'";
-                        $nbr_captain = self::getUniqueValueFromDB($sql);
-                        if ($nbr_captain > 0) {
-                            if ($nbr_license == 1) {
-                                $nbr_cards = $nbr_captain < 4 ? 1 : 2;
-                            } else {
-                                if ($nbr_captain < 3) {
-                                    $nbr_cards = 1;
-                                } else if ($nbr_captain < 7) {
-                                    $nbr_cards = 2;
-                                } else  {
-                                    $nbr_cards = 3;
-                                }
-                            }
-                        } else {
-                            $nbr_cards = 0;
-                        }
-
-                        $this->drawCards($player_id, $nbr_cards, 'hand',
-                            $this->card_types[LICENSE_LOBSTER]['name']);
-                    }
-                }
-            } else {
-                // Other phases have no bonus action
-                $has_bonus = false;
-            }
-
-            if (!$has_bonus) {
-                // Clear bonus counters
-                // TODO: only clear when needed?
-                self::setGameStateValue('current_player_launches', 0);
-                self::setGameStateValue('current_player_hires', 0);
-
-                // Next player
-                $player_id = self::activeNextPlayer();
-                if ($player_id == self::getGameStateValue('first_player')) {
-                    // Back to first player => next phase
-                    $next_state = $this->nextPhase();
-                    if ($next_state == PHASE_AUCTION) {
-                        // New round, advance first player token
-                        $player_id = $this->rotateFirstPlayer();
-                    }
+            $player_id = self::activeNextPlayer();
+            if ($player_id == self::getGameStateValue('first_player')) {
+                // Back to first player => next phase
+                $next_state = $this->nextPhase();
+                if ($next_state == PHASE_AUCTION) {
+                    // New round, advance first player token
+                    $player_id = $this->rotateFirstPlayer();
                 }
             }
         }
@@ -1376,6 +1313,97 @@ class fleet extends Table
         }
 
         $this->gamestate->changeActivePlayer($player_id);
+        return array($player_id, $next_state);
+    }
+
+    function nextLaunch()
+    {
+        // Cod license gives bonus boat launch
+        // Allow extra turn if player has license and legal play
+        $player_id = self::getActivePlayerId();
+        $nbr_license = count($this->getLicenses($player_id, LICENSE_COD));
+        if ($nbr_license > 0 &&
+            self::getGameStateValue('current_player_launches') < 2 &&
+            $this->cards->countCardInLocation('hand', $player_id) > 0 &&
+            !$this->hasPassed($player_id))
+        {
+            // Player gets bonus action
+            return true;
+        } else {
+            // No bonus action, but license also gives draw bonus after any launch
+            if ($nbr_license > 0 && self::getGameStateValue('current_player_launches') > 0)
+            {
+                $this->drawCards($player_id, $nbr_license, 'hand',
+                    $this->card_types[LICENSE_COD]['name']);
+            }
+        }
+
+        // Reset global
+        self::setGameStateValue('current_player_launches', 0);
+        return false;
+    }
+
+    function nextHire()
+    {
+        // Lobster license gives bonus captain hire
+        // Allow extra turn if player has license and legal play
+        $player_id = self::getActivePlayerId();
+        $nbr_license = count($this->getLicenses($player_id, LICENSE_LOBSTER));
+        $sql = "SELECT COUNT(*) FROM card WHERE card_location = 'table' ";
+        $sql .= "AND card_location_arg = $player_id AND card_type = '";
+        $sql .= CARD_BOAT . "' AND has_captain = 0";
+        if ($nbr_license > 0 &&
+            self::getGameStateValue('current_player_hires') < 2 &&
+            $this->cards->countCardInLocation('hand', $player_id) > 0 &&
+            self::getUniqueValueFromDB($sql) > 0 &&
+            !$this->hasPassed($player_id))
+        {
+            // Player gets bonus action
+            $has_bonus = true;
+        } else {
+            // No bonus action, but license also gives draw bonus for hired captains
+            $has_bonus = false;
+            if ($nbr_license > 0) {
+                // Bonus depends on both number of licenses and captained boats
+                $sql = "SELECT SUM(has_captain) FROM card WHERE card_location = 'table' ";
+                $sql .= "AND card_location_arg = $player_id AND card_type = '" . CARD_BOAT ."'";
+                $nbr_captain = self::getUniqueValueFromDB($sql);
+                if ($nbr_captain > 0) {
+                    if ($nbr_license == 1) {
+                        $nbr_cards = $nbr_captain < 4 ? 1 : 2;
+                    } else {
+                        if ($nbr_captain < 3) {
+                            $nbr_cards = 1;
+                        } else if ($nbr_captain < 7) {
+                            $nbr_cards = 2;
+                        } else  {
+                            $nbr_cards = 3;
+                        }
+                    }
+                } else {
+                    $nbr_cards = 0;
+                }
+
+                $this->drawCards($player_id, $nbr_cards, 'hand',
+                    $this->card_types[LICENSE_LOBSTER]['name']);
+            }
+        }
+
+        if ($has_bonus) {
+            // Player turn continues with another possible hire
+            $next_state = PHASE_HIRE;
+        } else {
+            self::setGameStateValue('current_player_hires', 0);
+            $player_id = self::activeNextPlayer();
+            if ($player_id == self::getGameStateValue('first_player')) {
+                // Back to first player => next phase
+                $next_state = $this->nextPhase();
+            } else {
+                // Go back to launch for next player
+                $next_state = $this->prevPhase();
+            }
+        }
+
         return array($player_id, $next_state);
     }
 
