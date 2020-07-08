@@ -1196,7 +1196,10 @@ class fleet extends Table
             ));
              */
         } else {
-            self::notifyPlayer($player_id, 'possibleMoves', '', $this->possibleMoves($player_id, $next_state));
+            self::notifyPlayer($player_id, 'possibleMoves', '', array(
+                'moves' => $this->possibleMoves($player_id, $next_state),
+                'coins' => $this->getCoins($player_id),
+            ));
             self::giveExtraTime($player_id);
         }
 
