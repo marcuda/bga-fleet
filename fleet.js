@@ -167,6 +167,7 @@ function (dojo, declare) {
             this.setCounterValue(this.license_counter, gamedatas.cards['licenses'] || 0);
             if (!gamedatas.cards['licenses']) {
                 // Final round
+                dojo.style('licenseicon', 'opacity', '0.5');
                 dojo.style('licensecount', {'color': 'red', 'font-weight': 'bold'});
             }
             this.boat_counter = new ebg.counter();
@@ -1319,7 +1320,8 @@ function (dojo, declare) {
         {
             console.log('notify_possibleMoves');
             console.log(notif);
-            this.possible_moves = notif.args;
+            this.possible_moves = notif.args.moves;
+            this.player_coins = notif.args.coins;
         },
 
         notif_auctionSelect: function (notif)
@@ -1365,8 +1367,6 @@ function (dojo, declare) {
                     // Any Tuna License allows discard from hand
                     this.hand_discard = true;
                 }
-
-                this.player_coins -= notif.args.coins;
             } else {
                 // Animate cards from other player
                 // TODO
@@ -1422,9 +1422,6 @@ function (dojo, declare) {
                 }
                 this.playerHand.updateDisplay();
                 // Boat already played during client state
-
-                this.player_coins -= notif.args.coins;
-                this.player_coins -= this.card_infos[notif.args.boat_type]['coins'];
             } else {
                 // Animate cards from other player
                 // TODO: discards?
@@ -1460,7 +1457,6 @@ function (dojo, declare) {
                 // Player plays card onto boat
                 var card = this.playerHand.getItemById(notif.args.card_id);
                 this.playerHand.removeFromStockById(notif.args.card_id, 'captain_' + notif.args.boat_id);
-                this.player_coins -= this.card_infos[card.type]['coins'];
             } else {
                 // Animate cards from other player
                 // TODO
@@ -1490,10 +1486,8 @@ function (dojo, declare) {
             console.log('notify_processFish');
             console.log(notif);
 
-            if (notif.args.player_id == this.player_id) {
+            if (notif.args.player_id != this.player_id) {
                 // Active player already moved cubes
-                this.player_coins += notif.args.nbr_fish;
-            } else {
                 for (var i in notif.args.card_ids) {
                     this.processFishCube(notif.args.card_ids[i], notif.args.player_id);
                 }
@@ -1509,9 +1503,6 @@ function (dojo, declare) {
             console.log(notif);
 
             this.removeFishCube(notif.args.player_id);
-            if (notif.args.player_id == this.player_id) {
-                this.player_coins -= 1;
-            }
             this.boat_counter.incValue(-notif.args.nbr_cards);//TODO: need to track when deck shuffles
             this.hand_counters[notif.args.player_id].incValue(notif.args.nbr_cards);
         },
@@ -1531,7 +1522,6 @@ function (dojo, declare) {
             for (var i in notif.args.cards) {
                 var card = notif.args.cards[i];
                 stock.addToStockWithId(card.type_arg, card.id, 'boatcount');
-                this.player_coins += this.card_infos[card.type_arg]['coins'];
             }
         },
 
@@ -1562,9 +1552,6 @@ function (dojo, declare) {
             var card = stock.getItemById(notif.args.discard.id);
             stock.removeFromStockById(notif.args.discard.id, 'site-logo'); //TODO: discard area
 
-            // Update coins
-            this.player_coins -= this.card_infos[card.type]['coins'];
-
             if (!notif.args.in_hand) {
                 // Move kept card to hand
                 var card = notif.args.keep;
@@ -1578,6 +1565,7 @@ function (dojo, declare) {
             console.log('notif_finalRound');
             console.log(notif);
             this.showMessage(_('This is the last round!'), 'info');
+            dojo.style('licenseicon', 'opacity', '0.5');
             dojo.style('licensecount', {'color': 'red', 'font-weight': 'bold'});
         },
 

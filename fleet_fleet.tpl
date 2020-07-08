@@ -35,7 +35,7 @@
     </div>
     <div id="flt_counters">
         <div style="display: inline-block">
-            <div class="flt_icon_license"></div>
+            <div id="licenseicon" class="flt_icon_license"></div>
             <span id="licensecount"></span>
         </div>
         <div style="display: inline-block">
