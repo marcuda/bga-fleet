@@ -1501,11 +1501,10 @@ class fleet extends Table
                 $points = $nbr_cards * $this->card_types[GONE_FISHING]['points'];
 
                 $this->incScore($player_id, $points);
-                $msg = clienttranslate('${player_name} scores ${points} points for ${nbr} Gone Fishin\' card(s)');
+                $msg = clienttranslate('Gone Fishin\': ${player_name} scores ${points} points');
                 self::notifyAllPlayers('finalScore', $msg, array(
                     'player_name' => $players[$player_id]['player_name'],
                     'points' => $points,
-                    'nbr' => $nbr_cards,
                     'player_id' => $player_id,
                 ));
             }
