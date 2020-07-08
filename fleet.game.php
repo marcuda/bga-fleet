@@ -506,9 +506,11 @@ class fleet extends Table
 
                 if ($this->gamestate->table_globals[100]) {
                     // Player gets a Gone Fishin' card
-                    $msg = clienttranslate('${player_name} skips the auction to go fishing');
                     $card = $this->cards->pickCard('gonefishing', $player_id);
-                    //TODO: what if none left?
+                    if ($card != null) {
+                        //TODO: what if none left?
+                        $msg = clienttranslate('${player_name} skips the auction to go fishing');
+                    }
                 }
             }
 
@@ -680,8 +682,14 @@ class fleet extends Table
         // Purchase is valid
 
         // Discard cards and fish crates
-        //TODO: gone fishin
-        $this->cards->moveCards($card_ids, 'discard');
+        foreach ($card_ids as $card_id) {
+            $card = $this->cards->getCard($card_id);
+            if ($card['type'] == CARD_BONUS) {
+                $this->cards->moveCard($card_id, 'gonefishing');
+            } else {
+                $this->cards->playCard($card_id);
+            }
+        }
         if ($fish > 0) {
             $this->incFishCrates($player_id, -$fish);
         }
@@ -780,8 +788,14 @@ class fleet extends Table
         // Launch is valid
 
         // Discard cards and fish crates
-        //TODO: gone fishin
-        $this->cards->moveCards($card_ids, 'discard');
+        foreach ($card_ids as $card_id) {
+            $card = $this->cards->getCard($card_id);
+            if ($card['type'] == CARD_BONUS) {
+                $this->cards->moveCard($card_id, 'gonefishing');
+            } else {
+                $this->cards->playCard($card_id);
+            }
+        }
         if ($fish > 0) {
             $this->incFishCrates($player_id, -$fish);
         }
@@ -1469,6 +1483,29 @@ class fleet extends Table
                 'nbr' => $unique,
                 'player_id' => $player_id,
             ));
+        }
+
+        // Gone Fishin' bonus points: +2VP for each in hand
+        if ($this->gamestate->table_globals[100]) {
+            foreach ($players as $player_id => $player) {
+                $cards = $this->cards->getPlayerHand($player_id);
+                $nbr_cards = 0;
+                foreach ($cards as $card_id => $card) {
+                    if ($card['type_arg'] == GONE_FISHING) {
+                        $nbr_cards += 1;
+                    }
+                }
+                $points = $nbr_cards * $this->card_types[GONE_FISHING]['points'];
+
+                $this->incScore($player_id, $points);
+                $msg = clienttranslate('${player_name} scores ${points} points for ${nbr} Gone Fishin\' card(s)');
+                self::notifyAllPlayers('finalScore', $msg, array(
+                    'player_name' => $players[$player_id]['player_name'],
+                    'points' => $points,
+                    'nbr' => $nbr_cards,
+                    'player_id' => $player_id,
+                ));
+            }
         }
 
         // Set tie breaker: boats, then fish on boats
