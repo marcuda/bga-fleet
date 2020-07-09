@@ -1040,54 +1040,12 @@ class fleet extends Table
         return self::getUniqueValueFromDB($sql) == 1;
     }
 
-    //TODO: this function is too large
     function stNextPlayer()
     {
-        // Determine next player and phase
-        $current_phase = $this->getCurrentPhase();
-        $next_state = $current_phase;
-        if ($current_phase == PHASE_AUCTION) {
-            // Auction phase has complicated progression
-            $player_and_state = $this->nextAuction();
-            $player_id = $player_and_state[0];
-            $next_state = $player_and_state[1];
-        } else if ($current_phase == PHASE_LAUNCH) {
-            // Launch has potential bonus action
-            if (!$this->nextLaunch()) {
-                $next_state = $this->nextPhase();
-            }
-            // Go directly into hire with same player
-            $player_id = self::getActivePlayerId();
-        } else if ($current_phase == PHASE_HIRE) {
-            // Hire has potential bonus move
-            $player_and_state = $this->nextHire();
-            $player_id = $player_and_state[0];
-            $next_state = $player_and_state[1];
-        } else if ($current_phase == PHASE_PROCESSING) {
-            // Go direct to trading with current player
-            $player_id = self::getActivePlayerId();
-            $next_state = $this->nextPhase();
-        } else if ($current_phase == PHASE_TRADING) {
-            $player_id = self::activeNextPlayer();
-            if ($player_id == self::getGameStateValue('first_player')) {
-                // Back to first player => next phase
-                $next_state = $this->nextPhase();
-            } else {
-                // Go back to processing for next player
-                $next_state = $this->prevPhase();
-            }
-        } else {
-            // All other phases proceed in order
-            $player_id = self::activeNextPlayer();
-            if ($player_id == self::getGameStateValue('first_player')) {
-                // Back to first player => next phase
-                $next_state = $this->nextPhase();
-                if ($next_state == PHASE_AUCTION) {
-                    // New round, advance first player token
-                    $player_id = $this->rotateFirstPlayer();
-                }
-            }
-        }
+        $player_and_state = $this->activeNextPlayerPhase();
+        $player_id = $player_and_state[0];
+        $next_state = $player_and_state[1];
+        $extra_time = $player_and_state[2];
 
         // Perform game actions
         if ($next_state == PHASE_FISHING) {
@@ -1098,44 +1056,7 @@ class fleet extends Table
             $this->drawPhase($player_id);
         }
 
-        // When possible automatically skip players without a valid play
-        // but _NOT_ when it would reveal private information
-        switch ($next_state) {
-            case PHASE_LAUNCH:
-                // Skip player _only_ if hand is empty (ignore no legal play)
-                $skip = $this->cards->countCardInLocation('hand', $player_id) == 0;
-                break;
-            case PHASE_HIRE:
-                // Skip player if hand empty or no open boats
-                $hand = $this->cards->countCardInLocation('hand', $player_id);
-                $sql = "SELECT COUNT(*) FROM card WHERE card_location = 'table' ";
-                $sql .= "AND card_location_arg = $player_id AND card_type = '";
-                $sql .= CARD_BOAT . "' AND has_captain = 0";
-                $skip = $hand == 0 || self::getUniqueValueFromDB($sql) == 0;
-                break;
-            case PHASE_PROCESSING:
-                // Skip player if no license or fish to process
-                $license = $this->getLicenses($player_id, LICENSE_PROCESSING);
-                $sql = "SELECT SUM(nbr_fish) FROM card WHERE card_location = 'table' ";
-                $sql .= "AND card_location_arg = $player_id AND card_type = '" . CARD_BOAT ."'";
-                $skip = count($license) == 0 || self::getUniqueValueFromDB($sql) == 0;
-                break;
-            case PHASE_TRADING:
-                // Skip player if no processed fish to trade
-                $sql = "SELECT fish_crates FROM player WHERE player_id = $player_id";
-                $skip = self::getUniqueValueFromDB($sql) == 0;
-                break;
-            case PHASE_DRAW:
-                // Skip if player has Tuna bonus to not discard
-                $bonus = count($this->getLicenses($player_id, LICENSE_TUNA));
-                $skip = $bonus == 1 || $bonus == 3;
-                break;
-            default:
-                $skip = false;
-                break;
-        }
-
-        if ($skip) {
+        if ($this->skipPlayer($player_id, $next_state)) {
             $next_state = 'cantPlay';
             /*
              * TODO: notify here? it triggers a lot...
@@ -1150,113 +1071,67 @@ class fleet extends Table
                 'moves' => $this->possibleMoves($player_id, $next_state),
                 'coins' => $this->getCoins($player_id),
             ));
-            self::giveExtraTime($player_id);
+            if ($extra_time) {
+                self::giveExtraTime($player_id);
+            }
         }
 
         $this->gamestate->nextState($next_state);
     }
 
-    function doFishing()
+    function activeNextPlayerPhase()
     {
-        $fish = self::getGameStateValue('fish_cubes');
-        $players = self::loadPlayersBasicInfos();
-        foreach ($players as $player_id => $player) {
-            $boats = $this->getBoats($player_id);
-            $boat_ids = array();
-            foreach ($boats as $card_id => $boat) {
-                if ($boat['has_captain'] && $boat['fish'] < 4) {
-                    // Add fish crate to boat
-                    $sql = "UPDATE card SET nbr_fish = nbr_fish + 1 WHERE card_id = $card_id";
-                    self::DbQuery($sql);
-                    $fish = self::incGameStateValue('fish_cubes', -1);
-                    $boat_ids[] = $card_id;
+        $current_player = self::getActivePlayerId();
+        $next_player = $current_player;
+
+        $current_phase = $this->getCurrentPhase();
+        $next_phase = $current_phase;
+
+        $extra_time = true;
+
+        if ($current_phase == PHASE_AUCTION) {
+            // Auction phase has complicated progression
+            return $this->nextAuction();
+        } else if ($current_phase == PHASE_LAUNCH) {
+            // Launch has potential bonus action
+            if (!$this->nextLaunch()) {
+                // Go directly into hire with same player
+                $next_phase = $this->nextPhase();
+            }
+            $extra_time = false;
+        } else if ($current_phase == PHASE_HIRE) {
+            // Hire has potential bonus move
+            // then reverts back to launch for next player,
+            // or forward if all players have played
+            return $this->nextHire();
+        } else if ($current_phase == PHASE_PROCESSING) {
+            // Go direct to trading with current player
+            $next_player = self::getActivePlayerId();
+            $next_phase = $this->nextPhase();
+            $extra_time = false;
+        } else if ($current_phase == PHASE_TRADING) {
+            $next_player = self::activeNextPlayer();
+            if ($next_player == self::getGameStateValue('first_player')) {
+                // Back to first player => next phase
+                $next_phase = $this->nextPhase();
+            } else {
+                // Go back to processing for next player
+                $next_phase = $this->prevPhase();
+            }
+        } else {
+            // All other phases proceed in order
+            $next_player = self::activeNextPlayer();
+            if ($next_player == self::getGameStateValue('first_player')) {
+                // Back to first player => next phase
+                $next_phase = $this->nextPhase();
+                if ($next_phase == PHASE_AUCTION) {
+                    // New round, advance first player token
+                    $next_player = $this->rotateFirstPlayer();
                 }
             }
-
-            $nbr_fish = count($boat_ids);
-            if ($nbr_fish > 0) {
-                // Score 1 VP per fish crate
-                $this->incScore($player_id, $nbr_fish);
-            }
-
-            $msg = '${player_name} gains ${nbr_fish} fish crate(s)';
-            self::notifyAllPlayers('fishing', $msg, array(
-                'player_name' => $player['player_name'],
-                'nbr_fish' => $nbr_fish,
-                'player_id' => $player_id,
-                'card_ids' => $boat_ids
-            ));
         }
 
-        if ($fish <= 0 || self::getGameStateValue('final_round')) {
-            // No more fish crates, game is over!
-            return 'finalScore';
-        } else {
-            // Next phase
-            return $this->nextPhase();
-        }
-    }
-
-    function drawPhase($player_id)
-    {
-        // Tuna license gives draw bonus
-        $bonus = count($this->getLicenses($player_id, LICENSE_TUNA));
-        if ($bonus == 0) {
-            $dest = 'draw';
-            $nbr = 2;
-        } else {
-            $dest = 'hand';
-            if ($bonus < 3) {
-                // 1 => 2, 2 => 3
-                $nbr = $bonus + 1;
-            } else {
-                // 3 => 3, 4 => 4
-                $nbr = $bonus;
-            }
-        }
-
-        $this->drawCards($player_id, $nbr, $dest,
-            $bonus == 0 ? null : $this->card_types[LICENSE_TUNA]['name']);
-    }
-
-    function drawCards($player_id, $nbr, $dest, $bonus=null)
-    {
-        if ($nbr > 0) {
-            // Draw cards
-            $cards = $this->cards->pickCardsForLocation($nbr, 'deck', $dest, $player_id);
-
-            // All players get log notice but only current player gets card details
-            $msg = '';
-            if ($bonus != null) {
-                $msg = $bonus . ': ';
-            }
-            $msg .= clienttranslate('${player_name} draws ${nbr} card(s)');
-            self::notifyAllPlayers('drawLog', $msg, array(
-                'player_name' => self::getActivePlayerName(),
-                'player_id' => $player_id,
-                'nbr' => $nbr,
-            ));
-            self::notifyPlayer($player_id, 'draw', '', array(
-                'cards' => $cards,
-                'to_hand' => $dest == 'hand' ? true : false,
-            ));
-        }
-    }
-
-    function rotateFirstPlayer()
-    {
-        $player_id = self::getGameStateValue('first_player');
-        $next_player = self::getNextPlayerTable();
-        $first_player = $next_player[$player_id];
-        self::setGameStateValue('first_player', $first_player);
-
-        self::notifyAllPlayers('firstPlayer', '', array(
-            'current_player_id' => $player_id,
-            'next_player_id' => $first_player,
-        ));
-
-        $this->gamestate->changeActivePlayer($first_player);
-        return $first_player;
+        return array($next_player, $next_phase, $extra_time);
     }
 
     function nextAuction()
@@ -1326,7 +1201,7 @@ class fleet extends Table
         }
 
         $this->gamestate->changeActivePlayer($player_id);
-        return array($player_id, $next_state);
+        return array($player_id, $next_state, true);
     }
 
     function nextLaunch()
@@ -1417,7 +1292,152 @@ class fleet extends Table
             }
         }
 
-        return array($player_id, $next_state);
+        return array($player_id, $next_state, !$has_bonus);
+    }
+
+    function doFishing()
+    {
+        $fish = self::getGameStateValue('fish_cubes');
+        $players = self::loadPlayersBasicInfos();
+        foreach ($players as $player_id => $player) {
+            $boats = $this->getBoats($player_id);
+            $boat_ids = array();
+            foreach ($boats as $card_id => $boat) {
+                if ($boat['has_captain'] && $boat['fish'] < 4) {
+                    // Add fish crate to boat
+                    $sql = "UPDATE card SET nbr_fish = nbr_fish + 1 WHERE card_id = $card_id";
+                    self::DbQuery($sql);
+                    $fish = self::incGameStateValue('fish_cubes', -1);
+                    $boat_ids[] = $card_id;
+                }
+            }
+
+            $nbr_fish = count($boat_ids);
+            if ($nbr_fish > 0) {
+                // Score 1 VP per fish crate
+                $this->incScore($player_id, $nbr_fish);
+            }
+
+            $msg = '${player_name} gains ${nbr_fish} fish crate(s)';
+            self::notifyAllPlayers('fishing', $msg, array(
+                'player_name' => $player['player_name'],
+                'nbr_fish' => $nbr_fish,
+                'player_id' => $player_id,
+                'card_ids' => $boat_ids
+            ));
+        }
+
+        if ($fish <= 0 || self::getGameStateValue('final_round')) {
+            // No more fish crates, game is over!
+            return 'finalScore';
+        } else {
+            // Next phase
+            return $this->nextPhase();
+        }
+    }
+
+    function drawPhase($player_id)
+    {
+        // Tuna license gives draw bonus
+        $bonus = count($this->getLicenses($player_id, LICENSE_TUNA));
+        if ($bonus == 0) {
+            $dest = 'draw';
+            $nbr = 2;
+        } else {
+            $dest = 'hand';
+            if ($bonus < 3) {
+                // 1 => 2, 2 => 3
+                $nbr = $bonus + 1;
+            } else {
+                // 3 => 3, 4 => 4
+                $nbr = $bonus;
+            }
+        }
+
+        $this->drawCards($player_id, $nbr, $dest,
+            $bonus == 0 ? null : $this->card_types[LICENSE_TUNA]['name']);
+    }
+
+    function drawCards($player_id, $nbr, $dest, $bonus=null)
+    {
+        if ($nbr > 0) {
+            // Draw cards
+            $cards = $this->cards->pickCardsForLocation($nbr, 'deck', $dest, $player_id);
+
+            // All players get log notice but only current player gets card details
+            $msg = '';
+            if ($bonus != null) {
+                $msg = $bonus . ': ';
+            }
+            $msg .= clienttranslate('${player_name} draws ${nbr} card(s)');
+            self::notifyAllPlayers('drawLog', $msg, array(
+                'player_name' => self::getActivePlayerName(),
+                'player_id' => $player_id,
+                'nbr' => $nbr,
+            ));
+            self::notifyPlayer($player_id, 'draw', '', array(
+                'cards' => $cards,
+                'to_hand' => $dest == 'hand' ? true : false,
+            ));
+        }
+    }
+
+    function skipPlayer($player_id, $phase)
+    {
+        // When possible automatically skip players without a valid play
+        // but _NOT_ when it would reveal private information
+        switch ($phase) {
+            case PHASE_LAUNCH:
+                // Skip player _only_ if hand is empty (ignore no legal play)
+                $skip = $this->cards->countCardInLocation('hand', $player_id) == 0;
+                break;
+            case PHASE_HIRE:
+                // Skip player if hand empty or no open boats
+                $hand = $this->cards->countCardInLocation('hand', $player_id);
+                $sql = "SELECT COUNT(*) FROM card WHERE card_location = 'table' ";
+                $sql .= "AND card_location_arg = $player_id AND card_type = '";
+                $sql .= CARD_BOAT . "' AND has_captain = 0";
+                $skip = $hand == 0 || self::getUniqueValueFromDB($sql) == 0;
+                break;
+            case PHASE_PROCESSING:
+                // Skip player if no license or fish to process
+                $license = $this->getLicenses($player_id, LICENSE_PROCESSING);
+                $sql = "SELECT SUM(nbr_fish) FROM card WHERE card_location = 'table' ";
+                $sql .= "AND card_location_arg = $player_id AND card_type = '" . CARD_BOAT ."'";
+                $skip = count($license) == 0 || self::getUniqueValueFromDB($sql) == 0;
+                break;
+            case PHASE_TRADING:
+                // Skip player if no processed fish to trade
+                $sql = "SELECT fish_crates FROM player WHERE player_id = $player_id";
+                $skip = self::getUniqueValueFromDB($sql) == 0;
+                break;
+            case PHASE_DRAW:
+                // Skip if player has Tuna bonus to not discard
+                $bonus = count($this->getLicenses($player_id, LICENSE_TUNA));
+                $skip = $bonus == 1 || $bonus == 3;
+                break;
+            default:
+                $skip = false;
+                break;
+        }
+
+        return $skip;
+    }
+
+    function rotateFirstPlayer()
+    {
+        $player_id = self::getGameStateValue('first_player');
+        $next_player = self::getNextPlayerTable();
+        $first_player = $next_player[$player_id];
+        self::setGameStateValue('first_player', $first_player);
+
+        self::notifyAllPlayers('firstPlayer', '', array(
+            'current_player_id' => $player_id,
+            'next_player_id' => $first_player,
+        ));
+
+        $this->gamestate->changeActivePlayer($first_player);
+        return $first_player;
     }
 
     function drawLicenses()
