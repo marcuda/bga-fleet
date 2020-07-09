@@ -1063,6 +1063,19 @@ class fleet extends Table
             $player_and_state = $this->nextHire();
             $player_id = $player_and_state[0];
             $next_state = $player_and_state[1];
+        } else if ($current_phase == PHASE_PROCESSING) {
+            // Go direct to trading with current player
+            $player_id = self::getActivePlayerId();
+            $next_state = $this->nextPhase();
+        } else if ($current_phase == PHASE_TRADING) {
+            $player_id = self::activeNextPlayer();
+            if ($player_id == self::getGameStateValue('first_player')) {
+                // Back to first player => next phase
+                $next_state = $this->nextPhase();
+            } else {
+                // Go back to processing for next player
+                $next_state = $this->prevPhase();
+            }
         } else {
             // All other phases proceed in order
             $player_id = self::activeNextPlayer();
