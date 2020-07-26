@@ -177,9 +177,8 @@ class fleet extends Table
         }
 
         // Shuffle boat deck and auto shuffle discard pile as needed
-        // TODO: notify on shuffle
         $this->cards->shuffle('deck');
-        $this->cards->autoreshuffle = true;
+        //$this->cards->autoreshuffle = true; //XXX not working?! see drawCards
 
         // 25 fish crates in the game for each player
         self::setGameStateInitialValue("fish_cubes", $nbr_players * 25);
@@ -952,6 +951,7 @@ class fleet extends Table
 
         // Remove fish crate and draw card(s)
         $this->incFishCrates($player_id, -1);
+        //TODO: reshuffle
         $cards = $this->cards->pickCards(count($license), 'deck', $player_id);
 
         $msg = clienttranslate('${player_name} trades a fish crate for ${nbr_cards} card(s)');
@@ -1364,6 +1364,23 @@ class fleet extends Table
             // Draw cards
             $cards = $this->cards->pickCardsForLocation($nbr, 'deck', $dest, $player_id);
 
+            //XXX autoreshuffle was not working here :(
+            $shfl = false;
+            $deck_nbr = 0;
+            if (count($cards) < $nbr) {
+                // Deck is out of cards and needs to be shuffled from discard pile
+                $this->cards->moveAllCardsInLocation('discard', 'deck');
+                $this->cards->shuffle('deck');
+                $more_cards = $this->cards->pickCardsForLocation($nbr - count($cards), 'deck', $dest, $player_id);
+                $cards = array_merge($cards, $more_cards);
+
+                // Notify client of new shuffled deck
+                $shfl = true;
+                $deck_nbr = $this->cards->countCardInLocation('deck');
+                $msg = clienttranslate('Shuffling discard pile into new deck...');
+                self::notifyAllPlayers('log', $msg, array());
+            }
+
             // All players get log notice but only current player gets card details
             $msg = '';
             if ($bonus != null) {
@@ -1374,6 +1391,8 @@ class fleet extends Table
                 'player_name' => self::getActivePlayerName(),
                 'player_id' => $player_id,
                 'nbr' => $nbr,
+                'shuffle' => $shfl,
+                'deck_nbr' => $deck_nbr,
             ));
             self::notifyPlayer($player_id, 'draw', '', array(
                 'cards' => $cards,

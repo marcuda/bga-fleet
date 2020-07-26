@@ -1529,7 +1529,11 @@ function (dojo, declare) {
         {
             console.log('notify_drawLog');
             console.log(notif);
-            this.boat_counter.incValue(-notif.args.nbr);//TODO: need to track when deck shuffles
+            if (notif.args.shuffle) {
+                this.boat_counter.setValue(notif.args.deck_nbr);
+            } else {
+                this.boat_counter.incValue(-notif.args.nbr);
+            }
             this.hand_counters[notif.args.player_id].incValue(notif.args.nbr);
             //TODO: animate draw for other players?
         },
