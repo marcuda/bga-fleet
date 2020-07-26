@@ -941,7 +941,8 @@ class fleet extends Table
 
         // Verify player has license with fish
         $license = $this->getLicenses($player_id, LICENSE_PROCESSING);
-        if (count($license) == 0) {
+        $nbr_license = count($license);
+        if ($nbr_license == 0) {
             throw new feException("Impossible trading: no license");
         }
         $fish = $this->getFishCrates($player_id);
@@ -949,21 +950,19 @@ class fleet extends Table
             throw new feException("Impossible trading: no fish");
         }
 
-        // Remove fish crate and draw card(s)
+        // Remove fish crate
         $this->incFishCrates($player_id, -1);
-        //TODO: reshuffle
-        $cards = $this->cards->pickCards(count($license), 'deck', $player_id);
 
-        $msg = clienttranslate('${player_name} trades a fish crate for ${nbr_cards} card(s)');
+        $msg = clienttranslate('${player_name} trades a fish crate');
         self::notifyAllPlayers('tradeFish', $msg, array(
             'player_name' => self::getActivePlayerName(),
-            'nbr_cards' => count($cards),
+            'nbr_cards' => $nbr_license,
             'player_id' => $player_id,
         ));
-        self::notifyPlayer($player_id, 'draw', '', array(
-            'cards' => $cards,
-            'to_hand' => true,
-        ));
+
+        // Draw card(s)
+        // Do this last to put draw notification last
+        $this->drawCards($player_id, $nbr_license, 'hand', $this->card_types[LICENSE_PROCESSING]['name']);
 
         $this->gamestate->nextState();
     }

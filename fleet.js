@@ -1503,8 +1503,7 @@ function (dojo, declare) {
             console.log(notif);
 
             this.removeFishCube(notif.args.player_id);
-            this.boat_counter.incValue(-notif.args.nbr_cards);//TODO: need to track when deck shuffles
-            this.hand_counters[notif.args.player_id].incValue(notif.args.nbr_cards);
+            // Card draw handled separately
         },
 
         notif_draw: function (notif)
