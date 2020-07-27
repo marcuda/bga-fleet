@@ -991,6 +991,7 @@ class fleet extends Table
         self::notifyAllPlayers('discardLog', clienttranslate('${player_name} discards a card'), array(
             'player_name' => self::getActivePlayerName(),
             'player_id' => $player_id,
+            'in_hand' => $bonus > 0,
         ));
         self::notifyPlayer($player_id, 'discard', '', array(
             'discard' => $card,
@@ -1392,6 +1393,7 @@ class fleet extends Table
                 'nbr' => $nbr,
                 'shuffle' => $shfl,
                 'deck_nbr' => $deck_nbr,
+                'to_hand' => $dest == 'hand' ? true : false,
             ));
             self::notifyPlayer($player_id, 'draw', '', array(
                 'cards' => $cards,

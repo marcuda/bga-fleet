@@ -172,23 +172,11 @@ function (dojo, declare) {
             }
             this.boat_counter = new ebg.counter();
             this.boat_counter.create('boatcount');
-            this.setCounterValue(this.boat_counter, gamedatas.cards['deck']);
+            this.setCounterValue(this.boat_counter, gamedatas.cards['deck'] || 0);
             this.fish_counter = new ebg.counter();
             this.fish_counter.create('fishcount');
             this.setCounterValue(this.fish_counter, gamedatas.fish_cubes);
             
-            // TODO: Set up your game interface here, according to "gamedatas"
-            /*
-            // Set up player table unless spectating
-            this.playerTable = this.player_tables[this.player_id];
-            if (this.isSpectator) {
-                // Spectator - hide player hand area
-                dojo.style('myhand_wrap', 'display', 'none');
-            } else {
-                //TODO: onchangeselection
-            }
-            */
-
             console.log(gamedatas);
             // Player hand
             if (!this.isSpectator) { // Spectator has no hand element
@@ -1308,9 +1296,12 @@ function (dojo, declare) {
                 if (notif.args.auction_done) {
                     // Player passes entirely
                     this.resetAuction(notif.args.player_id);
-                    if (notif.args.card && notif.args.player_id == this.player_id) {
-                        this.playerHand.addToStockWithId(notif.args.card.type_arg, notif.args.card.id, 'boatcount');
+                    if (notif.args.card) {
+                        // Player chose Gone Fishin'
                         this.hand_counters[notif.args.player_id].incValue(1);
+                        if (notif.args.player_id == this.player_id) {
+                            this.playerHand.addToStockWithId(notif.args.card.type_arg, notif.args.card.id, 'boatcount');
+                        }
                     }
                 }
             }
@@ -1528,12 +1519,18 @@ function (dojo, declare) {
         {
             console.log('notify_drawLog');
             console.log(notif);
+
+            // Update deck counter
             if (notif.args.shuffle) {
                 this.boat_counter.setValue(notif.args.deck_nbr);
             } else {
                 this.boat_counter.incValue(-notif.args.nbr);
             }
-            this.hand_counters[notif.args.player_id].incValue(notif.args.nbr);
+
+            // Update player hand counter
+            if (notif.args.to_hand) {
+                this.hand_counters[notif.args.player_id].incValue(notif.args.nbr);
+            }
             //TODO: animate draw for other players?
         },
 
@@ -1541,7 +1538,14 @@ function (dojo, declare) {
         {
             console.log('notify_discardLog');
             console.log(notif);
-            this.hand_counters[notif.args.player_id].incValue(-1);
+
+            // Update player hand counter
+            if (notif.args.in_hand) {
+                this.hand_counters[notif.args.player_id].incValue(-1);
+            } else {
+                // Draw phase where card not discarded is taken into hand
+                this.hand_counters[notif.args.player_id].incValue(1);
+            }
             //TODO: animate draw for other players?
         },
 
