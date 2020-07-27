@@ -97,11 +97,22 @@ function (dojo, declare) {
                 this.hand_counters[player_id].setValue(gamedatas.hand_cards[player_id] || 0);
                          
                 // Player license cards
-                this.player_licenses[player_id] = this.createStockLicense('playerlicenses_' + player_id);
+                //this.player_licenses[player_id] = this.createStockLicense('playerlicenses_' + player_id);
+                this.player_licenses[player_id] = [];
+                for (var i = 0; i < 9; i++) {
+                    var zone = new ebg.zone();
+                    zone.create(this, 'liczone_' + player_id + '_' + i, this.license_width, this.license_height);
+                    zone.setPattern('diagonal');
+                    zone.autowidth = true;
+                    this.player_licenses[player_id][i] = zone;
+                }
                 var licenses = gamedatas.licenses[player_id];
                 for (var i in licenses) {
                     var card = licenses[i];
-                    this.player_licenses[player_id].addToStockWithId(card.type_arg, card.id);
+                    dojo.style('liczone_' + player_id + '_' + card.type_arg, 'display', 'inline-block');
+                    dojo.place(this.format_block('jstpl_license', {player_id:player_id, card_type:card.type_arg, card_id:card.id}), 'site-logo');
+                    this.player_licenses[player_id][card.type_arg].placeInZone('license_' + player_id + '_' + card.type_arg + '_' + card.id);
+                    //this.player_licenses[player_id].addToStockWithId(card.type_arg, card.id);
                 }
 
                 // Player processed fish
@@ -1372,11 +1383,14 @@ function (dojo, declare) {
             this.hand_counters[notif.args.player_id].incValue(-notif.args.card_ids.length);
 
             // Player takes license card
-            this.player_licenses[notif.args.player_id].addToStockWithId(
-                notif.args.license_type,
-                notif.args.license_id,
-                this.auction.table.getItemDivId(notif.args.license_id)
-            );
+            //this.player_licenses[notif.args.player_id].addToStockWithId(
+            //    notif.args.license_type,
+            //    notif.args.license_id,
+            //    this.auction.table.getItemDivId(notif.args.license_id)
+            //);
+            dojo.style('liczone_' + notif.args.player_id + '_' + notif.args.license_type, 'display', 'inline-block');
+            dojo.place(this.format_block('jstpl_license', {player_id:notif.args.player_id, card_type:notif.args.license_type, card_id:notif.args.license_id}), 'site-logo');
+            this.player_licenses[notif.args.player_id][notif.args.license_type].placeInZone('license_' + notif.args.player_id + '_' + notif.args.license_type + '_' + notif.args.license_id);
             this.auction.table.removeFromStockById(notif.args.license_id);
 
             // Score VP from license
