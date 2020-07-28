@@ -97,11 +97,10 @@ function (dojo, declare) {
                 this.hand_counters[player_id].setValue(gamedatas.hand_cards[player_id] || 0);
                          
                 // Player license cards
-                //this.player_licenses[player_id] = this.createStockLicense('playerlicenses_' + player_id);
                 this.player_licenses[player_id] = [];
                 for (var i = 0; i < 9; i++) {
                     var zone = new ebg.zone();
-                    zone.create(this, 'liczone_' + player_id + '_' + i, this.license_width, this.license_height);
+                    zone.create(this, 'license_' + player_id + '_' + i, this.license_width, this.license_height);
                     zone.setPattern('diagonal');
                     zone.autowidth = true;
                     this.player_licenses[player_id][i] = zone;
@@ -109,10 +108,7 @@ function (dojo, declare) {
                 var licenses = gamedatas.licenses[player_id];
                 for (var i in licenses) {
                     var card = licenses[i];
-                    dojo.style('liczone_' + player_id + '_' + card.type_arg, 'display', 'inline-block');
-                    dojo.place(this.format_block('jstpl_license', {player_id:player_id, card_type:card.type_arg, card_id:card.id}), 'site-logo');
-                    this.player_licenses[player_id][card.type_arg].placeInZone('license_' + player_id + '_' + card.type_arg + '_' + card.id);
-                    //this.player_licenses[player_id].addToStockWithId(card.type_arg, card.id);
+                    this.addPlayerLicense(player_id, card.type_arg, card.id, null);
                 }
 
                 // Player processed fish
@@ -458,6 +454,26 @@ function (dojo, declare) {
             script.
         
         */
+
+        addPlayerLicense: function(player_id, card_type, card_id, src)
+        {
+            var zone_div = 'license_' + player_id + '_' + card_type;
+            var license_div = zone_div + '_' + card_id;
+
+            // Ensure player license zone is visible
+            dojo.style(zone_div, 'display', 'inline-block');
+
+            // Create player license object
+            dojo.place(this.format_block('jstpl_license',
+                {player_id:player_id, card_type:card_type, card_id:card_id}), zone_div);
+
+            if (src !== null) {
+                // Place license on auction source
+                this.placeOnObject(license_div, src);
+            }
+
+            this.player_licenses[player_id][card_type].placeInZone(license_div);
+        },
 
         setCounterValue: function(counter, val)
         {
@@ -1001,7 +1017,7 @@ function (dojo, declare) {
                 this.processFishCube(boat_id, this.player_id);
 
                 // Remove highlight from remaining fish on this boat
-                dojo.query('div[id^="fish_' + this.player_id + '_' + boat_id + '"]').removeClass('flt_fish_selectable');
+                dojo.query('div[id^="fish_' + this.player_id + '_' + boat_id + '_"]').removeClass('flt_fish_selectable');
             } else if (state == 'trading') {
                 if (!is_processed) {
                     this.showMessage(_('You may only trade processed fish crates'), 'error');
@@ -1383,14 +1399,8 @@ function (dojo, declare) {
             this.hand_counters[notif.args.player_id].incValue(-notif.args.card_ids.length);
 
             // Player takes license card
-            //this.player_licenses[notif.args.player_id].addToStockWithId(
-            //    notif.args.license_type,
-            //    notif.args.license_id,
-            //    this.auction.table.getItemDivId(notif.args.license_id)
-            //);
-            dojo.style('liczone_' + notif.args.player_id + '_' + notif.args.license_type, 'display', 'inline-block');
-            dojo.place(this.format_block('jstpl_license', {player_id:notif.args.player_id, card_type:notif.args.license_type, card_id:notif.args.license_id}), 'site-logo');
-            this.player_licenses[notif.args.player_id][notif.args.license_type].placeInZone('license_' + notif.args.player_id + '_' + notif.args.license_type + '_' + notif.args.license_id);
+            var src = this.auction.table.getItemDivId(notif.args.license_id);
+            this.addPlayerLicense(notif.args.player_id, notif.args.license_type, notif.args.license_id, src)
             this.auction.table.removeFromStockById(notif.args.license_id);
 
             // Score VP from license
