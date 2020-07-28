@@ -65,6 +65,8 @@
     width: 180px;
     height: 125px;
     background-image: url('img/licenses.png');
+    border: 2px solid black;
+    border-radius: 8%;
 }
 
 .flt_icon_boat {
@@ -182,28 +184,19 @@
     display: none;
 }
 
-.flt_liczone {
+.flt_license_zone {
     width: 180px;
-    height: 145px;
     display: none;
-    margin-right: 5px;
-    margin-bottom: 5px;
+    margin-right: 9px;
+    margin-bottom: 9px;
 }
 
-.flt_small_lic {
-    position: absolute;
-    width: 180px;
-    height: 125px;
-    background-image: url('img/licenses.png');
-    /*transform: scale(0.5);*/
-}
-
-.flt_small_0 { background-position: 0px 0px; }
-.flt_small_1 { background-position: -180px 0px; }
-.flt_small_2 { background-position: -360px 0px; }
-.flt_small_3 { background-position: -540px 0px; }
-.flt_small_4 { background-position: -720px 0px; }
-.flt_small_5 { background-position: 0px -125px; }
-.flt_small_6 { background-position: -180px -125px; }
-.flt_small_7 { background-position: -360px -125px; }
-.flt_small_8 { background-position: -540px -125px; }
+.flt_lic_0 { background-position: 0px 0px; }
+.flt_lic_1 { background-position: -180px 0px; }
+.flt_lic_2 { background-position: -360px 0px; }
+.flt_lic_3 { background-position: -540px 0px; }
+.flt_lic_4 { background-position: -720px 0px; }
+.flt_lic_5 { background-position: 0px -125px; }
+.flt_lic_6 { background-position: -180px -125px; }
+.flt_lic_7 { background-position: -360px -125px; }
+.flt_lic_8 { background-position: -540px -125px; }

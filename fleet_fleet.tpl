@@ -60,15 +60,15 @@
             <h3 style="color:#{PLAYER_COLOR}">{PLAYER_NAME}'s {LICENSES}</h3>
             <div id="playerfish_{PLAYER_ID}" class="flt_fish_player"></div>
             <div id="playerlicenses_{PLAYER_ID}" style="display:flex; flex-wrap:wrap">
-                <div id="liczone_{PLAYER_ID}_0" class="flt_liczone"></div>
-                <div id="liczone_{PLAYER_ID}_1" class="flt_liczone"></div>
-                <div id="liczone_{PLAYER_ID}_2" class="flt_liczone"></div>
-                <div id="liczone_{PLAYER_ID}_3" class="flt_liczone"></div>
-                <div id="liczone_{PLAYER_ID}_4" class="flt_liczone"></div>
-                <div id="liczone_{PLAYER_ID}_5" class="flt_liczone"></div>
-                <div id="liczone_{PLAYER_ID}_6" class="flt_liczone"></div>
-                <div id="liczone_{PLAYER_ID}_7" class="flt_liczone"></div>
-                <div id="liczone_{PLAYER_ID}_8" class="flt_liczone"></div>
+                <div id="license_{PLAYER_ID}_0" class="flt_license_zone"></div>
+                <div id="license_{PLAYER_ID}_1" class="flt_license_zone"></div>
+                <div id="license_{PLAYER_ID}_2" class="flt_license_zone"></div>
+                <div id="license_{PLAYER_ID}_3" class="flt_license_zone"></div>
+                <div id="license_{PLAYER_ID}_4" class="flt_license_zone"></div>
+                <div id="license_{PLAYER_ID}_5" class="flt_license_zone"></div>
+                <div id="license_{PLAYER_ID}_6" class="flt_license_zone"></div>
+                <div id="license_{PLAYER_ID}_7" class="flt_license_zone"></div>
+                <div id="license_{PLAYER_ID}_8" class="flt_license_zone"></div>
             </div>
         </div>
         &nbsp;
@@ -102,7 +102,7 @@ var jstpl_player_board =
         '</div>' +
     '</div>';
 
-var jstpl_license = '<div id="license_${player_id}_${card_type}_${card_id}" class="flt_small_lic flt_small_${card_type}"></div>';
+var jstpl_license = '<div id="license_${player_id}_${card_type}_${card_id}" class="flt_license flt_lic_${card_type}"></div>';
 /*
 // Example:
 var jstpl_some_game_item='<div class="my_game_item" id="my_game_item_${MY_ITEM_ID}"></div>';
