@@ -1018,6 +1018,11 @@ function (dojo, declare) {
 
                 // Remove highlight from remaining fish on this boat
                 dojo.query('div[id^="fish_' + this.player_id + '_' + boat_id + '_"]').removeClass('flt_fish_selectable');
+
+                if (dojo.query('.flt_fish_selectable').length == 0) {
+                    // All possible fish are processed, automatically move on
+                    this.onProcess();
+                }
             } else if (state == 'trading') {
                 if (!is_processed) {
                     this.showMessage(_('You may only trade processed fish crates'), 'error');
