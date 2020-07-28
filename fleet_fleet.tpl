@@ -16,8 +16,8 @@
         <h3>{DRAW_LABEL}</h3>
         <div id="drawarea"></div>
     </div>
-    <div id="auction_top" class="flt_auction whiteblock">
-        <div id="auction">
+    <div id="auction_top">
+        <div id="auction" class="flt_auction whiteblock">
             <h3>{AUCTION_LABEL}</h3>
             <div id="auctiontable"></div>
             <div id="auctionbids" style="display: none;">
@@ -79,7 +79,7 @@
     </div>
     <!-- END player -->
 </div>
-<div id="auction_bottom" class="flt_auction whiteblock" style="display:none;"></div>
+<div id="auction_bottom"></div>
 
 
 <script type="text/javascript">

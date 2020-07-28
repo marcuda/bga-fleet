@@ -159,6 +159,11 @@ function (dojo, declare) {
                 this.auction.table.addToStockWithId(card.type_arg, card.id);
             }
             dojo.connect(this.auction.table, 'onChangeSelection', this, 'onAuctionSelectionChanged');
+            if (gamedatas.gamestate.name.indexOf('auction') == -1) {
+                // Not auction phase, set table at bottom
+                // TODO: player option
+                dojo.place('auction', 'auction_bottom');
+            }
 
             // Draw area
             this.draw_table = this.createStockBoat('drawarea');
@@ -710,9 +715,10 @@ function (dojo, declare) {
             //TODO: player option
             var node = $('auction').parentNode.id;
             if (node != 'auction_top') {
-                dojo.style('auction_top', 'display', '');
+                // Slide auction block to top of screen
                 dojo.place('auction', 'auction_top');
-                dojo.style('auction_bottom', 'display', 'none');
+                this.placeOnObject('auction', 'auction_bottom');
+                this.slideToObject('auction', 'auction_top').play();
                 this.resetAuction();//TODO:double check after adding player option
             }
 
@@ -746,9 +752,14 @@ function (dojo, declare) {
             //TODO: player option
             var node = $('auction').parentNode.id;
             if (node != 'auction_bottom') {
-                dojo.style('auction_bottom', 'display', '');
-                dojo.place('auction', 'auction_bottom');
-                dojo.style('auction_top', 'display', 'none');
+                // Slide auction block to bottom of screen after other animation is complete
+                var _this = this;
+                setTimeout(function() {
+                    // Can't just use animation delay because the placing needs to be delayed as well
+                    dojo.place('auction', 'auction_bottom');
+                    _this.placeOnObject('auction', 'auction_top');
+                    _this.slideToObject('auction', 'auction_bottom').play();
+                }, 1000);
 
                 // Reset bidders for next round
                 dojo.query('.flt_auction_done').removeClass('flt_auction_done');
