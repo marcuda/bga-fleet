@@ -49,6 +49,7 @@
 /********* You can start writing your CSS below this line: **********/
 
 .flt_auction {
+    position: relative;
     width: 740px;
     margin: auto;
 }
