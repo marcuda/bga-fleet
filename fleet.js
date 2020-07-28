@@ -990,7 +990,7 @@ function (dojo, declare) {
                 this.processFishCube(boat_id, this.player_id);
 
                 // Remove highlight from remaining fish on this boat
-                dojo.query('div[id^="fish_' + this.player_id + '_' + boat_id + '"]').removeClass('flt_fish_selectable');
+                dojo.query('div[id^="fish_' + this.player_id + '_' + boat_id + '_"]').removeClass('flt_fish_selectable');
             } else if (state == 'trading') {
                 if (!is_processed) {
                     this.showMessage(_('You may only trade processed fish crates'), 'error');
