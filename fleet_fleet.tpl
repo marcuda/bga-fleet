@@ -122,6 +122,14 @@ var jstpl_license = '<div id="license_${player_id}_${card_type}_${card_id}" clas
 var jstpl_table_header = '<th>${content}</th>';
 var jstpl_table_cell = '<td>${content}</td>';
 var jstpl_table_row = '<th>${label}</th>${content}';
+
+var jstpl_card_tooltip =
+    '<div class="flt_cardtooltip">' +
+        '<h3>${name}</h3>' +
+        '<hr/>' +
+        '${text}' +
+    '</div>';
+
 /*
 // Example:
 var jstpl_some_game_item='<div class="my_game_item" id="my_game_item_${MY_ITEM_ID}"></div>';
