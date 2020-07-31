@@ -65,6 +65,7 @@ class view_fleet_fleet extends game_view
         $this->tpl['DRAW_LABEL'] = self::_("Drawn cards");
         $this->tpl['LICENSES'] = self::_("licenses");
         $this->tpl['BOATS'] = self::_("boats");
+        $this->tpl['FINAL_SCORE'] = self::_("Victory Points");
 
         /*********** Do not change anything below this line  ************/
     }

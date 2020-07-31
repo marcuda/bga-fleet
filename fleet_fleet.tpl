@@ -12,6 +12,21 @@
 
 
 <div id="flt_game_area">
+    <div id="final_score" class="whiteblock" style="display: none;">
+        <h3>{FINAL_SCORE}</h3>
+        <div id="score_table" class="flt_score_table">
+            <table>
+                <tbody>
+                    <tr id="score_table_players">
+                    <tr id="score_table_boat">
+                    <tr id="score_table_license">
+                    <tr id="score_table_fish">
+                    <tr id="score_table_bonus">
+                    <tr id="score_table_total">
+                </tbody>
+            </table>
+        </div>
+    </div>
     <div id="draw_wrap" class="flt_draw_area whiteblock">
         <h3>{DRAW_LABEL}</h3>
         <div id="drawarea"></div>
@@ -103,6 +118,10 @@ var jstpl_player_board =
     '</div>';
 
 var jstpl_license = '<div id="license_${player_id}_${card_type}_${card_id}" class="flt_license flt_lic_${card_type}"></div>';
+
+var jstpl_table_header = '<th>${content}</th>';
+var jstpl_table_cell = '<td>${content}</td>';
+var jstpl_table_row = '<th>${label}</th>${content}';
 /*
 // Example:
 var jstpl_some_game_item='<div class="my_game_item" id="my_game_item_${MY_ITEM_ID}"></div>';
