@@ -1329,6 +1329,7 @@ class fleet extends Table
 
         if ($fish <= 0 || self::getGameStateValue('final_round')) {
             // No more fish crates, game is over!
+            self::notifyAllPlayers('log', clienttranslate('Fish crate supply exhausted, game is over!'), array());
             return 'finalScore';
         } else {
             // Next phase
