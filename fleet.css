@@ -230,3 +230,15 @@
 .flt_score_table tbody tr:hover th {
  color: #009;
 }
+
+.flt_counter {
+    display: flex;
+    justify-content: right;
+    margin: 5px;
+}
+
+.flt_counter span {
+    position: relative;
+    top: 6px;
+    margin-left: 3px;
+}

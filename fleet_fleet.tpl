@@ -48,26 +48,27 @@
             </div>
         </div>
     </div>
-    <div id="flt_counters">
-        <div style="display: inline-block">
+</div>
+<div style="display: flex;">
+    <div id="myhand_wrap" class="whiteblock" style="flex: 1;">
+        <h3>{MY_HAND}</h3>
+        <div id="myhand"></div>
+    </div>
+    <div id="flt_counters" style="margin: 5px;">
+        <div class="flt_counter">
             <div id="licenseicon" class="flt_icon_license"></div>
             <span id="licensecount"></span>
         </div>
-        <div style="display: inline-block">
+        <div class="flt_counter">
             <div class="flt_icon_boat"></div>
             <span id="boatcount"></span>
         </div>
-        <div style="display: inline-block">
+        <div class="flt_counter">
             <div id="fishicon" class="flt_icon_fish"></div>
             <span id="fishcount"></span>
         </div>
     </div>
 </div>
-<div id="myhand_wrap" class="whiteblock">
-    <h3>{MY_HAND}</h3>
-    <div id="myhand"></div>
-</div>
-
 <div id="playertables">
     <!-- BEGIN player -->
     <div id="playertable_{PLAYER_ID}_wrap" style="display:flex; flex-wrap:wrap">
