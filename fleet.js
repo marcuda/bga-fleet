@@ -103,6 +103,7 @@ function (dojo, declare) {
                     zone.create(this, 'license_' + player_id + '_' + i, this.license_width, this.license_height);
                     zone.setPattern('diagonal');
                     zone.autowidth = true;
+                    this.addTooltipHtml('license_' + player_id + '_' + i, this.getCardTooltip(i));
                     this.player_licenses[player_id][i] = zone;
                 }
                 var licenses = gamedatas.licenses[player_id];
@@ -120,7 +121,7 @@ function (dojo, declare) {
                 }
 
                 // Player boat cards
-                this.player_boats[player_id] = this.createStockBoat('playerboats_' + player_id);
+                this.player_boats[player_id] = this.createStockBoat('playerboats_' + player_id, false);
                 var boats = gamedatas.boats[player_id];
                 for (var i in boats) {
                     var card = boats[i];
@@ -166,7 +167,7 @@ function (dojo, declare) {
             }
 
             // Draw area
-            this.draw_table = this.createStockBoat('drawarea');
+            this.draw_table = this.createStockBoat('drawarea', true);
             this.draw_table.vertical_overlap = 0; // remove space for captains
             for (var i in gamedatas.draw) {
                 var card = gamedatas.draw[i];
@@ -192,7 +193,7 @@ function (dojo, declare) {
             console.log(gamedatas);
             // Player hand
             if (!this.isSpectator) { // Spectator has no hand element
-                this.playerHand = this.createStockBoat('myhand');
+                this.playerHand = this.createStockBoat('myhand', true);
                 this.playerHand.vertical_overlap = 0; // remove space for captains
                 for (var i in gamedatas.hand) {
                     var card = gamedatas.hand[i];
@@ -460,6 +461,38 @@ function (dojo, declare) {
         
         */
 
+        /*
+         * Generate HTML tooltip for given card
+         */
+        getCardTooltip: function (card_type_id, is_hand)
+        {
+            // Get card info and copy to modify
+            var card = dojo.clone(this.card_infos[card_type_id]);
+
+            // Set tooltip text based on card type
+            var txt = '';
+            if (card.type == 'boat') {
+                if (is_hand) {
+                    txt += "<p><b>" + _("Cost") + ":</b> $" + card.cost + "</p>";
+                    txt += "<p><b>" + _("Launch") + "</b> => " + card.points + _("VP") + "</p>";
+                    txt += "<p><b>" + _("Discard") + "</b> => $" + card.coins + "</p>";
+                } else {
+                    txt += "<p>+" + card.points + _("VP") + "</p>";
+                }
+            } else if (card.type == 'license') {
+                txt += "<p><b>" + _("Min Cost") + ":</b> $" + card.cost + "</p>";
+                txt += "<p>+" + card.points + _("VP") + "</p>";
+            } else if (card.type == 'bonus') {
+                txt += "<p><b>" + _("Discard") + "</b> => $" + card.coins + "</p>";
+            }
+
+            // Add any special bonus text
+            txt +=  _(card.text);
+            card.text = txt;
+
+            return this.format_block("jstpl_card_tooltip", card);
+        },
+
         showFinalScore: function(args)
         {
             // Build color player names
@@ -699,11 +732,12 @@ function (dojo, declare) {
                 stock.addItemType(i, i, g_gamethemeurl+'img/licenses.png', i);
             }
             stock.setSelectionMode(0);
+            stock.onItemCreate = dojo.hitch(this, 'setupLicenseDiv');
             stock.apparenceBorderWidth = '2px';
             return stock;
         },
 
-        createStockBoat: function (div_id)
+        createStockBoat: function (div_id, is_hand)
         {
             var stock = new ebg.stock();
             stock.create(this, $(div_id), this.boat_width, this.boat_height);
@@ -714,7 +748,11 @@ function (dojo, declare) {
                 stock.addItemType(type, type, g_gamethemeurl+'img/boats.png', pos);
             }
             stock.setSelectionMode(0);
-            stock.onItemCreate = dojo.hitch(this, 'setupBoatDiv');
+            if (is_hand) {
+                stock.onItemCreate = dojo.hitch(this, 'setupBoatDivHand');
+            } else {
+                stock.onItemCreate = dojo.hitch(this, 'setupBoatDivTable');
+            }
             stock.setSelectionAppearance('class');
             // make room for captain cards
             stock.vertical_overlap = -15;
@@ -722,8 +760,24 @@ function (dojo, declare) {
             return stock;
         },
 
-        setupBoatDiv: function(card_div, card_type_id, card_id)
+        setupLicenseDiv: function(card_div, card_type_id, card_id)
         {
+            this.addTooltipHtml(card_div.id, this.getCardTooltip(card_type_id));
+        },
+
+        setupBoatDivHand: function(card_div, card_type_id, card_id)
+        {
+            this.setupBoatDiv(card_div, card_type_id, card_id, true);
+        },
+
+        setupBoatDivTable: function(card_div, card_type_id, card_id)
+        {
+            this.setupBoatDiv(card_div, card_type_id, card_id, false);
+        },
+
+        setupBoatDiv: function(card_div, card_type_id, card_id, is_hand)
+        {
+            this.addTooltipHtml(card_div.id, this.getCardTooltip(card_type_id, is_hand));
             var player_id = parseInt(card_div.id.split('_')[1]);
             var id = card_id.split('_');
             id = id[id.length - 1];

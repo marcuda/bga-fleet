@@ -86,7 +86,7 @@ $this->card_types = array(
         'cost' => 4,
         'points' => 4,
         'nbr' => 4,
-        'text' => clienttranslate('$1 off every transaction for each Shrimp License'),
+        'text' => clienttranslate('<p>$1 off every transaction for each Shrimp License</p>'),
     ),
     LICENSE_COD => array(
         'name' => clienttranslate("Cod License"),
@@ -94,7 +94,7 @@ $this->card_types = array(
         'cost' => 4,
         'points' => 4,
         'nbr' => 4,
-        'text' => clienttranslate("May launch 2 boats per Launch Boats phase. May draw 1 card for each Cod License if player launches any boats"),
+        'text' => clienttranslate("<p>May launch 2 boats per Launch Boats phase</p><p>Draw bonus, after Launch Boats:</p><p>+1 card for each Cod License if player launches any boats</p>"),
     ),
     LICENSE_LOBSTER => array(
         'name' => clienttranslate("Lobster License"),
@@ -102,7 +102,7 @@ $this->card_types = array(
         'cost' => 5,
         'points' => 3,
         'nbr' => 4,
-        'text' => clienttranslate("May captain 2 boats per Hire Captains phase and draw bonus cards. With 1 license: +1/2 cards for 1-3/4+ captained boats. With 2+ licenses: +1/2/3 cards for 1-2/3-6/7+ captained boats."),
+        'text' => clienttranslate("<p>May captain 2 boats per Hire Captains phase</p><p>Draw bonus, after Hire Captains:</p><p>With 1 license +1/2 cards for 1-3/4+ captained boats</p><p>With 2+ licenses +1/2/3 cards for 1-2/3-6/7+ captained boats"),
     ),
     LICENSE_TUNA => array(
         'name' => clienttranslate("Tuna License"),
@@ -110,7 +110,7 @@ $this->card_types = array(
         'cost' => 5,
         'points' => 3,
         'nbr' => 4,
-        'text' => clienttranslate("Draw bonus 1 => 2/2; 2 => 3/2; 3 => 3/3; 4 => 4/3"),
+        'text' => clienttranslate("<p>May discard any card in hand</p><p>Draw bonus:</p><p>With 1 license draw 2, keep 2</p><p>With 2 licenses draw 3, keep 2</p><p>With 3 licenses draw 3, keep 3</p><p>With 4 licenses draw 4, keep 3</p>"),
     ),
     LICENSE_PROCESSING => array(
         'name' => clienttranslate("Processing Vessel License"),
@@ -118,7 +118,7 @@ $this->card_types = array(
         'cost' => 5,
         'points' => 3,
         'nbr' => 4,
-        'text' => clienttranslate("May process 1 crate of fish from each boat onto and may trade 1 fish crate from Processing Vessel License for +1 card for each Processing Vessel License"),
+        'text' => clienttranslate("<p>May process 1 crate of fish from each boat.</p><p>Processed fish crates are worth $1 and 0VP.</p><p>Draw bonus, after Processing:</p><p>Trade 1 processed fish crate for +1 card for each Processing Vessel License</p>"),
     ),
     LICENSE_PUB => array(
         'name' => clienttranslate("Fisherman's Pub"),
@@ -126,7 +126,7 @@ $this->card_types = array(
         'cost' => 10,
         'points' => 10,
         'nbr' => 3,
-        'text' => clienttranslate("+10VP (no bonus)"),
+        'text' => clienttranslate("<p>High VP but no boats or other bonus</p>"),
     ),
     LICENSE_CRAB_C => array(
         'name' => clienttranslate("King Crab License"),
@@ -134,7 +134,7 @@ $this->card_types = array(
         'cost' => 10,
         'points' => 5,
         'nbr' => 1,
-        'text' => clienttranslate("+1VP for each captain (max 10VP)"),
+        'text' => clienttranslate("<p>End game: +1VP for each captain (max 10VP)</p>"),
     ),
     LICENSE_CRAB_F => array(
         'name' => clienttranslate("King Crab License"),
@@ -142,7 +142,7 @@ $this->card_types = array(
         'cost' => 10,
         'points' => 5,
         'nbr' => 1,
-        'text' => clienttranslate("+1VP for each 3 fish crates (max 10VP)"),
+        'text' => clienttranslate("<p>End game: +1VP for every 3 fish crates (max 10VP)</p>"),
     ),
     LICENSE_CRAB_L => array(
         'name' => clienttranslate("King Crab License"),
@@ -150,7 +150,7 @@ $this->card_types = array(
         'cost' => 10,
         'points' => 5,
         'nbr' => 1,
-        'text' => clienttranslate("+2/4/5/6/8/10VP for 2/3/4/5/6/7 different licenses"),
+        'text' => clienttranslate("<p>End game: +2/4/5/6/8/10VP for 2/3/4/5/6/7 different licenses</p><p>All King Crab Licenses count as the same type when scoring this bonus"),
     ),
     BOAT_SHRIMP => array(
         'name' => clienttranslate("Shrimp Boat"),
@@ -220,6 +220,6 @@ $this->card_types = array(
         'points' => 2,
         'coins' => 2,
         'nbr' => 20,
-        'text' => clienttranslate("+2VP if in hand at end of game; discard for $2"),
+        'text' => clienttranslate("<p>Cannot captain</p><p>End game: +2VP if still in hand"),
     ),
 );
