@@ -1489,6 +1489,7 @@ class fleet extends Table
     function stFinalScore()
     {
         $players = self::loadPlayersBasicInfos();
+        $scores_bonus = array_fill_keys(array_keys($players), 0);
 
         // King Crab captain license: +1VP per captained boat (max 10)
         $crab = $this->cards->getCardsOfType(CARD_LICENSE, LICENSE_CRAB_C);
@@ -1498,9 +1499,10 @@ class fleet extends Table
             $boats = $this->getBoats($player_id);
             $captains = array_sum(array_column($boats, 'has_captain'));
             $points = min($captains, 10);
+            $scores_bonus[$player_id] += $points;
             $this->incScore($player_id, $points);
             $msg = clienttranslate('${card_name}: ${player_name} scores ${points} points for ${nbr} captains');
-            self::notifyAllPlayers('finalScore', $msg, array(
+            self::notifyAllPlayers('bonusScore', $msg, array(
                 'card_name' => $this->getCardName($card),
                 'player_name' => $players[$player_id]['player_name'],
                 'points' => $points,
@@ -1517,9 +1519,10 @@ class fleet extends Table
             $boats = $this->getBoats($player_id);
             $fish = array_sum(array_column($boats, 'fish'));
             $points = min(intdiv($fish, 3), 10);
+            $scores_bonus[$player_id] += $points;
             $this->incScore($player_id, $points);
             $msg = clienttranslate('${card_name}: ${player_name} scores ${points} points for ${nbr} fish crates');
-            self::notifyAllPlayers('finalScore', $msg, array(
+            self::notifyAllPlayers('bonusScore', $msg, array(
                 'card_name' => $this->getCardName($card),
                 'player_name' => $players[$player_id]['player_name'],
                 'points' => $points,
@@ -1558,9 +1561,10 @@ class fleet extends Table
             } else if ($unique == 7) {
                 $points = 10;
             }
+            $scores_bonus[$player_id] += $points;
             $this->incScore($player_id, $points);
             $msg = clienttranslate('${card_name}: ${player_name} scores ${points} points for ${nbr} different licenses');
-            self::notifyAllPlayers('finalScore', $msg, array(
+            self::notifyAllPlayers('bonusScore', $msg, array(
                 'card_name' => $this->getCardName($card),
                 'player_name' => $players[$player_id]['player_name'],
                 'points' => $points,
@@ -1581,9 +1585,10 @@ class fleet extends Table
                 }
                 $points = $nbr_cards * $this->card_types[GONE_FISHING]['points'];
 
+                $scores_bonus[$player_id] += $points;
                 $this->incScore($player_id, $points);
                 $msg = clienttranslate('Gone Fishin\': ${player_name} scores ${points} points');
-                self::notifyAllPlayers('finalScore', $msg, array(
+                self::notifyAllPlayers('bonusScore', $msg, array(
                     'player_name' => $players[$player_id]['player_name'],
                     'points' => $points,
                     'player_id' => $player_id,
@@ -1600,6 +1605,31 @@ class fleet extends Table
             $score = (count($boats) * 100) + $fish;
             self::DbQuery("UPDATE player SET player_score_aux = $score WHERE player_id = $player_id");
         }
+
+        // Compute component scores to show final score table
+        $scores_boat = array();
+        $scores_license = array();
+        $scores_fish = array();
+        foreach ($players as $player_id => $player) {
+            $scores_boat[$player_id] = 0;
+            $scores_fish[$player_id] = 0;
+            foreach ($this->getBoats($player_id) as $card) {
+                $scores_boat[$player_id] += $this->getCardInfo($card)['points'];
+                $scores_fish[$player_id] += $card['fish'];
+            }
+
+            $scores_license[$player_id] = 0;
+            foreach ($this->getLicenses($player_id) as $card) {
+                $scores_license[$player_id] += $this->getCardInfo($card)['points'];
+            }
+        }
+        self::notifyAllPlayers('finalScore', '', array(
+            'boat' => $scores_boat,
+            'license' => $scores_license,
+            'fish' => $scores_fish,
+            'bonus' => $scores_bonus,
+            'total' => self::getCollectionFromDB("SELECT player_id, player_score FROM player", true),
+        ));
 
         $this->gamestate->nextState();
     }

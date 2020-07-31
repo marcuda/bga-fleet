@@ -460,6 +460,39 @@ function (dojo, declare) {
         
         */
 
+        showFinalScore: function(args)
+        {
+            // Build color player names
+            var players = [];
+            for (var player_id in this.gamedatas.players) {
+                var player = this.gamedatas.players[player_id];
+                player.name
+                player.color
+                players[player_id] = '<!--PNS--><span class="playername" style="color:#'+player.color+';">'+player.name+'</span><!--PNE-->';
+            }
+
+            // Populate score tables rows
+            this.buildScoreRow('players', '', 'header', players)
+            this.buildScoreRow('boat', _('Boats'), 'cell', args.boat)
+            this.buildScoreRow('license', _('Licenses'), 'cell', args.license)
+            this.buildScoreRow('fish', _('Fish'), 'cell', args.fish)
+            this.buildScoreRow('bonus', _('Bonus'), 'cell', args.bonus)
+            this.buildScoreRow('total', _('TOTAL'), 'header', args.total)
+
+            // Display table
+            dojo.style('final_score', 'display', 'block');
+        },
+
+        buildScoreRow: function(row, label, jstpl, data)
+        {
+            var cells = '';
+            for (var player_id in this.gamedatas.players) {
+                cells += this.format_block('jstpl_table_' + jstpl, {content: data[player_id]});
+            }
+            var html = this.format_block('jstpl_table_row', {label: label, content: cells});
+            dojo.byId('score_table_' + row).innerHTML = html;
+        },
+
         addPlayerLicense: function(player_id, card_type, card_id, src)
         {
             var zone_div = 'license_' + player_id + '_' + card_type;
@@ -1306,6 +1339,7 @@ function (dojo, declare) {
             this.notifqueue.setSynchronous('discard', 500);
             dojo.subscribe('finalRound', this, 'notif_finalRound');
             this.notifqueue.setSynchronous('finalRound', 1500);
+            dojo.subscribe('bonusScore', this, 'notif_bonusScore');
             dojo.subscribe('finalScore', this, 'notif_finalScore');
         },  
         
@@ -1616,11 +1650,18 @@ function (dojo, declare) {
             dojo.style('licensecount', {'color': 'red', 'font-weight': 'bold'});
         },
 
+        notif_bonusScore: function(notif)
+        {
+            console.log('notif_bonusScore');
+            console.log(notif);
+            this.scoreCtrl[notif.args.player_id].incValue(notif.args.points);
+        },
+
         notif_finalScore: function(notif)
         {
             console.log('notif_finalScore');
             console.log(notif);
-            this.scoreCtrl[notif.args.player_id].incValue(notif.args.points);
+            this.showFinalScore(notif.args);
         },
    });             
 });
