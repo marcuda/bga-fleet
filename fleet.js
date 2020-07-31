@@ -560,6 +560,7 @@ function (dojo, declare) {
             if (val < 0) {
                 counter.setValue(0);
             }
+            return val <= 0;
         },
 
         showPossibleMoves: function()
@@ -1525,7 +1526,11 @@ function (dojo, declare) {
             for (var i in notif.args.cards) {
                 var card = notif.args.cards[i];
                 this.auction.table.addToStockWithId(card.type_arg, card.id, 'licensecount');
-                this.incCounterValue(this.license_counter, -1);
+                if (this.incCounterValue(this.license_counter, -1)) {
+                    // Last license drawn
+                    dojo.style('licenseicon', 'opacity', '0.5');
+                    dojo.style('licensecount', {'color': 'red', 'font-weight': 'bold'});
+                }
             }
         },
         
@@ -1594,7 +1599,11 @@ function (dojo, declare) {
                 this.addFishCube(notif.args.card_ids[i], notif.args.player_id);
             }
 
-            this.incCounterValue(this.fish_counter, -notif.args.nbr_fish);
+            if (this.incCounterValue(this.fish_counter, -notif.args.nbr_fish)) {
+                // Last fish crate taken
+                dojo.style('fishicon', 'opacity', '0.5');
+                dojo.style('fishcount', {'color': 'red', 'font-weight': 'bold'});
+            }
 
             // Score 1 VP per fish crate
             this.scoreCtrl[notif.args.player_id].incValue(notif.args.nbr_fish);
