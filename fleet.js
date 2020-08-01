@@ -308,14 +308,8 @@ function (dojo, declare) {
                 case 'trading':
                     break;
                 case 'draw':
-                    if (this.isCurrentPlayerActive()) {
-                        if (this.hand_discard) {
-                            this.playerHand.setSelectionMode(1);
-                        } else {
-                            dojo.style('draw_wrap', 'display', 'block');
-                            this.draw_table.setSelectionMode(1);
-                        }
-                    }
+                    // Multiactive state but players not yet activated
+                    // Handle in onUpdateActionButtons
                     break;
             }
         },
@@ -433,6 +427,18 @@ function (dojo, declare) {
                         this.addActionButton('button_2', _('Pass'), 'onPass');
                         break;
                     case 'draw':
+                        // Not buttons, but cannot apply this logic in onEnteringState
+                        // Highlight cards
+                        this.possible_moves = [true];
+                        this.showPossibleMoves();
+
+                        // Set correct selection area
+                        if (this.hand_discard) {
+                            this.playerHand.setSelectionMode(1);
+                        } else {
+                            dojo.style('draw_wrap', 'display', 'block');
+                            this.draw_table.setSelectionMode(1);
+                        }
                         break;
             
 /*               

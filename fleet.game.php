@@ -971,7 +971,7 @@ class fleet extends Table
     {
         self::checkAction('discard');
 
-        $player_id = self::getActivePlayerId();
+        $player_id = self::getCurrentPlayerId(); // multiple active
 
         // Tuna license gives bonus to discard from hand
         $bonus = count($this->getLicenses($player_id, LICENSE_TUNA));
@@ -989,7 +989,7 @@ class fleet extends Table
         $this->cards->moveAllCardsInLocation('draw', 'hand', $player_id, $player_id);
 
         self::notifyAllPlayers('discardLog', clienttranslate('${player_name} discards a card'), array(
-            'player_name' => self::getActivePlayerName(),
+            'player_name' => self::getCurrentPlayerName(), // multiple active
             'player_id' => $player_id,
             'in_hand' => $bonus > 0,
         ));
@@ -999,7 +999,8 @@ class fleet extends Table
             'in_hand' => $bonus > 0,
         ));
 
-        $this->gamestate->nextState();
+        // Multiple active state
+        $this->gamestate->setPlayerNonMultiactive($player_id, '');
     }
 
     
@@ -1052,8 +1053,9 @@ class fleet extends Table
             // Fishing is automatic, move to next phase (or end)
             $next_state = $this->doFishing();
         } else if ($next_state == PHASE_DRAW) {
-            // Draw cards for next player
-            $this->drawPhase($player_id);
+            // Multiactive state
+            $this->gamestate->nextState($next_state);
+            return;
         }
 
         if ($this->skipPlayer($player_id, $next_state)) {
@@ -1077,6 +1079,26 @@ class fleet extends Table
         }
 
         $this->gamestate->nextState($next_state);
+    }
+
+    function stDraw()
+    {
+        $player_id = self::getGameStateValue('first_player');
+        $next_player = self::getNextPlayerTable();
+        $active_players = array();
+        for ($i = 0; $i < self::getPlayersNumber(); $i++) {
+            // Draw cards for player
+            $this->drawPhase($player_id);
+
+            if (!$this->skipPlayer($player_id, PHASE_DRAW)) {
+                // Player must discard
+                $active_players[] = $player_id;
+            }
+
+            $player_id = $next_player[$player_id];
+        }
+
+        $this->gamestate->setPlayersMultiactive($active_players, '', true);
     }
 
     function activeNextPlayerPhase()
@@ -1118,17 +1140,11 @@ class fleet extends Table
                 // Go back to processing for next player
                 $next_phase = $this->prevPhase();
             }
-        } else {
-            // All other phases proceed in order
-            $next_player = self::activeNextPlayer();
-            if ($next_player == self::getGameStateValue('first_player')) {
-                // Back to first player => next phase
-                $next_phase = $this->nextPhase();
-                if ($next_phase == PHASE_AUCTION) {
-                    // New round, advance first player token
-                    $next_player = $this->rotateFirstPlayer();
-                }
-            }
+        } else if ($current_phase == PHASE_DRAW) {
+            // All players active at once during last phase
+            // Move to next round and advance first player token
+            $next_phase = $this->nextPhase();
+            $next_player = $this->rotateFirstPlayer();
         }
 
         return array($next_player, $next_phase, $extra_time);
@@ -1382,6 +1398,8 @@ class fleet extends Table
                 self::notifyAllPlayers('log', $msg, array());
             }
 
+            $players = self::loadPlayersBasicInfos(); // for player name
+
             // All players get log notice but only current player gets card details
             $msg = '';
             if ($bonus != null) {
@@ -1389,7 +1407,7 @@ class fleet extends Table
             }
             $msg .= clienttranslate('${player_name} draws ${nbr} card(s)');
             self::notifyAllPlayers('drawLog', $msg, array(
-                'player_name' => self::getActivePlayerName(),
+                'player_name' => $players[$player_id]['player_name'], // may be multiple active
                 'player_id' => $player_id,
                 'nbr' => $nbr,
                 'shuffle' => $shfl,
