@@ -247,4 +247,6 @@
     position: relative;
     top: 6px;
     margin-left: 3px;
+    width: 18px;
+    text-align: right;
 }
