@@ -74,6 +74,9 @@
     width: 21px;
     height: 30px;
     background-image: url('img/boaticon.png');
+    margin-right: 11px;
+    border-right: 2px solid black;
+    border-bottom: 2px solid black;
 }
 
 .flt_icon_fish {
@@ -85,12 +88,15 @@
 
 #fishicon {
     position: relative;
+    margin-right: 7px;
 }
 
 .flt_icon_license {
     width: 43px;
     height: 30px;
     background-image: url('img/licenseicon.png');
+    border-right: 2px solid black;
+    border-bottom: 2px solid black;
 }
 
 .flt_disabled {

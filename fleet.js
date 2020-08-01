@@ -180,7 +180,7 @@ function (dojo, declare) {
             this.setCounterValue(this.license_counter, gamedatas.cards['licenses'] || 0);
             if (!gamedatas.cards['licenses']) {
                 // Final round
-                dojo.style('licenseicon', 'opacity', '0.5');
+                dojo.style('licenseicon', {'opacity': '0.5', 'border': 'none'});
                 dojo.style('licensecount', {'color': 'red', 'font-weight': 'bold'});
             }
             this.boat_counter = new ebg.counter();
@@ -1528,7 +1528,7 @@ function (dojo, declare) {
                 this.auction.table.addToStockWithId(card.type_arg, card.id, 'licensecount');
                 if (this.incCounterValue(this.license_counter, -1)) {
                     // Last license drawn
-                    dojo.style('licenseicon', 'opacity', '0.5');
+                    dojo.style('licenseicon', {'opacity': '0.5', 'border': 'none'});
                     dojo.style('licensecount', {'color': 'red', 'font-weight': 'bold'});
                 }
             }
