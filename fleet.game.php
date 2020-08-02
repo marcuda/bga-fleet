@@ -1053,7 +1053,7 @@ class fleet extends Table
             // Fishing is automatic, move to next phase (or end)
             $next_state = $this->doFishing();
         } else if ($next_state == PHASE_DRAW) {
-            // Multiactive state
+            // Multiactive state, handled by other function
             $this->gamestate->nextState($next_state);
             return;
         }
@@ -1093,6 +1093,7 @@ class fleet extends Table
             if (!$this->skipPlayer($player_id, PHASE_DRAW)) {
                 // Player must discard
                 $active_players[] = $player_id;
+                self::giveExtraTime($player_id);
             }
 
             $player_id = $next_player[$player_id];
