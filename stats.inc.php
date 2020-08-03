@@ -51,45 +51,55 @@ $stats_type = array(
 
     // Statistics global to table
     "table" => array(
-
-        "turns_number" => array("id"=> 10,
-                    "name" => totranslate("Number of turns"),
+        "rounds_number" => array("id"=> 10,
+                    "name" => totranslate("Number of rounds"),
                     "type" => "int" ),
-
-/*
-        Examples:
-
-
-        "table_teststat1" => array(   "id"=> 10,
-                                "name" => totranslate("table test stat 1"), 
-                                "type" => "int" ),
-                                
-        "table_teststat2" => array(   "id"=> 11,
-                                "name" => totranslate("table test stat 2"), 
-                                "type" => "float" )
-*/  
     ),
     
     // Statistics existing for each player
     "player" => array(
-
-        "turns_number" => array("id"=> 10,
-                    "name" => totranslate("Number of turns"),
+        "vp_total" => array("id"=> 10,
+                    "name" => totranslate("Victory Points"),
                     "type" => "int" ),
-    
-/*
-        Examples:    
-        
-        
-        "player_teststat1" => array(   "id"=> 10,
-                                "name" => totranslate("player test stat 1"), 
-                                "type" => "int" ),
-                                
-        "player_teststat2" => array(   "id"=> 11,
-                                "name" => totranslate("player test stat 2"), 
-                                "type" => "float" )
-
-*/    
+        "vp_boats" => array("id"=> 11,
+                    "name" => totranslate("VP boats"),
+                    "type" => "int" ),
+        "vp_licenses" => array("id"=> 12,
+                    "name" => totranslate("VP licenses"),
+                    "type" => "int" ),
+        "vp_fish" => array("id"=> 13,
+                    "name" => totranslate("VP fish crates"),
+                    "type" => "int" ),
+        "vp_bonus" => array("id"=> 14,
+                    "name" => totranslate("VP bonuses"),
+                    "type" => "int" ),
+        "auctions_passed" => array("id"=> 15,
+                    "name" => totranslate("Auctions skipped"),
+                    "type" => "int" ),
+        "licenses_bought" => array("id"=> 16,
+                    "name" => totranslate("Licenses bought"),
+                    "type" => "int" ),
+        "boats_launched" => array("id"=> 17,
+                    "name" => totranslate("Boats launched"),
+                    "type" => "int" ),
+        "captains_hired" => array("id"=> 18,
+                    "name" => totranslate("Captains hired"),
+                    "type" => "int" ),
+        "fish_gained" => array("id"=> 19,
+                    "name" => totranslate("Fish crates gained"),
+                    "type" => "int" ),
+        "fish_processed" => array("id"=> 20,
+                    "name" => totranslate("Fish crates processed"),
+                    "type" => "int" ),
+        "fish_traded" => array("id"=> 21,
+                    "name" => totranslate("Fish crates traded"),
+                    "type" => "int" ),
+        "cards_drawn" => array("id"=> 22,
+                    "name" => totranslate("Cards drawn"),
+                    "type" => "int" ),
+        "overpaid" => array("id"=> 23,
+                    "name" => totranslate("Amount overpaid"),
+                    "type" => "int" ),
     )
 
 );

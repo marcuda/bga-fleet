@@ -109,9 +109,21 @@ class fleet extends Table
         self::setGameStateInitialValue("current_player_hires", 0);
         
         // Init game statistics
-        // (note: statistics used in this file must be defined in your stats.inc.php file)
-        //self::initStat( 'table', 'table_teststat1', 0 );    // Init a table statistics
-        //self::initStat( 'player', 'player_teststat1', 0 );  // Init a player statistics (for all players)
+        self::initStat('table', 'rounds_number', 1);
+        self::initStat('player', 'vp_total', 0);
+        self::initStat('player', 'vp_boats', 0);
+        self::initStat('player', 'vp_licenses', 0);
+        self::initStat('player', 'vp_fish', 0);
+        self::initStat('player', 'vp_bonus', 0);
+        self::initStat('player', 'auctions_passed', 0);
+        self::initStat('player', 'licenses_bought', 0);
+        self::initStat('player', 'boats_launched', 0);
+        self::initStat('player', 'captains_hired', 0);
+        self::initStat('player', 'fish_gained', 0);
+        self::initStat('player', 'fish_processed', 0);
+        self::initStat('player', 'fish_traded', 0);
+        self::initStat('player', 'cards_drawn', 0);
+        self::initStat('player', 'overpaid', 0);
 
         // Card decks
         $cards = array();
@@ -540,6 +552,8 @@ class fleet extends Table
                         $msg = clienttranslate('${player_name} skips the auction to go fishing');
                     }
                 }
+
+                self::incStat(1, 'auctions_passed', $player_id);
             }
 
             $sql .= " WHERE player_id = $player_id";
@@ -726,6 +740,15 @@ class fleet extends Table
         $this->cards->moveCard($license_id, 'table', $player_id);
         $this->incScore($player_id, $license_info['points']);
 
+        // Stats
+        self::incStat(1, 'licenses_bought', $player_id);
+        self::incStat($license_info['points'], 'vp_licenses', $player_id);
+        self::incStat($license_info['points'], 'vp_total', $player_id);
+        $overpay = $coins - $license_info['cost'] + $discount;
+        if ($overpay > 0) {
+            self::incStat($overpay, 'overpaid', $player_id);
+        }
+
         // Reset auction
         self::setGameStateValue('auction_card', 0);
         self::setGameStateValue('auction_winner', 0);
@@ -833,6 +856,14 @@ class fleet extends Table
         $this->incScore($player_id, $boat_info['points']);
         self::incGameStateValue('current_player_launches', 1);
 
+        // Stats
+        self::incStat(1, 'boats_launched', $player_id);
+        self::incStat($boat_info['points'], 'vp_boats', $player_id);
+        self::incStat($boat_info['points'], 'vp_total', $player_id);
+        $overpay = $coins - $boat_info['cost'] + $discount;
+        if ($overpay > 0) {
+            self::incStat($overpay, 'overpaid', $player_id);
+        }
 
         $msg = clienttranslate('${player_name} discards ${nbr_cards} card(s)');
         if ($fish > 0) {
@@ -875,8 +906,6 @@ class fleet extends Table
             throw new feException("Impossible hire: invalid card");
         }
 
-
-
         // Verify boat owned by player
         $boat = $this->cards->getCard($boat_id);
         if ($boat == null || $boat['location'] != 'table' || $boat['location_arg'] != $player_id) {
@@ -895,6 +924,7 @@ class fleet extends Table
         $this->cards->moveCard($card_id, 'captain', $boat_id);
         self::DbQuery("UPDATE card SET has_captain = 1 WHERE card_id = $boat_id");
         self::incGameStateValue('current_player_hires', 1);
+        self::incStat(1, 'captains_hired', $player_id);
 
         $msg = clienttranslate('${player_name} hires a captain for their ${card_name}');
         self::notifyAllPlayers('hireCaptain', $msg, array(
@@ -913,6 +943,7 @@ class fleet extends Table
         self::checkAction('processFish');
 
         $player_id = self::getActivePlayerId();
+        $nbr_fish = count($card_ids);
 
         // Validate game state and transaction
 
@@ -940,13 +971,18 @@ class fleet extends Table
         }
 
         // Add fish to PV and reduce score
-        $this->incFishCrates($player_id, count($card_ids));
-        $this->incScore($player_id, -count($card_ids));
+        $this->incFishCrates($player_id, $nbr_fish);
+        $this->incScore($player_id, -$nbr_fish);
+
+        // Stats
+        self::incStat($nbr_fish, 'fish_processed', $player_id);
+        self::incStat(-$nbr_fish, 'vp_fish', $player_id);
+        self::incStat(-$nbr_fish, 'vp_total', $player_id);
 
         $msg = clienttranslate('${player_name} processes ${nbr_fish} fish crate(s)');
         self::notifyAllPlayers('processFish', $msg, array(
             'player_name' => self::getActivePlayerName(),
-            'nbr_fish' => count($card_ids),
+            'nbr_fish' => $nbr_fish,
             'card_ids' => $card_ids,
             'player_id' => $player_id,
         ));
@@ -974,6 +1010,7 @@ class fleet extends Table
 
         // Remove fish crate
         $this->incFishCrates($player_id, -1);
+        self::incStat(1, 'fish_traded', $player_id);
 
         $msg = clienttranslate('${player_name} trades a fish crate');
         self::notifyAllPlayers('tradeFish', $msg, array(
@@ -1168,6 +1205,7 @@ class fleet extends Table
             // Move to next round and advance first player token
             $next_phase = $this->nextPhase();
             $next_player = $this->rotateFirstPlayer();
+            self::incStat(1, 'rounds_number');
         }
 
         return array($next_player, $next_phase, $extra_time);
@@ -1355,6 +1393,9 @@ class fleet extends Table
             if ($nbr_fish > 0) {
                 // Score 1 VP per fish crate
                 $this->incScore($player_id, $nbr_fish);
+                self::incStat($nbr_fish, 'fish_gained', $player_id);
+                self::incStat($nbr_fish, 'vp_fish', $player_id);
+                self::incStat($nbr_fish, 'vp_total', $player_id);
             }
 
             $msg = '${player_name} gains ${nbr_fish} fish crate(s)';
@@ -1420,6 +1461,8 @@ class fleet extends Table
                 $msg = clienttranslate('Shuffling discard pile into new deck...');
                 self::notifyAllPlayers('log', $msg, array());
             }
+
+            self::incStat($nbr, 'cards_drawn', $player_id);
 
             $players = self::loadPlayersBasicInfos(); // for player name
 
@@ -1531,7 +1574,6 @@ class fleet extends Table
     function stFinalScore()
     {
         $players = self::loadPlayersBasicInfos();
-        $scores_bonus = array_fill_keys(array_keys($players), 0);
 
         // King Crab captain license: +1VP per captained boat (max 10)
         $crab = $this->cards->getCardsOfType(CARD_LICENSE, LICENSE_CRAB_C);
@@ -1541,8 +1583,9 @@ class fleet extends Table
             $boats = $this->getBoats($player_id);
             $captains = array_sum(array_column($boats, 'has_captain'));
             $points = min($captains, 10);
-            $scores_bonus[$player_id] += $points;
             $this->incScore($player_id, $points);
+            self::incStat($points, 'vp_bonus', $player_id);
+            self::incStat($points, 'vp_total', $player_id);
             $msg = clienttranslate('${card_name}: ${player_name} scores ${points} points for ${nbr} captains');
             self::notifyAllPlayers('bonusScore', $msg, array(
                 'card_name' => $this->getCardName($card),
@@ -1561,8 +1604,9 @@ class fleet extends Table
             $boats = $this->getBoats($player_id);
             $fish = array_sum(array_column($boats, 'fish'));
             $points = min(intdiv($fish, 3), 10);
-            $scores_bonus[$player_id] += $points;
             $this->incScore($player_id, $points);
+            self::incStat($points, 'vp_bonus', $player_id);
+            self::incStat($points, 'vp_total', $player_id);
             $msg = clienttranslate('${card_name}: ${player_name} scores ${points} points for ${nbr} fish crates');
             self::notifyAllPlayers('bonusScore', $msg, array(
                 'card_name' => $this->getCardName($card),
@@ -1603,8 +1647,9 @@ class fleet extends Table
             } else if ($unique == 7) {
                 $points = 10;
             }
-            $scores_bonus[$player_id] += $points;
             $this->incScore($player_id, $points);
+            self::incStat($points, 'vp_bonus', $player_id);
+            self::incStat($points, 'vp_total', $player_id);
             $msg = clienttranslate('${card_name}: ${player_name} scores ${points} points for ${nbr} different licenses');
             self::notifyAllPlayers('bonusScore', $msg, array(
                 'card_name' => $this->getCardName($card),
@@ -1627,8 +1672,9 @@ class fleet extends Table
                 }
                 $points = $nbr_cards * $this->card_types[GONE_FISHING]['points'];
 
-                $scores_bonus[$player_id] += $points;
                 $this->incScore($player_id, $points);
+                self::incStat($points, 'vp_bonus', $player_id);
+                self::incStat($points, 'vp_total', $player_id);
                 $msg = clienttranslate('Gone Fishin\': ${player_name} scores ${points} points');
                 self::notifyAllPlayers('bonusScore', $msg, array(
                     'player_name' => $players[$player_id]['player_name'],
@@ -1648,29 +1694,25 @@ class fleet extends Table
             self::DbQuery("UPDATE player SET player_score_aux = $score WHERE player_id = $player_id");
         }
 
-        // Compute component scores to show final score table
+        // Final score table
         $scores_boat = array();
         $scores_license = array();
         $scores_fish = array();
+        $scores_bonus = array();
+        $scores_total = array();
         foreach ($players as $player_id => $player) {
-            $scores_boat[$player_id] = 0;
-            $scores_fish[$player_id] = 0;
-            foreach ($this->getBoats($player_id) as $card) {
-                $scores_boat[$player_id] += $this->getCardInfo($card)['points'];
-                $scores_fish[$player_id] += $card['fish'];
-            }
-
-            $scores_license[$player_id] = 0;
-            foreach ($this->getLicenses($player_id) as $card) {
-                $scores_license[$player_id] += $this->getCardInfo($card)['points'];
-            }
+            $scores_boat[$player_id] = self::getStat('vp_boats', $player_id);
+            $scores_license[$player_id] = self::getStat('vp_licenses', $player_id);
+            $scores_fish[$player_id] = self::getStat('vp_fish', $player_id);
+            $scores_bonus[$player_id] = self::getStat('vp_bonus', $player_id);
+            $scores_total[$player_id] = self::getStat('vp_total', $player_id);
         }
         self::notifyAllPlayers('finalScore', '', array(
             'boat' => $scores_boat,
             'license' => $scores_license,
             'fish' => $scores_fish,
             'bonus' => $scores_bonus,
-            'total' => self::getCollectionFromDB("SELECT player_id, player_score FROM player", true),
+            'total' => $scores_total,
         ));
 
         $this->gamestate->nextState();
