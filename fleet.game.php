@@ -265,9 +265,31 @@ class fleet extends Table
     */
     function getGameProgression()
     {
-        // TODO: compute and return the game progression
+        // Game ends when licenses or fish crates run out
+        // Set progression to precent missing of whichever has fewer
 
-        return 0;
+        // Total number of resources based on number players
+        $nbr_players = self::getPlayersNumber();
+        if ($nbr_players == 2) {
+            $nbr_lic = 17;
+            $nbr_fish = 50;
+        } else if ($nbr_players == 3) {
+            $nbr_lic = 17;
+            $nbr_fish = 75;
+        } else {
+            $nbr_lic = 26;
+            $nbr_fish = 100;
+        }
+
+        // License progression
+        $lic_prog = $this->cards->countCardInLocation('licenses') + $this->cards->countCardInLocation('auction');
+        $lic_prog = $lic_prog / $nbr_lic;
+
+        // Fish progression
+        $fish_prog = self::getGameStateValue('fish_cubes') / $nbr_fish;
+
+        // Use smaller of the two then take inverse and convert to %
+        return 100 * (1 - min($lic_prog, $fish_prog));
     }
 
 
