@@ -1699,18 +1699,60 @@ class fleet extends Table
         
         if ($state['type'] === "activeplayer") {
             switch ($statename) {
+                case PHASE_AUCTION:
+                    // Must clear and/or continue auction
+                    if ($active_player == self::getGameStateValue('auction_winner')) {
+                        // Player left after winning
+                        // Remove license from game, clear state, and tell client to move on
+                        $license_id = self::getGameStateValue('auction_card');
+                        $license = $this->cards->getCard($license_id);
+                        $this->cards->moveCard($license_id, 'box');
+
+                        self::setGameStateValue('auction_card', 0);
+                        self::setGameStateValue('auction_winner', 0);
+
+                        // Player does not actually buy license, but only way for client to clear card
+                        self::notifyAllPlayers('buyLicense', '', array(
+                            'nbr_cards' => 0,
+                            'nbr_fish' => 0,
+                            'player_id' => $active_player,
+                            'card_ids' => array(),
+                            'license_id' => $license_id,
+                            'license_type' => $license['type_arg'],
+                            'points' => 0,
+                        ));
+                    } else {
+                        // Tell client to remove player from auction
+                        self::notifyAllPlayers('pass', '', array(
+                            'player_id' => $active_player,
+                            'in_auction' => true,
+                            'auction_done' => self::getGameStateValue('auction_card') == 0,
+                        ));
+                    }
                 default:
-                    $this->gamestate->nextState( "zombiePass" );
-                        break;
+                    // For all states set passed and move to next player
+                    $sql = 'UPDATE player SET auction_bid = 0, auction_pass = 1, passed = 1';
+                    $sql .= " WHERE player_id = $active_player";
+                    self::DbQuery($sql);
+                    $this->gamestate->nextState();
+                    break;
             }
 
             return;
         }
 
         if ($state['type'] === "multipleactiveplayer") {
+            // Draw phase, need to discard but can ignore any remaining
+            $bonus = count($this->getLicenses($player_id, LICENSE_TUNA));
+            $loc = $bonus > 0 ? 'hand' : 'draw';
+            if ($bonus != 1 && $bonus != 3) {
+                $cards = $this->cards->getCardsInLocation($loc, $active_player);
+                $card = array_shift($cards);
+                $this->cards->playCard($card['id']);
+            }
+
             // Make sure player is in a non blocking status for role turn
-            $this->gamestate->setPlayerNonMultiactive( $active_player, '' );
-            
+            $this->gamestate->setPlayerNonMultiactive($active_player, '');
             return;
         }
 
