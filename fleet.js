@@ -200,6 +200,9 @@ function (dojo, declare) {
                     this.playerHand.addToStockWithId(card.type_arg, card.id);
                 }
                 dojo.connect(this.playerHand, 'onChangeSelection', this, 'onPlayerHandSelectionChanged');
+            } else {
+                // Hide player hand area for spectator
+                dojo.style('myhand_wrap', 'display', 'none');
             }
  
             // Setup game notifications to handle (see "setupNotifications" method below)
@@ -287,20 +290,20 @@ function (dojo, declare) {
                 case 'client_auctionWin':
                     this.showActiveAuction();
                     // Player needs to select multiple cards to pay
-                    this.playerHand.setSelectionMode(2);
+                    this.safeSetSelectionMode(this.playerHand, 2);
                     break;
                 case 'launch':
                     this.client_state_args = {};
-                    this.playerHand.setSelectionMode(1);
+                    this.safeSetSelectionMode(this.playerHand, 1);
                     break;
                 case 'client_launchPay':
-                    this.playerHand.setSelectionMode(2);
+                    this.safeSetSelectionMode(this.playerHand, 2);
                     this.client_state_args.fish_crates = 0;
                     break;
                 case 'hire':
                     this.client_state_args = {};
-                    this.playerHand.setSelectionMode(1);
-                    this.player_boats[this.player_id].setSelectionMode(1);
+                    this.safeSetSelectionMode(this.playerHand, 1);
+                    this.safeSetSelectionMode(this.player_boats[this.player_id], 1);
                     break;
                 case 'processing':
                     this.client_state_args = {fish_ids:[]};
@@ -322,8 +325,8 @@ function (dojo, declare) {
             console.log( 'Leaving state: '+stateName );
 
             this.auction.table.setSelectionMode(0);
-            this.playerHand.setSelectionMode(0);
-            this.player_boats[this.player_id].setSelectionMode(0);
+            this.safeSetSelectionMode(this.playerHand, 0);
+            this.safeSetSelectionMode(this.player_boats[this.player_id], 0);
             this.draw_table.setSelectionMode(0);
             dojo.style('auctionbids', 'display', 'none');
             dojo.query('.flt_disabled').removeClass('flt_disabled');
@@ -434,7 +437,7 @@ function (dojo, declare) {
 
                         // Set correct selection area
                         if (this.hand_discard) {
-                            this.playerHand.setSelectionMode(1);
+                            this.safeSetSelectionMode(this.playerHand, 1);
                         } else {
                             dojo.style('draw_wrap', 'display', 'block');
                             this.draw_table.setSelectionMode(1);
@@ -466,6 +469,17 @@ function (dojo, declare) {
             script.
         
         */
+
+        /*
+         * Safely account for Spectator when manipulating stock selections
+         * Needed for player hand and boats
+         */
+        safeSetSelectionMode: function(stock, mode)
+        {
+            if (!this.isSpectator) {
+                stock.setSelectionMode(mode);
+            }
+        },
 
         /*
          * Generate HTML tooltip for given card
@@ -1046,7 +1060,7 @@ function (dojo, declare) {
                             this.playerHand.unselectAll();
                             break;
                         }
-                        this.player_boats[this.player_id].setSelectionMode(1);
+                        this.safeSetSelectionMode(this.player_boats[this.player_id], 1);
                         this.client_state_args.card_id = items[0].id;
                         if (this.client_state_args.boat_id) {
                             this.hireCaptain();
