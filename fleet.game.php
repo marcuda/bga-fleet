@@ -746,6 +746,10 @@ class fleet extends Table
         self::incStat($license_info['points'], 'vp_total', $player_id);
         $overpay = $coins - $license_info['cost'] + $discount;
         if ($overpay > 0) {
+            self::notifyAllPlayers('log','${player_name} OVERPAID BY ${overpay}', array(
+                'player_name' => self::getActivePlayerName(),
+                'overpay' => $overpay,
+            ));
             self::incStat($overpay, 'overpaid', $player_id);
         }
 
@@ -862,6 +866,10 @@ class fleet extends Table
         self::incStat($boat_info['points'], 'vp_total', $player_id);
         $overpay = $coins - $boat_info['cost'] + $discount;
         if ($overpay > 0) {
+            self::notifyAllPlayers('log','${player_name} OVERPAID BY ${overpay}', array(
+                'player_name' => self::getActivePlayerName(),
+                'overpay' => $overpay,
+            ));
             self::incStat($overpay, 'overpaid', $player_id);
         }
 
