@@ -84,6 +84,7 @@
     height: 30px;
     background-image: url('img/cube.png');
     position: absolute;
+    z-index: 99;
 }
 
 #fishicon {
@@ -125,12 +126,11 @@
 }
 
 .flt_fish_player {
+    display: inline-block;
     width: 180px;
     height: 30px;
-    margin-top: 5px;
-    margin-bottom: 5px;
-    padding-left: 5px;
-    padding-top: 5px;
+    padding: 2px;
+    margin-left: 15px;
     background-color: #8096e6;
     border: 2px solid #0037ff;
     border-radius: 5px;
