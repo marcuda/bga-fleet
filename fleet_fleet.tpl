@@ -73,8 +73,12 @@
     <!-- BEGIN player -->
     <div id="playertable_{PLAYER_ID}_wrap" style="display:flex; flex-wrap:wrap">
         <div class="whiteblock flt_player_table">
-            <h3 style="color:#{PLAYER_COLOR}">{PLAYER_NAME}'s {LICENSES}</h3>
-            <div id="playerfish_{PLAYER_ID}" class="flt_fish_player"></div>
+            <div>
+                <h3 style="color:#{PLAYER_COLOR}; display:inline-block; vertical-align:top;">{PLAYER_NAME}'s {LICENSES}</h3>
+                <div class="flt_fish_player">
+                    <div id="playerfish_{PLAYER_ID}"></div>
+                </div>
+            </div>
             <div id="playerlicenses_{PLAYER_ID}" style="display:flex; flex-wrap:wrap">
                 <div id="license_{PLAYER_ID}_0" class="flt_license_zone"></div>
                 <div id="license_{PLAYER_ID}_1" class="flt_license_zone"></div>
