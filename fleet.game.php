@@ -716,8 +716,14 @@ class fleet extends Table
         // Each Shrimp License reduces the cost by one
         $discount = count($this->getLicenses($player_id, LICENSE_SHRIMP));
 
+        // Verify bid
+        $bid = $this->getHighBid();
+        if ($bid < $license_info['cost']) {
+            throw new feException("Impossible buy: low bid");
+        }
+
         // Verify player paid enough
-        if ($coins < ($license_info['cost'] - $discount)) {
+        if ($coins < ($bid - $discount)) {
             throw new feException("Impossible buy: not enough");
         }
 
@@ -744,12 +750,8 @@ class fleet extends Table
         self::incStat(1, 'licenses_bought', $player_id);
         self::incStat($license_info['points'], 'vp_licenses', $player_id);
         self::incStat($license_info['points'], 'vp_total', $player_id);
-        $overpay = $coins - $license_info['cost'] + $discount;
-        if ($overpay > 0) {
-            self::notifyAllPlayers('log','${player_name} OVERPAID BY ${overpay}', array(
-                'player_name' => self::getActivePlayerName(),
-                'overpay' => $overpay,
-            ));
+        $overpay = $coins + $discount - $bid;
+        if ($overpay > 0 && $coins > 0) {
             self::incStat($overpay, 'overpaid', $player_id);
         }
 
@@ -864,12 +866,8 @@ class fleet extends Table
         self::incStat(1, 'boats_launched', $player_id);
         self::incStat($boat_info['points'], 'vp_boats', $player_id);
         self::incStat($boat_info['points'], 'vp_total', $player_id);
-        $overpay = $coins - $boat_info['cost'] + $discount;
-        if ($overpay > 0) {
-            self::notifyAllPlayers('log','${player_name} OVERPAID BY ${overpay}', array(
-                'player_name' => self::getActivePlayerName(),
-                'overpay' => $overpay,
-            ));
+        $overpay = $coins + $discount - $boat_info['cost'];
+        if ($overpay > 0 && $coins > 0) {
             self::incStat($overpay, 'overpaid', $player_id);
         }
 
