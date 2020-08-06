@@ -116,7 +116,7 @@ $machinestates = array(
     ),
     STATE_DRAW => array(
         "name" => "draw",
-        "description" => clienttranslate('${actplayer} must discard a card'),
+        "description" => clienttranslate('Other players must discard a card'),
         "descriptionmyturn" => clienttranslate('${you} must discard a card'),
         "type" => "multipleactiveplayer",
         "action" => "stDraw",
