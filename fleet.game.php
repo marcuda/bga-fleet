@@ -1791,7 +1791,7 @@ class fleet extends Table
 
         if ($state['type'] === "multipleactiveplayer") {
             // Draw phase, need to discard but can ignore any remaining
-            $bonus = count($this->getLicenses($player_id, LICENSE_TUNA));
+            $bonus = count($this->getLicenses($active_player, LICENSE_TUNA));
             $loc = $bonus > 0 ? 'hand' : 'draw';
             if ($bonus != 1 && $bonus != 3) {
                 $cards = $this->cards->getCardsInLocation($loc, $active_player);
