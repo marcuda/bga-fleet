@@ -1070,7 +1070,7 @@ function (dojo, declare) {
                     this.updateBuy();
                     break;
                 case 'hire':
-                    if (this.checkAction('hireCaptain') && items.length > 0) {
+                    if (items.length > 0 && this.checkAction('hireCaptain')) {
                         if (!this.possible_moves[items[0].id]) {
                             this.showMessage(_('That card cannot be used to captain'), 'error');
                             this.playerHand.unselectAll();
@@ -1417,7 +1417,7 @@ function (dojo, declare) {
             this.notifqueue.setSynchronous('drawLicense', 500);
             dojo.subscribe('launchBoat', this, 'notif_launchBoat');
             dojo.subscribe('hireCaptain', this, 'notif_hireCaptain');
-            this.notifqueue.setSynchronous('hireCaptain', 500);
+            this.notifqueue.setSynchronous('hireCaptain', 200);
             dojo.subscribe('fishing', this, 'notif_fishing');
             this.notifqueue.setSynchronous('fishing', 1000);
             dojo.subscribe('processFish', this, 'notif_processFish');
