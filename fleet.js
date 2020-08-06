@@ -25,7 +25,9 @@ define([
 function (dojo, declare) {
     return declare("bgagame.fleet", ebg.core.gamegui, {
         constructor: function(){
-            console.log('fleet constructor');
+            this.debug = false; // enable console logs if true
+
+            if (this.debug) console.log('fleet constructor');
               
             // Here, you can init the global variables of your user interface
             this.auction = {bids:[]};
@@ -69,7 +71,8 @@ function (dojo, declare) {
         
         setup: function( gamedatas )
         {
-            console.log( "Starting game setup" );
+            if (this.debug) console.log( "Starting game setup" );
+            if (this.debug) console.log(gamedatas);
 
             this.card_infos = gamedatas.card_infos;
             this.player_coins = parseInt(gamedatas.coins);
@@ -190,7 +193,6 @@ function (dojo, declare) {
             this.fish_counter.create('fishcount');
             this.setCounterValue(this.fish_counter, gamedatas.fish_cubes);
             
-            console.log(gamedatas);
             // Player hand
             if (!this.isSpectator) { // Spectator has no hand element
                 this.playerHand = this.createStockBoat('myhand', true);
@@ -208,7 +210,7 @@ function (dojo, declare) {
             // Setup game notifications to handle (see "setupNotifications" method below)
             this.setupNotifications();
 
-            console.log( "Ending game setup" );
+            if (this.debug) console.log( "Ending game setup" );
         },
        
 
@@ -220,8 +222,8 @@ function (dojo, declare) {
         //
         onEnteringState: function( stateName, args )
         {
-            console.log( 'Entering state: '+stateName );
-            console.log(this.gamedatas.gamestate);
+            if (this.debug) console.log( 'Entering state: '+stateName );
+            if (this.debug) console.log(this.gamedatas.gamestate);
 
             this.showPossibleMoves();
             this.hideAuction(stateName);
@@ -231,13 +233,15 @@ function (dojo, declare) {
                 case 'auction':
                     // Auction phase managed by client
                     // Set correct message and buttons base on current auction status
-                    var debug = {
-                        winner: this.auction.winner,
-                        player: this.player_id,
-                        card: this.auction.card_id,
-                        bid: this.auction.high_bid
+                    if (this.debug) {
+                        var obj = {
+                            winner: this.auction.winner,
+                            player: this.player_id,
+                            card: this.auction.card_id,
+                            bid: this.auction.high_bid
+                        }
+                        console.log(obj);
                     }
-                    console.log(debug);
                     this.client_state_args = {};
                     if (this.auction.winner) {
                         // Player won license auction
@@ -266,7 +270,8 @@ function (dojo, declare) {
                         // Bid on selected license
                         var card = this.auction.table.getItemById(this.auction.card_id);
                         var card_info = this.card_infos[card.type];
-                        console.log(card);console.log(card_info);
+                        if (this.debug) console.log(card);
+                        if (this.debug) console.log(card_info);
                         this.setClientState('client_auctionBid', {
                             descriptionmyturn: _('${name}: ${you} must bid or pass'),
                             args: card_info
@@ -322,7 +327,7 @@ function (dojo, declare) {
         //
         onLeavingState: function( stateName )
         {
-            console.log( 'Leaving state: '+stateName );
+            if (this.debug) console.log( 'Leaving state: '+stateName );
 
             this.auction.table.setSelectionMode(0);
             this.safeSetSelectionMode(this.playerHand, 0);
@@ -381,7 +386,7 @@ function (dojo, declare) {
         //        
         onUpdateActionButtons: function( stateName, args )
         {
-            console.log( 'onUpdateActionButtons: '+stateName );
+            if (this.debug) console.log( 'onUpdateActionButtons: '+stateName );
                       
             if( this.isCurrentPlayerActive() )
             {            
@@ -396,9 +401,9 @@ function (dojo, declare) {
                         break;
                     case 'client_auctionBid':
                         this.client_state_args.bid = this.auction.high_bid + 1;
-                        console.log(this.client_state_args);
-                        console.log(this.auction.high_bid);
-                        console.log(this.player_coins);
+                        if (this.debug) console.log(this.client_state_args);
+                        if (this.debug) console.log(this.auction.high_bid);
+                        if (this.debug) console.log(this.player_coins);
                         if (this.player_coins >= this.client_state_args.bid) {
                             // Player has enough coins to continue bidding
                             this.addActionButton('button_1', '-1', 'onMinusOne', null, false, 'gray');
@@ -588,9 +593,9 @@ function (dojo, declare) {
             if (!this.isCurrentPlayerActive() || this.possible_moves.length == 0)
                 return;
 
-            console.log("POSSIBLE MOVES");
-            console.log(this.possible_moves);
-            console.log(this.gamedatas.gamestate.name);
+            if (this.debug) console.log("POSSIBLE MOVES");
+            if (this.debug) console.log(this.possible_moves);
+            if (this.debug) console.log(this.gamedatas.gamestate.name);
 
             switch(this.gamedatas.gamestate.name)
             {
@@ -656,7 +661,7 @@ function (dojo, declare) {
         {
             //TODO: make this highlight more interesting/visible
             dojo.query('div[id^="' + prefix + '"]').forEach(function(node) {
-                console.log(node);
+                if (this.debug) console.log(node);
                 if (!dojo.hasClass(node, 'flt_fish_selected')) {
                     dojo.addClass(node, 'flt_fish_selectable');
                     dojo.style(node, 'cursor', 'pointer');
@@ -666,8 +671,8 @@ function (dojo, declare) {
 
         createFishZone: function(id)
         {
-            console.log('CREATE FISH: ' + id);
-            console.log($('fish_' + id));
+            if (this.debug) console.log('CREATE FISH: ' + id);
+            if (this.debug) console.log($('fish_' + id));
             var zone = new ebg.zone();
             zone.create(this, 'fish_' + id, 30, 30); //TODO: width/height
             zone.setPattern('horizontalfit');
@@ -984,8 +989,8 @@ function (dojo, declare) {
         updateBuy: function()
         {
             var items = this.playerHand.getSelectedItems();
-            console.log('UPDATE BUY');
-            console.log(items);
+            if (this.debug) console.log('UPDATE BUY');
+            if (this.debug) console.log(items);
             var coins = 0;
             for (var i in items) {
                 var card = items[i];
@@ -1006,8 +1011,8 @@ function (dojo, declare) {
 
             var items = this.playerHand.getSelectedItems();
 
-            console.log('hand select ' + this.gamedatas.gamestate.name);
-            console.log(items);
+            if (this.debug) console.log('hand select ' + this.gamedatas.gamestate.name);
+            if (this.debug) console.log(items);
             switch(this.gamedatas.gamestate.name)
             {
                 case 'client_auctionWin':
@@ -1016,14 +1021,15 @@ function (dojo, declare) {
                 case 'launch':
                     if (this.checkAction('launchBoat') && items.length > 0) {
                         var card = items[0];
-                        console.log('launch select');console.log(card);
+                        if (this.debug) console.log('launch select');
+                        if (this.debug) console.log(card);
                         if (!this.possible_moves[card.id].can_play) {
                             this.showMessage(this.possible_moves[card.id].error, 'error');
                         } else {
                             var card_info = dojo.clone(this.card_infos[card.type]);
-                            console.log(card_info);
+                            if (this.debug) console.log(card_info);
                             card_info.cost -= this.discount; // Shrimp License reduction
-                            console.log(card_info);
+                            if (this.debug) console.log(card_info);
                             this.client_state_args.boat_id = card.id;
                             this.client_state_args.cost = card_info.cost;
                             this.client_state_args.boat_type = card.type;
@@ -1109,7 +1115,7 @@ function (dojo, declare) {
             var is_processed = div.split('_')[0] == 'fish' ? false : true;
 
             var state = this.gamedatas.gamestate.name;
-            console.log('PROC FISH: ' + state);
+            if (this.debug) console.log('PROC FISH: ' + state);
             if (state == 'processing') {
                 if (!this.checkAction('processFish', true)) {
                     // Ignore click if not the right time
@@ -1188,7 +1194,7 @@ function (dojo, declare) {
 
             this.client_state_args.bid += 1;
 
-            console.log('PLUS ONE: ' + this.client_state_args.bid);
+            if (this.debug) console.log('PLUS ONE: ' + this.client_state_args.bid);
 
             var max_bid = this.player_coins;
             if (this.client_state_args.bid > max_bid) {
@@ -1218,7 +1224,7 @@ function (dojo, declare) {
 
             this.client_state_args.bid -= 1;
 
-            console.log('MINUS ONE: ' + this.client_state_args.bid);
+            if (this.debug) console.log('MINUS ONE: ' + this.client_state_args.bid);
 
             var min_bid = this.auction.high_bid + 1;
             if (this.client_state_args.bid < min_bid) {
@@ -1293,7 +1299,7 @@ function (dojo, declare) {
             if (!this.checkAction('hireCaptain'))
                 return;
 
-            console.log(this.client_state_args);
+            if (this.debug) console.log(this.client_state_args);
             this.ajaxAction('hireCaptain', this.client_state_args);
         },
 
@@ -1331,7 +1337,7 @@ function (dojo, declare) {
             dojo.stopEvent(evt);
 
             var state = this.gamedatas.gamestate.name;
-            console.log('CANCEL: ' + state);
+            if (this.debug) console.log('CANCEL: ' + state);
             if (state == 'client_launchPay') {
                 // Undo boat launch
                 var card_id = this.client_state_args.boat_id
@@ -1343,10 +1349,10 @@ function (dojo, declare) {
                 this.player_boats[this.player_id].removeFromStockById(this.client_state_args.boat_id);
                 delete this.client_state_args.boat_id;
             } else if (state == 'processing') {
-                console.log('UNDO PROC');
+                if (this.debug) console.log('UNDO PROC');
                 // Undo fish crate processing
                 for (var card_id in this.client_state_args.fish_ids) {
-                    console.log('READD FISH ' + card_id);
+                    if (this.debug) console.log('READD FISH ' + card_id);
                     this.removeFishCube(this.player_id);
                     this.addFishCube(card_id, this.player_id);
                 }
@@ -1375,7 +1381,7 @@ function (dojo, declare) {
         */
         setupNotifications: function()
         {
-            console.log( 'notifications subscriptions setup' );
+            if (this.debug) console.log( 'notifications subscriptions setup' );
             
             // TODO: here, associate your game notifications with local methods
             
@@ -1440,8 +1446,8 @@ function (dojo, declare) {
 
         notif_pass: function (notif)
         {
-            console.log('notify_pass');
-            console.log(notif);
+            if (this.debug) console.log('notify_pass');
+            if (this.debug) console.log(notif);
             if (notif.args.in_auction) {
                 // Player passes during auction
                 this.auction.bids[parseInt(notif.args.player_id)] = 'pass';
@@ -1461,31 +1467,31 @@ function (dojo, declare) {
 
         notif_possibleMoves: function (notif)
         {
-            console.log('notify_possibleMoves');
-            console.log(notif);
+            if (this.debug) console.log('notify_possibleMoves');
+            if (this.debug) console.log(notif);
             this.possible_moves = notif.args.moves;
             this.player_coins = notif.args.coins;
         },
 
         notif_auctionSelect: function (notif)
         {
-            console.log('notify_auctionSelect');
-            console.log(notif);
+            if (this.debug) console.log('notify_auctionSelect');
+            if (this.debug) console.log(notif);
             this.auction.card_id = parseInt(notif.args.card_id); //XXX all values coming back as string?
         },
 
         notif_auctionBid: function (notif)
         {
-            console.log('notify_auctionBid');
-            console.log(notif);
+            if (this.debug) console.log('notify_auctionBid');
+            if (this.debug) console.log(notif);
             this.auction.bids[parseInt(notif.args.player_id)] = parseInt(notif.args.bid);
             this.auction.high_bid = parseInt(notif.args.bid);
         },
         
         notif_auctionWin: function (notif)
         {
-            console.log('notify_auctionWin');
-            console.log(notif);
+            if (this.debug) console.log('notify_auctionWin');
+            if (this.debug) console.log(notif);
             this.auction.winner = parseInt(notif.args.player_id);
             this.auction.bids[this.auction.winner] = parseInt(notif.args.bid);
             this.auction.high_bid = parseInt(notif.args.bid);
@@ -1493,8 +1499,8 @@ function (dojo, declare) {
 
         notif_buyLicense: function (notif)
         {
-            console.log('notify_buyLicense');
-            console.log(notif);
+            if (this.debug) console.log('notify_buyLicense');
+            if (this.debug) console.log(notif);
 
             if (notif.args.player_id == this.player_id) {
                 // Discard from hand
@@ -1536,8 +1542,8 @@ function (dojo, declare) {
 
         notif_drawLicenses: function (notif)
         {
-            console.log('notify_drawLicenses');
-            console.log(notif);
+            if (this.debug) console.log('notify_drawLicenses');
+            if (this.debug) console.log(notif);
 
             if (notif.args.discard) {
                 this.auction.table.removeAllTo('site-logo'); //TODO: discard pile
@@ -1556,8 +1562,8 @@ function (dojo, declare) {
         
         notif_launchBoat: function (notif)
         {
-            console.log('notify_launchBoat');
-            console.log(notif);
+            if (this.debug) console.log('notify_launchBoat');
+            if (this.debug) console.log(notif);
 
             if (notif.args.player_id == this.player_id) {
                 // Discard from hand
@@ -1590,8 +1596,8 @@ function (dojo, declare) {
 
         notif_hireCaptain: function (notif)
         {
-            console.log('notify_hireCaptain');
-            console.log(notif);
+            if (this.debug) console.log('notify_hireCaptain');
+            if (this.debug) console.log(notif);
 
             // Show card back for captian
             // TODO: timing, card flip anim?
@@ -1612,8 +1618,8 @@ function (dojo, declare) {
 
         notif_fishing: function (notif)
         {
-            console.log('notify_fishing');
-            console.log(notif);
+            if (this.debug) console.log('notify_fishing');
+            if (this.debug) console.log(notif);
 
             for (var i in notif.args.card_ids) {
                 this.addFishCube(notif.args.card_ids[i], notif.args.player_id);
@@ -1631,8 +1637,8 @@ function (dojo, declare) {
 
         notif_processFish: function (notif)
         {
-            console.log('notify_processFish');
-            console.log(notif);
+            if (this.debug) console.log('notify_processFish');
+            if (this.debug) console.log(notif);
 
             if (notif.args.player_id != this.player_id) {
                 // Active player already moved cubes
@@ -1647,8 +1653,8 @@ function (dojo, declare) {
 
         notif_tradeFish: function (notif)
         {
-            console.log('notify_tradeFish');
-            console.log(notif);
+            if (this.debug) console.log('notify_tradeFish');
+            if (this.debug) console.log(notif);
 
             this.removeFishCube(notif.args.player_id);
             // Card draw handled separately
@@ -1656,8 +1662,8 @@ function (dojo, declare) {
 
         notif_draw: function (notif)
         {
-            console.log('notify_draw');
-            console.log(notif);
+            if (this.debug) console.log('notify_draw');
+            if (this.debug) console.log(notif);
 
             // This notif happens before state change
             // Ensure stock is visible to receive cards
@@ -1674,8 +1680,8 @@ function (dojo, declare) {
 
         notif_drawLog: function (notif)
         {
-            console.log('notify_drawLog');
-            console.log(notif);
+            if (this.debug) console.log('notify_drawLog');
+            if (this.debug) console.log(notif);
 
             // Update deck counter
             if (notif.args.shuffle) {
@@ -1693,8 +1699,8 @@ function (dojo, declare) {
 
         notif_discardLog: function (notif)
         {
-            console.log('notify_discardLog');
-            console.log(notif);
+            if (this.debug) console.log('notify_discardLog');
+            if (this.debug) console.log(notif);
 
             // Update player hand counter
             if (notif.args.in_hand) {
@@ -1708,8 +1714,8 @@ function (dojo, declare) {
 
         notif_discard: function (notif)
         {
-            console.log('notify_discard');
-            console.log(notif);
+            if (this.debug) console.log('notify_discard');
+            if (this.debug) console.log(notif);
 
             // Discard selected
             var stock = notif.args.in_hand ? this.playerHand : this.draw_table;
@@ -1726,8 +1732,8 @@ function (dojo, declare) {
 
         notif_finalRound: function(notif)
         {
-            console.log('notif_finalRound');
-            console.log(notif);
+            if (this.debug) console.log('notif_finalRound');
+            if (this.debug) console.log(notif);
             this.showMessage(_('This is the last round!'), 'info');
             dojo.style('licenseicon', 'opacity', '0.5');
             dojo.style('licensecount', {'color': 'red', 'font-weight': 'bold'});
@@ -1735,15 +1741,15 @@ function (dojo, declare) {
 
         notif_bonusScore: function(notif)
         {
-            console.log('notif_bonusScore');
-            console.log(notif);
+            if (this.debug) console.log('notif_bonusScore');
+            if (this.debug) console.log(notif);
             this.scoreCtrl[notif.args.player_id].incValue(notif.args.points);
         },
 
         notif_finalScore: function(notif)
         {
-            console.log('notif_finalScore');
-            console.log(notif);
+            if (this.debug) console.log('notif_finalScore');
+            if (this.debug) console.log(notif);
             this.showFinalScore(notif.args);
         },
    });             
