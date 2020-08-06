@@ -122,6 +122,8 @@ function (dojo, declare) {
                 for (var i = 0; i < parseInt(gamedatas.processed_fish[player_id]); i++) {
                     this.processFishCube(null, player_id);
                 }
+                this.addTooltip('playerfish_' + player_id, _('Processed fish crates: $1 ea.'), '');
+
 
                 // Player boat cards
                 this.player_boats[player_id] = this.createStockBoat('playerboats_' + player_id, false);
@@ -178,6 +180,7 @@ function (dojo, declare) {
             }
             dojo.connect(this.draw_table, 'onChangeSelection', this, 'onDrawSelectionChanged');
 
+            // Game counters
             this.license_counter = new ebg.counter();
             this.license_counter.create('licensecount');
             this.setCounterValue(this.license_counter, gamedatas.cards['licenses'] || 0);
@@ -192,6 +195,12 @@ function (dojo, declare) {
             this.fish_counter = new ebg.counter();
             this.fish_counter.create('fishcount');
             this.setCounterValue(this.fish_counter, gamedatas.fish_cubes);
+            this.addTooltip('licenseicon', _('Number license cards remaining'), '');
+            this.addTooltip('licensecount', _('Number license cards remaining'), '');
+            this.addTooltip('boaticon', _('Number boat cards remaining (discards get reshuffled)'), '');
+            this.addTooltip('boatcount', _('Number boat cards remaining (discards get reshuffled)'), '');
+            this.addTooltip('fishicon', _('Number fish crates remaining'), '');
+            this.addTooltip('fishcount', _('Number fish crates remaining'), '');
             
             // Player hand
             if (!this.isSpectator) { // Spectator has no hand element
@@ -700,6 +709,7 @@ function (dojo, declare) {
             if (player_id == this.player_id) {
                 dojo.connect($(fish_div), 'onclick', this, 'onClickFishCube');
             }
+            this.addTooltip(fish_div, _('Fish crate: +1VP'), '');
         },
 
         processFishCube: function(card_id, player_id)
