@@ -768,8 +768,8 @@ class fleet extends Table
         }
         $msg .= clienttranslate(' for $${coins}');
         if ($discount > 0) {
-            $msg .= " (with $$discount " . $this->card_types[LICENSE_SHRIMP]['name'] . ' ';
-            $msg .= clienttranslate('discount') . ')';
+            $msg .= " +$$discount " . $this->card_types[LICENSE_SHRIMP]['name'] . ' ';
+            $msg .= clienttranslate('discount');
         }
         self::notifyAllPlayers('buyLicense', $msg, array(
             'player_name' => self::getActivePlayerName(),
@@ -877,8 +877,8 @@ class fleet extends Table
         }
         $msg .= clienttranslate(' for $${coins} to launch a ${card_name}');
         if ($discount > 0) {
-            $msg .= " (with $$discount " . $this->card_types[LICENSE_SHRIMP]['name'] . ' ';
-            $msg .= clienttranslate('discount') . ')';
+            $msg .= " +$$discount " . $this->card_types[LICENSE_SHRIMP]['name'] . ' ';
+            $msg .= clienttranslate('discount');
         }
         self::notifyAllPlayers('launchBoat', $msg, array(
             'player_name' => self::getActivePlayerName(),
