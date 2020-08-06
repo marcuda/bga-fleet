@@ -60,7 +60,7 @@
             <span id="licensecount"></span>
         </div>
         <div class="flt_counter">
-            <div class="flt_icon_boat"></div>
+            <div id="boaticon" class="flt_icon_boat"></div>
             <span id="boatcount"></span>
         </div>
         <div class="flt_counter">
