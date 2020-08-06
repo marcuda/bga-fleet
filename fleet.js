@@ -1566,12 +1566,21 @@ function (dojo, declare) {
             if (this.debug) console.log(notif);
 
             if (notif.args.player_id == this.player_id) {
+                // Play launch boat from hand if not already done (i.e. replay)
+                if (!$(this.player_boats[this.player_id].getItemDivId(notif.args.boat_id))) {
+                    this.player_boats[this.player_id].addToStockWithId(
+                        notif.args.boat_type,
+                        notif.args.boat_id,
+                        this.playerHand.getItemDivId(notif.args.boat_id)
+                    );
+                    this.playerHand.removeFromStockById(notif.args.boat_id);
+                }
+
                 // Discard from hand
                 for (var i in notif.args.card_ids) {
                     this.playerHand.removeFromStockById(notif.args.card_ids[i], 'boatcount', true);
                 }
                 this.playerHand.updateDisplay();
-                // Boat already played during client state
             } else {
                 // Animate cards from other player
                 // TODO: discards?
@@ -1640,8 +1649,9 @@ function (dojo, declare) {
             if (this.debug) console.log('notify_processFish');
             if (this.debug) console.log(notif);
 
-            if (notif.args.player_id != this.player_id) {
-                // Active player already moved cubes
+            if (this.client_state_args.fish_ids.length == 0) {
+                // Active player already moved fish
+                // fish_ids is empty for other players or during replay
                 for (var i in notif.args.card_ids) {
                     this.processFishCube(notif.args.card_ids[i], notif.args.player_id);
                 }
