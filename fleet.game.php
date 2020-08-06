@@ -601,7 +601,7 @@ class fleet extends Table
             $card_info = $this->getCardInfo($card);
             if ($current_bid < $card_info['cost']) {
                 $cost = $card_info['cost'];
-                throw new BgaUserException(self::_("You must bid at least $cost"));
+                throw new BgaUserException(self::_("You must bid at least {$cost}"));
             }
 
             // Store selected card for current auction round
@@ -617,7 +617,7 @@ class fleet extends Table
         $high_bid = $this->getHighBid();
         if ($current_bid <= $high_bid) {
             $min_bid = $high_bid + 1;
-            throw new BgaUserException(self::_("You must bid at least $min_bid"));
+            throw new BgaUserException(self::_("You must bid at least {$min_bid}"));
         }
 
         // Verify player can pay bid
@@ -1404,7 +1404,7 @@ class fleet extends Table
                 self::incStat($nbr_fish, 'vp_total', $player_id);
             }
 
-            $msg = '${player_name} gains ${nbr_fish} fish crate(s)';
+            $msg = clienttranslate('${player_name} gains ${nbr_fish} fish crate(s)');
             self::notifyAllPlayers('fishing', $msg, array(
                 'player_name' => $player['player_name'],
                 'nbr_fish' => $nbr_fish,
