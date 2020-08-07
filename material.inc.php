@@ -19,7 +19,9 @@
  *
  */
 
+// Constants
 if (!defined("LICENSE_SHRIMP")) {
+    // Card type_args
     define("LICENSE_SHRIMP", 0);
     define("LICENSE_COD", 1);
     define("LICENSE_LOBSTER", 2);
@@ -37,10 +39,12 @@ if (!defined("LICENSE_SHRIMP")) {
     define("BOAT_CRAB", 14);
     define("GONE_FISHING", 15);
 
+    // Card types
     define("CARD_LICENSE", 'license');
     define("CARD_BOAT", 'boat');
     define("CARD_BONUS", 'bonus');
 
+    // Phases
     define("PHASE_AUCTION", "auction");
     define("PHASE_LAUNCH", "launch");
     define("PHASE_HIRE", "hire");
@@ -50,6 +54,7 @@ if (!defined("LICENSE_SHRIMP")) {
     define("PHASE_DRAW", "draw");
 }
 
+// Convenience array of different card types
 $this->license_types = array(
     LICENSE_SHRIMP,
     LICENSE_COD,
@@ -79,6 +84,7 @@ $this->boat_types = array(
 );
 
 
+// License and boat cards together
 $this->card_types = array(
     LICENSE_SHRIMP => array(
         'name' => clienttranslate('Shrimp License'),

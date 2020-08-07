@@ -41,6 +41,7 @@ class view_fleet_fleet extends game_view
 
         $players_ordered = $this->game->getPlayersInOrder();
 
+        // Auction block
         $this->page->begin_block("fleet_fleet", "bid");
         foreach($players_ordered as $player_id) {
             $this->page->insert_block("bid", array(
@@ -50,6 +51,7 @@ class view_fleet_fleet extends game_view
             ));
         }
 
+        // Player tableau
         $this->page->begin_block("fleet_fleet", "player");
         foreach ($players_ordered as $player_id) {
             $this->page->insert_block("player", array(

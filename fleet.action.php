@@ -39,6 +39,7 @@ class action_fleet extends APP_GameAction
         }
     } 
 
+    // Translate number list to array
     function getNumberList($arg, $required=true)
     {
         // Get number list argument

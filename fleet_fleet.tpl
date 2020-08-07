@@ -12,6 +12,8 @@
 
 
 <div id="flt_game_area">
+
+    <!-- Table to display end game scoring -->
     <div id="final_score" class="whiteblock" style="display: none;">
         <h3>{FINAL_SCORE}</h3>
         <div id="score_table" class="flt_score_table">
@@ -27,10 +29,14 @@
             </table>
         </div>
     </div>
+
+    <!-- Drawn card area -->
     <div id="draw_wrap" class="flt_draw_area whiteblock">
         <h3>{DRAW_LABEL}</h3>
         <div id="drawarea"></div>
     </div>
+
+    <!-- Auction block -->
     <div id="auction_top">
         <div id="auction" class="flt_auction whiteblock">
             <h3>{AUCTION_LABEL}</h3>
@@ -48,6 +54,8 @@
             </div>
         </div>
     </div>
+
+    <!-- Player hand and game counters -->
     <div style="display: flex;">
         <div id="myhand_wrap" class="whiteblock" style="flex: 1;">
             <h3>{MY_HAND}</h3>
@@ -68,6 +76,8 @@
             </div>
         </div>
     </div>
+
+    <!-- All player tables -->
     <div id="playertables">
         <!-- BEGIN player -->
         <div id="playertable_{PLAYER_ID}_wrap" style="display:flex; flex-wrap:wrap">
@@ -98,20 +108,30 @@
         </div>
         <!-- END player -->
     </div>
+
+    <!-- Placeholder to move auction down -->
     <div id="auction_bottom"></div>
+
 </div>
 
 
 <script type="text/javascript">
-
 // Javascript HTML templates
+
+// Launched boat cards with captain and fish overlays
 var jstpl_boat = 
     '<div id="cardcontent_${id}">' +
         '<div id="captain_${id}" class="flt_boat flt_captain"></div>' +
         '<div id="fish_${id}" class="flt_fish_boat"></div>' +
     '</div>';
+
+// Fish cube
 var jstpl_fish = '<div id="fish_${player_id}_${card_id}_${fish_id}" class="flt_icon_fish"></div>';
+
+// Processed fish cube
 var jstpl_pfish = '<div id="${player_id}_fish_${fish_id}" class="flt_icon_fish"></div>';
+
+// Player board icons
 var jstpl_player_board =
     '<div class="flt_board">' +
         '<img id="handcount_icon_p${id}" class="imgtext" src="${url}/img/hand.png">' +
@@ -122,24 +142,21 @@ var jstpl_player_board =
         '</div>' +
     '</div>';
 
+// Played license
 var jstpl_license = '<div id="license_${player_id}_${card_type}_${card_id}" class="flt_license flt_lic_${card_type}"></div>';
 
+// Final score table entries
 var jstpl_table_header = '<th>${content}</th>';
 var jstpl_table_cell = '<td>${content}</td>';
 var jstpl_table_row = '<th>${label}</th>${content}';
 
+// Card tootltips
 var jstpl_card_tooltip =
     '<div class="flt_cardtooltip">' +
         '<h3>${name}</h3>' +
         '<hr/>' +
         '${text}' +
     '</div>';
-
-/*
-// Example:
-var jstpl_some_game_item='<div class="my_game_item" id="my_game_item_${MY_ITEM_ID}"></div>';
-
-*/
 
 </script>  
 
