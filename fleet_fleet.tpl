@@ -48,58 +48,58 @@
             </div>
         </div>
     </div>
-</div>
-<div style="display: flex;">
-    <div id="myhand_wrap" class="whiteblock" style="flex: 1;">
-        <h3>{MY_HAND}</h3>
-        <div id="myhand"></div>
+    <div style="display: flex;">
+        <div id="myhand_wrap" class="whiteblock" style="flex: 1;">
+            <h3>{MY_HAND}</h3>
+            <div id="myhand"></div>
+        </div>
+        <div id="flt_counters" style="margin: 5px;">
+            <div class="flt_counter">
+                <div id="licenseicon" class="flt_icon_license"></div>
+                <span id="licensecount"></span>
+            </div>
+            <div class="flt_counter">
+                <div id="boaticon" class="flt_icon_boat"></div>
+                <span id="boatcount"></span>
+            </div>
+            <div class="flt_counter">
+                <div id="fishicon" class="flt_icon_fish"></div>
+                <span id="fishcount"></span>
+            </div>
+        </div>
     </div>
-    <div id="flt_counters" style="margin: 5px;">
-        <div class="flt_counter">
-            <div id="licenseicon" class="flt_icon_license"></div>
-            <span id="licensecount"></span>
-        </div>
-        <div class="flt_counter">
-            <div id="boaticon" class="flt_icon_boat"></div>
-            <span id="boatcount"></span>
-        </div>
-        <div class="flt_counter">
-            <div id="fishicon" class="flt_icon_fish"></div>
-            <span id="fishcount"></span>
-        </div>
-    </div>
-</div>
-<div id="playertables">
-    <!-- BEGIN player -->
-    <div id="playertable_{PLAYER_ID}_wrap" style="display:flex; flex-wrap:wrap">
-        <div class="whiteblock flt_player_table">
-            <div>
-                <h3 style="color:#{PLAYER_COLOR}; display:inline-block; vertical-align:top;">{PLAYER_NAME}'s {LICENSES}</h3>
-                <div class="flt_fish_player">
-                    <div id="playerfish_{PLAYER_ID}"></div>
+    <div id="playertables">
+        <!-- BEGIN player -->
+        <div id="playertable_{PLAYER_ID}_wrap" style="display:flex; flex-wrap:wrap">
+            <div class="whiteblock flt_player_table">
+                <div>
+                    <h3 style="color:#{PLAYER_COLOR}; display:inline-block; vertical-align:top;">{PLAYER_NAME}'s {LICENSES}</h3>
+                    <div class="flt_fish_player">
+                        <div id="playerfish_{PLAYER_ID}"></div>
+                    </div>
+                </div>
+                <div id="playerlicenses_{PLAYER_ID}" style="display:flex; flex-wrap:wrap">
+                    <div id="license_{PLAYER_ID}_0" class="flt_license_zone"></div>
+                    <div id="license_{PLAYER_ID}_1" class="flt_license_zone"></div>
+                    <div id="license_{PLAYER_ID}_2" class="flt_license_zone"></div>
+                    <div id="license_{PLAYER_ID}_3" class="flt_license_zone"></div>
+                    <div id="license_{PLAYER_ID}_4" class="flt_license_zone"></div>
+                    <div id="license_{PLAYER_ID}_5" class="flt_license_zone"></div>
+                    <div id="license_{PLAYER_ID}_6" class="flt_license_zone"></div>
+                    <div id="license_{PLAYER_ID}_7" class="flt_license_zone"></div>
+                    <div id="license_{PLAYER_ID}_8" class="flt_license_zone"></div>
                 </div>
             </div>
-            <div id="playerlicenses_{PLAYER_ID}" style="display:flex; flex-wrap:wrap">
-                <div id="license_{PLAYER_ID}_0" class="flt_license_zone"></div>
-                <div id="license_{PLAYER_ID}_1" class="flt_license_zone"></div>
-                <div id="license_{PLAYER_ID}_2" class="flt_license_zone"></div>
-                <div id="license_{PLAYER_ID}_3" class="flt_license_zone"></div>
-                <div id="license_{PLAYER_ID}_4" class="flt_license_zone"></div>
-                <div id="license_{PLAYER_ID}_5" class="flt_license_zone"></div>
-                <div id="license_{PLAYER_ID}_6" class="flt_license_zone"></div>
-                <div id="license_{PLAYER_ID}_7" class="flt_license_zone"></div>
-                <div id="license_{PLAYER_ID}_8" class="flt_license_zone"></div>
+            &nbsp;
+            <div class="whiteblock flt_player_table">
+                <h3 style="color:#{PLAYER_COLOR}">{PLAYER_NAME}'s {BOATS}</h3>
+                <div id="playerboats_{PLAYER_ID}"></div>
             </div>
         </div>
-        &nbsp;
-        <div class="whiteblock flt_player_table">
-            <h3 style="color:#{PLAYER_COLOR}">{PLAYER_NAME}'s {BOATS}</h3>
-            <div id="playerboats_{PLAYER_ID}"></div>
-        </div>
+        <!-- END player -->
     </div>
-    <!-- END player -->
+    <div id="auction_bottom"></div>
 </div>
-<div id="auction_bottom"></div>
 
 
 <script type="text/javascript">
