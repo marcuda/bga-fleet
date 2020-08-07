@@ -30,30 +30,32 @@ function (dojo, declare) {
             if (this.debug) console.log('fleet constructor');
               
             // Here, you can init the global variables of your user interface
-            this.auction = {bids:[]};
-            this.playerHand = null;
-            this.boat_width = 100;
-            this.boat_height = 143;
-            this.boat_row_size = 7;
-            this.license_width = 180;
-            this.license_height = 125;
-            this.license_row_size = 5;
-            this.license_counter = null;
-            this.boat_counter = null;
-            this.fish_counter = null;
-            this.hand_counters = [];
-            this.client_state_args = {};
-            this.card_infos = null;
-            this.player_coins = 0;
-            this.player_licenses = [];
-            this.player_boats = [];
-            this.possible_moves = null;
-            this.fish_zones = [];
-            this.player_fish = [];
-            this.draw_table = null;
-            this.discount = 0;
-            this.hand_discard = false;
-            this.gone_fishing = false;
+            this.auction = {bids:[]};    // object to track all auction status
+            this.player_hand = null;     // stock component for player's hand
+            this.boat_width = 100;       // card width, boats
+            this.boat_height = 143;      // card height, boats
+            this.boat_row_size = 7;      // sprite image cards per row, boats
+            this.license_width = 180;    // card width, licenses
+            this.license_height = 125;   // card height, licenses
+            this.license_row_size = 5;   // sprite image cards per row, licenses
+            this.fish_cube_size = 30;    // fish cube width/height
+            this.license_counter = null; // counter for license deck
+            this.boat_counter = null;    // counter for boat deck
+            this.fish_counter = null;    // counter for fish cubes
+            this.hand_counters = [];     // counters for all players cards in hand
+            this.client_state_args = {}; // arguments for all client states
+            this.card_infos = null;      // additional card details
+            this.player_coins = 0;       // number of coins available to spend
+            this.player_licenses = [];   // stock components for all players licenses in play
+            this.player_boats = [];      // stock components for all players boats in play
+            this.possible_moves = null;  // objects to highlight as possible plays when active
+            this.fish_zones = [];        // zone components for each boats fish area
+            this.player_fish = [];       // zone components for each player's processed fish area
+            this.draw_table = null;      // stock compontent for drawn cards area
+            this.discount = 0;           // transaction discount from played Shrimp Licenses
+            this.hand_discard = false;   // true if player has Tuna License to draw into/discard from hand
+            this.gone_fishing = false;   // true if game option to use Gone Fishing is enabled
+            this.constants = null;        // game constants
         },
         
         /*
@@ -74,6 +76,7 @@ function (dojo, declare) {
             if (this.debug) console.log( "Starting game setup" );
             if (this.debug) console.log(gamedatas);
 
+            // Various infos
             this.card_infos = gamedatas.card_infos;
             this.player_coins = parseInt(gamedatas.coins);
             this.auction.high_bid = parseInt(gamedatas.auction_bid);
@@ -82,6 +85,7 @@ function (dojo, declare) {
             this.discount = parseInt(gamedatas.discount);
             this.hand_discard = gamedatas.hand_discard;
             this.gone_fishing = gamedatas.gone_fishing;
+            this.constants = gamedatas.constants;
             
             // Setting up player boards
             for( var player_id in gamedatas.players )
@@ -100,6 +104,7 @@ function (dojo, declare) {
                 this.hand_counters[player_id].setValue(gamedatas.hand_cards[player_id] || 0);
                          
                 // Player license cards
+                // Create elements
                 this.player_licenses[player_id] = [];
                 for (var i = 0; i < 9; i++) {
                     var zone = new ebg.zone();
@@ -109,6 +114,7 @@ function (dojo, declare) {
                     this.addTooltipHtml('license_' + player_id + '_' + i, this.getCardTooltip(i));
                     this.player_licenses[player_id][i] = zone;
                 }
+                // Add owned licenses
                 var licenses = gamedatas.licenses[player_id];
                 for (var i in licenses) {
                     var card = licenses[i];
@@ -117,13 +123,13 @@ function (dojo, declare) {
 
                 // Player processed fish
                 this.player_fish[player_id] = new ebg.zone();
-                this.player_fish[player_id].create(this, 'playerfish_' + player_id, 30, 30); //TODO: width/height
+                this.player_fish[player_id].create(this, 'playerfish_' + player_id,
+                    this.fish_cube_size, this.fish_cube_size);
                 this.player_fish[player_id].setPattern('horizontalfit');
                 for (var i = 0; i < parseInt(gamedatas.processed_fish[player_id]); i++) {
                     this.processFishCube(null, player_id);
                 }
                 this.addTooltip('playerfish_' + player_id, _('Processed fish crates: $1 ea.'), '');
-
 
                 // Player boat cards
                 this.player_boats[player_id] = this.createStockBoat('playerboats_' + player_id, false);
@@ -143,7 +149,7 @@ function (dojo, declare) {
                 }
                 dojo.connect(this.player_boats[player_id], 'onChangeSelection', this, 'onPlayerBoatsSelectionChanged');
 
-                // Auction
+                // Auction bid
                 var bid = parseInt(player.bid);
                 if (parseInt(player.done)) {
                     dojo.addClass('playerbid_' + player_id + '_wrap', 'flt_auction_done');
@@ -153,7 +159,7 @@ function (dojo, declare) {
                 this.auction.bids[player_id] = bid;
             }
 
-            // First player
+            // First player token
             dojo.addClass('first_player_p' + gamedatas.first_player, 'flt_first_player');
 
             // License Auction
@@ -181,36 +187,41 @@ function (dojo, declare) {
             dojo.connect(this.draw_table, 'onChangeSelection', this, 'onDrawSelectionChanged');
 
             // Game counters
+            // License deck
             this.license_counter = new ebg.counter();
             this.license_counter.create('licensecount');
             this.setCounterValue(this.license_counter, gamedatas.cards['licenses'] || 0);
-            if (!gamedatas.cards['licenses']) {
-                // Final round
-                dojo.style('licenseicon', {'opacity': '0.5', 'border': 'none'});
-                dojo.style('licensecount', {'color': 'red', 'font-weight': 'bold'});
-            }
+            this.addTooltip('licenseicon', _('Number license cards remaining'), '');
+            this.addTooltip('licensecount', _('Number license cards remaining'), '');
+            // Boat deck
             this.boat_counter = new ebg.counter();
             this.boat_counter.create('boatcount');
             this.setCounterValue(this.boat_counter, gamedatas.cards['deck'] || 0);
+            this.addTooltip('boaticon', _('Number boat cards remaining (discards get reshuffled)'), '');
+            this.addTooltip('boatcount', _('Number boat cards remaining (discards get reshuffled)'), '');
+            // Fish cubes
             this.fish_counter = new ebg.counter();
             this.fish_counter.create('fishcount');
             this.setCounterValue(this.fish_counter, gamedatas.fish_cubes);
-            this.addTooltip('licenseicon', _('Number license cards remaining'), '');
-            this.addTooltip('licensecount', _('Number license cards remaining'), '');
-            this.addTooltip('boaticon', _('Number boat cards remaining (discards get reshuffled)'), '');
-            this.addTooltip('boatcount', _('Number boat cards remaining (discards get reshuffled)'), '');
             this.addTooltip('fishicon', _('Number fish crates remaining'), '');
             this.addTooltip('fishcount', _('Number fish crates remaining'), '');
+
+            // Check for final round
+            if (!gamedatas.cards['licenses']) {
+                // Highlight empty deck
+                dojo.style('licenseicon', {'opacity': '0.5', 'border': 'none'});
+                dojo.style('licensecount', {'color': 'red', 'font-weight': 'bold'});
+            }
             
             // Player hand
             if (!this.isSpectator) { // Spectator has no hand element
-                this.playerHand = this.createStockBoat('myhand', true);
-                this.playerHand.vertical_overlap = 0; // remove space for captains
+                this.player_hand = this.createStockBoat('myhand', true);
+                this.player_hand.vertical_overlap = 0; // remove space for captains
                 for (var i in gamedatas.hand) {
                     var card = gamedatas.hand[i];
-                    this.playerHand.addToStockWithId(card.type_arg, card.id);
+                    this.player_hand.addToStockWithId(card.type_arg, card.id);
                 }
-                dojo.connect(this.playerHand, 'onChangeSelection', this, 'onPlayerHandSelectionChanged');
+                dojo.connect(this.player_hand, 'onChangeSelection', this, 'onPlayerHandSelectionChanged');
             } else {
                 // Hide player hand area for spectator
                 dojo.style('myhand_wrap', 'display', 'none');
@@ -234,6 +245,7 @@ function (dojo, declare) {
             if (this.debug) console.log( 'Entering state: '+stateName );
             if (this.debug) console.log(this.gamedatas.gamestate);
 
+            // Highlight available actions and remove auction (will be displayed if needed)
             this.showPossibleMoves();
             this.hideAuction(stateName);
 
@@ -241,7 +253,7 @@ function (dojo, declare) {
             {
                 case 'auction':
                     // Auction phase managed by client
-                    // Set correct message and buttons base on current auction status
+                    // Set correct message and buttons based on current auction status
                     if (this.debug) {
                         var obj = {
                             winner: this.auction.winner,
@@ -251,6 +263,7 @@ function (dojo, declare) {
                         }
                         console.log(obj);
                     }
+
                     this.client_state_args = {};
                     if (this.auction.winner) {
                         // Player won license auction
@@ -262,6 +275,7 @@ function (dojo, declare) {
                                 // Shrimp discount enough that license is free (unlikely)
                                 this.buyAction('buyLicense');
                             } else {
+                                // Client state to pay cost
                                 var desc = _('${you} must discard cards to pay');
                                 desc += ' 0/' + this.client_state_args.cost
                                 this.setClientState('client_auctionWin', {
@@ -276,7 +290,8 @@ function (dojo, declare) {
                             this.updatePageTitle();
                         }
                     } else if (this.auction.card_id) {
-                        // Bid on selected license
+                        // Active auction
+                        // Client state to bid on selected license
                         var card = this.auction.table.getItemById(this.auction.card_id);
                         var card_info = this.card_infos[card.type];
                         if (this.debug) console.log(card);
@@ -286,43 +301,52 @@ function (dojo, declare) {
                             args: card_info
                         });
                     } else {
-                        // Select license for bid
+                        // First player to act in the round
+                        // Client state to select license for bid
                         this.setClientState('client_auctionSelect', {
                             descriptionmyturn: _('${you} may select a license to bid on')
                         });
                     }
                     break;
                 case 'client_auctionSelect':
+                    // Player must select a card from auction table or pass
                     this.showActiveAuction();
                     this.auction.table.setSelectionMode(1);
                     //TODO: if last player change title to say buy vs bid?
-                    //TODO: possible actions
                     break;
                 case 'client_auctionBid':
+                    // Player must bid or pass; all actions in status bar
                     this.showActiveAuction();
                     break;
                 case 'client_auctionWin':
+                    // Player must select card(s)/fish from hand
                     this.showActiveAuction();
-                    // Player needs to select multiple cards to pay
-                    this.safeSetSelectionMode(this.playerHand, 2);
+                    this.safeSetSelectionMode(this.player_hand, 2);
+                    this.client_state_args.fish_crates = 0;
                     break;
                 case 'launch':
+                    // Player may select card from hand
                     this.client_state_args = {};
-                    this.safeSetSelectionMode(this.playerHand, 1);
+                    this.safeSetSelectionMode(this.player_hand, 1);
                     break;
                 case 'client_launchPay':
-                    this.safeSetSelectionMode(this.playerHand, 2);
+                    // Player must select card(s)/fish from hand
+                    this.safeSetSelectionMode(this.player_hand, 2);
                     this.client_state_args.fish_crates = 0;
                     break;
                 case 'hire':
+                    // Player may select card from hand and boat in play
                     this.client_state_args = {};
-                    this.safeSetSelectionMode(this.playerHand, 1);
+                    this.safeSetSelectionMode(this.player_hand, 1);
                     this.safeSetSelectionMode(this.player_boats[this.player_id], 1);
                     break;
                 case 'processing':
+                    // Player may select fish from multiple boats
                     this.client_state_args = {fish_ids:[]};
                     break;
                 case 'trading':
+                    // Player may trade a fish crate
+                    // Simple true/false action
                     break;
                 case 'draw':
                     // Multiactive state but players not yet activated
@@ -338,10 +362,13 @@ function (dojo, declare) {
         {
             if (this.debug) console.log( 'Leaving state: '+stateName );
 
+            // Clear all selections
             this.auction.table.setSelectionMode(0);
-            this.safeSetSelectionMode(this.playerHand, 0);
+            this.safeSetSelectionMode(this.player_hand, 0);
             this.safeSetSelectionMode(this.player_boats[this.player_id], 0);
             this.draw_table.setSelectionMode(0);
+
+            // Remove all highlights and other activated styling
             dojo.style('auctionbids', 'display', 'none');
             dojo.query('.flt_disabled').removeClass('flt_disabled');
             dojo.query('.flt_fish_selected').removeClass('flt_fish_selected');
@@ -351,42 +378,13 @@ function (dojo, declare) {
 
             switch( stateName )
             {
-                case 'auction':
-                    break;
-                case 'client_auctionSelect':
-                    //TODO: clear auction vars if passed here
-                    break;
-                case 'client_auctionBid':
-                    break;
-                case 'client_auctionWin':
-                    break;
-                case 'launch':
-                    break;
-                case 'hire':
-                    break;
-                case 'processing':
-                    break;
-                case 'trading':
-                    break;
                 case 'draw':
                     //TODO: make this smooth
                     dojo.style('draw_wrap', 'display', 'none');
                     break;
-            
-            
-            /* Example:
-            
-            case 'myGameState':
-            
-                // Hide the HTML block we are displaying only during this game state
-                dojo.style( 'my_html_block_id', 'display', 'none' );
-                
-                break;
-           */
-           
-           
-            case 'dummmy':
-                break;
+                default:
+                    // No special logic for any other state
+                    break;
             }               
         }, 
 
@@ -402,6 +400,7 @@ function (dojo, declare) {
                 switch( stateName )
                 {
                     case 'client_auctionSelect':
+                        // Options: Pass/Go Fishin', depending on game options
                         if (this.gone_fishing) {
                             this.addActionButton('button_1', _("Go fishin' (pass)"), 'onPass');
                         } else {
@@ -409,7 +408,8 @@ function (dojo, declare) {
                         }
                         break;
                     case 'client_auctionBid':
-                        this.client_state_args.bid = this.auction.high_bid + 1;
+                        // Options: -1, +1, Bid, Pass
+                        this.client_state_args.bid = this.auction.high_bid + 1; // minimum bid
                         if (this.debug) console.log(this.client_state_args);
                         if (this.debug) console.log(this.auction.high_bid);
                         if (this.debug) console.log(this.player_coins);
@@ -423,53 +423,49 @@ function (dojo, declare) {
                         this.addActionButton('button_4', _('Pass'), 'onPass');
                         break;
                     case 'client_auctionWin':
+                        // Options: Discard selected
                         this.addActionButton('button_1', _('Discard selected'), 'onBuy', null, false, 'gray');
                         break;
                     case 'launch':
+                        // Options: Pass
                         this.addActionButton('button_1', _('Pass'), 'onPass');
                         break;
                     case 'client_launchPay':
+                        // Options: Discard selected, Cancel
                         this.addActionButton('button_1', _('Discard selected'), 'onBuy', null, false, 'gray');
                         this.addActionButton('button_2', _('Cancel'), 'onCancel', null, false, 'red');
                         break;
                     case 'hire':
+                        // Options: Pass
                         this.addActionButton('button_1', _('Pass'), 'onPass');
                         break;
                     case 'processing':
+                        // Options: Pass, Cancel
                         this.addActionButton('button_1', _('Pass'), 'onProcess');
                         this.addActionButton('button_2', _('Cancel'), 'onCancel', null, false, 'red');
                         break;
                     case 'trading':
+                        // Options: Trade, Pass
                         this.addActionButton('button_1', _('Trade'), 'onTrade');
                         this.addActionButton('button_2', _('Pass'), 'onPass');
                         break;
                     case 'draw':
-                        // Not buttons, but cannot apply this logic in onEnteringState
+                        // Options: NONE
+
+                        // Not buttons, but due to timing of multiactive
+                        // state cannot apply this logic in onEnteringState
                         // Highlight cards
                         this.possible_moves = [true];
                         this.showPossibleMoves();
 
                         // Set correct selection area
                         if (this.hand_discard) {
-                            this.safeSetSelectionMode(this.playerHand, 1);
+                            this.safeSetSelectionMode(this.player_hand, 1);
                         } else {
                             dojo.style('draw_wrap', 'display', 'block');
                             this.draw_table.setSelectionMode(1);
                         }
                         break;
-            
-/*               
-                 Example:
- 
-                 case 'myGameState':
-                    
-                    // Add 3 action buttons in the action status bar:
-                    
-                    this.addActionButton( 'button_1_id', _('Button 1 label'), 'onMyMethodToCall1' ); 
-                    this.addActionButton( 'button_2_id', _('Button 2 label'), 'onMyMethodToCall2' ); 
-                    this.addActionButton( 'button_3_id', _('Button 3 label'), 'onMyMethodToCall3' ); 
-                    break;
-*/
                 }
             }
         },        
@@ -477,13 +473,6 @@ function (dojo, declare) {
         ///////////////////////////////////////////////////
         //// Utility methods
         
-        /*
-        
-            Here, you can defines some utility methods that you can use everywhere in your javascript
-            script.
-        
-        */
-
         /*
          * Safely account for Spectator when manipulating stock selections
          * Needed for player hand and boats
@@ -493,6 +482,395 @@ function (dojo, declare) {
             if (!this.isSpectator) {
                 stock.setSelectionMode(mode);
             }
+        },
+
+        /*
+         * Set a counter value without going negative
+         */
+        setCounterValue: function(counter, val)
+        {
+            if (val < 0) {
+                val = 0;
+            }
+            counter.setValue(val);
+        },
+
+        /*
+         * Increment (pos/neg) a counter value without going negative
+         */
+        incCounterValue: function(counter, inc)
+        {
+            var val = counter.incValue(inc);
+            if (val < 0) {
+                counter.setValue(0);
+            }
+            return val <= 0;
+        },
+
+        /*
+         * Build and display final score table
+         */
+        showFinalScore: function(args)
+        {
+            // Build color player names TODO: is there a builtin for this?
+            var players = [];
+            for (var player_id in this.gamedatas.players) {
+                var player = this.gamedatas.players[player_id];
+                player.name
+                player.color
+                players[player_id] = '<!--PNS--><span class="playername" style="color:#'+player.color+';">'+player.name+'</span><!--PNE-->';
+            }
+
+            // Populate score tables rows
+            this.buildScoreRow('players', '', 'header', players)
+            this.buildScoreRow('boat', _('Boats'), 'cell', args.boat)
+            this.buildScoreRow('license', _('Licenses'), 'cell', args.license)
+            this.buildScoreRow('fish', _('Fish'), 'cell', args.fish)
+            this.buildScoreRow('bonus', _('Bonus'), 'cell', args.bonus)
+            this.buildScoreRow('total', _('TOTAL'), 'header', args.total)
+
+            // Display table
+            dojo.style('final_score', 'display', 'block');
+        },
+
+        /*
+         * Build scores for each player into a table row
+         */
+        buildScoreRow: function(row, label, jstpl, data)
+        {
+            var cells = '';
+            for (var player_id in this.gamedatas.players) {
+                // Add cell data player by player
+                cells += this.format_block('jstpl_table_' + jstpl, {content: data[player_id]});
+            }
+
+            // Combine cells into row and set HTML
+            var html = this.format_block('jstpl_table_row', {label: label, content: cells});
+            dojo.byId('score_table_' + row).innerHTML = html;
+        },
+
+        /*
+         * Put a license card onto the player's table
+         */
+        addPlayerLicense: function(player_id, card_type, card_id, src)
+        {
+            var zone_div = 'license_' + player_id + '_' + card_type;
+            var license_div = zone_div + '_' + card_id;
+
+            // Ensure player license zone is visible
+            dojo.style(zone_div, 'display', 'inline-block');
+
+            // Create player license object
+            dojo.place(this.format_block('jstpl_license',
+                {player_id:player_id, card_type:card_type, card_id:card_id}), zone_div);
+
+            if (src !== null) {
+                // Place license on auction source
+                this.placeOnObject(license_div, src);
+            }
+
+            // Add license
+            this.player_licenses[player_id][card_type].placeInZone(license_div);
+        },
+
+        /*
+         * Highligh all playable items identified by the server
+         */
+        showPossibleMoves: function()
+        {
+            // Only for active player
+            if (!this.isCurrentPlayerActive() || this.possible_moves.length == 0)
+                return;
+
+            if (this.debug) console.log("POSSIBLE MOVES");
+            if (this.debug) console.log(this.possible_moves);
+            if (this.debug) console.log(this.gamedatas.gamestate.name);
+
+            // Most states highlight cards and/or fish
+            // Determine which by state and use helper functions to activate
+            switch(this.gamedatas.gamestate.name)
+            {
+                case 'client_auctionSelect':
+                    // Auction cards
+                    this.updateSelectableCards(this.auction.table, true);
+                    break;
+                case 'client_auctionWin':
+                    // Player hand and fish
+                    this.updateSelectableCards(this.player_hand, false);
+                    this.updateSelectableFish(this.player_id + '_fish_');
+                    break;
+                case 'launch':
+                    // Player hand
+                    this.updateSelectableCards(this.player_hand, true);
+                    break;
+                case 'client_launchPay':
+                    // Player hand and fish
+                    this.updateSelectableCards(this.player_hand, false);
+                    this.updateSelectableFish(this.player_id + '_fish_');
+                    break;
+                case 'hire':
+                    // Player hand and boats
+                    this.updateSelectableCards(this.player_hand, true);
+                    this.updateSelectableCards(this.player_boats[this.player_id], true);
+                    break;
+                case 'processing':
+                    // Boat fish
+                    this.updateSelectableFish('fish_' + this.player_id + '_');
+                    break;
+                case 'trading':
+                    // Processed fish
+                    this.updateSelectableFish(this.player_id + '_fish_');
+                    break;
+                case 'draw':
+                    // Player draw or hand depending on Tuna License bonus
+                    if (this.hand_discard) {
+                        this.updateSelectableCards(this.player_hand, false);
+                    } else {
+                        this.updateSelectableCards(this.draw_table, false);
+                    }
+                    break;
+            }
+        },
+
+        /*
+         * Highlight valid cards in a stock component, or all available
+         */
+        updateSelectableCards: function(stock, validate)
+        {
+            // Remove additional highlight on selected items
+            var items = stock.getSelectedItems();
+            for (var i in items) {
+                var div = stock.getItemDivId(items[i].id);
+                dojo.removeClass(div, 'flt_selectable');
+            }
+
+            // Highlight all (valid) others as blue possible moves
+            items = stock.getUnselectedItems();
+            for (var i in items) {
+                var card = this.possible_moves[items[i].id];
+                if (validate) {
+                    // Skip if card is not given or not marked playable
+                    if (card === undefined)
+                        continue
+                    if (card.hasOwnProperty('can_play') && !card.can_play)
+                        continue
+                }
+
+                // Highlight
+                var div = stock.getItemDivId(items[i].id);
+                dojo.addClass(div, 'flt_selectable');
+            }
+        },
+
+        /*
+         * Highlight fish cubes for selection by element id
+         */
+        updateSelectableFish: function(prefix)
+        {
+            // id prefex determines which player and if fish are processed or not
+            dojo.query('div[id^="' + prefix + '"]').forEach(function(node) {
+                if (this.debug) console.log(node);
+                if (!dojo.hasClass(node, 'flt_fish_selected')) {
+                    // Highlight any fish not already selected
+                    // Include cursor since these are not in a stock
+                    dojo.addClass(node, 'flt_fish_selectable');
+                    dojo.style(node, 'cursor', 'pointer');
+                }
+            });
+        },
+
+        /*
+         * Create a zone for fish cubes on a launched boat
+         */
+        createFishZone: function(id)
+        {
+            if (this.debug) console.log('CREATE FISH: ' + id);
+            if (this.debug) console.log($('fish_' + id));
+            var zone = new ebg.zone();
+            zone.create(this, 'fish_' + id, this.fish_cube_size, this.fish_cube_size);
+            zone.setPattern('horizontalfit');
+            this.fish_zones[id] = zone;
+        },
+
+        /*
+         * Place a fish cube into the zone on the given card
+         */
+        addFishCube: function(card_id, player_id)
+        {
+            if (!this.fish_zones[card_id]) {
+                // Zone creation as needed
+                this.createFishZone(card_id);
+            }
+
+            // Verify boat capacity
+            var nbr_fish = this.fish_zones[card_id].getItemNumber();
+            if (nbr_fish == 4) {
+                // This should not happen under normal circumstances
+                this.showMessage(_('ERROR: Boat fish crates maxed out'), 'error');
+                return;
+            }
+
+            // Create and place cube
+            var fish_div = 'fish_' + player_id + '_' + card_id + '_' + nbr_fish;
+            dojo.place(this.format_block('jstpl_fish',
+                {player_id:player_id, card_id:card_id, fish_id:nbr_fish}), 'fish_' + card_id);
+            this.placeOnObject(fish_div, 'fishicon');
+            this.fish_zones[card_id].placeInZone(fish_div);
+
+            if (player_id == this.player_id) {
+                // Player may be able to interact with this element later
+                dojo.connect($(fish_div), 'onclick', this, 'onClickFishCube');
+            }
+
+            this.addTooltip(fish_div, _('Fish crate: +1VP'), '');
+        },
+
+        /*
+         * Move fish cube from given card into player's processed fish zone
+         */
+        processFishCube: function(card_id, player_id)
+        {
+            if (card_id !== null) {
+                // Get/verify fish cube id/number
+                var card_fish = this.fish_zones[card_id].getItemNumber() - 1;
+                if (card_fish < 0) {
+                    // This should not happen under normal circumstances
+                    this.showMessage(_('ERROR: No fish crates to process'), 'error');
+                    return;
+                }
+
+                // Fish cube to remove
+                var src = 'fish_' + player_id + '_' + card_id + '_' + card_fish;
+            } else {
+                // No card specified (i.e. initial setup)
+                var src = 'fishicon';
+            }
+
+            // Processed fish id
+            var nbr_fish = this.player_fish[player_id].getItemNumber();
+            var dest = player_id + '_fish_' + nbr_fish;
+
+            // Create and place fish cube
+            dojo.place(this.format_block('jstpl_pfish',
+                {player_id:player_id, card_id:card_id, fish_id:nbr_fish}), 'playerfish_' + player_id);
+            this.placeOnObject(dest, src);
+            this.player_fish[player_id].placeInZone(dest);
+
+            if (card_id !== null) {
+                // Remove from previous location
+                this.fish_zones[card_id].removeFromZone(src, true);
+            }
+
+            if (player_id == this.player_id) {
+                // Player will be able to interact with this element later
+                dojo.connect($(dest), 'onclick', this, 'onClickFishCube');
+            }
+
+            // This action can be taken mutiple times in one turn
+            // Ensure normal sound is played as pieces move
+            playSound('move');
+        },
+
+        /*
+         * Remove a fish cube from the player's processed fish zone
+         */
+        removeFishCube: function(player_id)
+        {
+            // Get fish id and verify
+            var zone = this.player_fish[player_id];
+            var nbr_fish = zone.getItemNumber() - 1;
+            if (nbr_fish < 0) {
+                // This should not happen under normal circumstances
+                this.showMessage(_("ERROR: No fish cubes to trade"), 'error');
+                return;
+            }
+
+            // Remove fish cube from game
+            var fish_div = player_id + '_fish_' + nbr_fish;
+            zone.removeFromZone(fish_div, true, 'site-logo');//TODO: discard area
+        },
+
+        /*
+         * Create stock component for license cards
+         */
+        createStockLicense: function (div_id)
+        {
+            var stock = new ebg.stock();
+            stock.create(this, $(div_id), this.license_width, this.license_height);
+            stock.image_items_per_row = this.license_row_size;
+            for (var i = 0; i < 10; i++) {
+                stock.addItemType(i, i, g_gamethemeurl+'img/licenses.png', i);
+            }
+            stock.setSelectionMode(0);
+            stock.onItemCreate = dojo.hitch(this, 'setupLicenseDiv');
+            stock.apparenceBorderWidth = '2px';
+            return stock;
+        },
+
+        /*
+         * Create stock component for boat cards
+         */
+        createStockBoat: function (div_id, is_hand)
+        {
+            var stock = new ebg.stock();
+            stock.create(this, $(div_id), this.boat_width, this.boat_height);
+            stock.image_items_per_row = this.card_art_row_size;
+            var type, pos;
+            for (type = 9, pos = 0; pos < 7; type++, pos++) {
+                // Boat cards follow licenses in type order
+                stock.addItemType(type, type, g_gamethemeurl+'img/boats.png', pos);
+            }
+            stock.setSelectionMode(0);
+            stock.setSelectionAppearance('class');
+
+            // Set different tooltip depending on where the card is
+            if (is_hand) {
+                stock.onItemCreate = dojo.hitch(this, 'setupBoatDivHand');
+            } else {
+                stock.onItemCreate = dojo.hitch(this, 'setupBoatDivTable');
+            }
+
+            // Make room below card for captain cards to offset
+            stock.vertical_overlap = -15;
+            stock.use_vertical_overlap_as_offset = false;
+
+            return stock;
+        },
+
+        /*
+         * Add tooltip to license card
+         */
+        setupLicenseDiv: function(card_div, card_type_id, card_id)
+        {
+            this.addTooltipHtml(card_div.id, this.getCardTooltip(card_type_id));
+        },
+
+        /*
+         * Add tooltip to boat card in hand
+         */
+        setupBoatDivHand: function(card_div, card_type_id, card_id)
+        {
+            this.setupBoatDiv(card_div, card_type_id, card_id, true);
+        },
+
+        /*
+         * Add tooltip to launched boat card
+         */
+        setupBoatDivTable: function(card_div, card_type_id, card_id)
+        {
+            this.setupBoatDiv(card_div, card_type_id, card_id, false);
+        },
+
+        /*
+         * Add tooltip to boat card depending on location
+         */
+        setupBoatDiv: function(card_div, card_type_id, card_id, is_hand)
+        {
+            this.addTooltipHtml(card_div.id, this.getCardTooltip(card_type_id, is_hand));
+            var player_id = parseInt(card_div.id.split('_')[1]);
+            var id = card_id.split('_');
+            id = id[id.length - 1];
+            dojo.place(this.format_block('jstpl_boat', {id:id}), card_div.id);
         },
 
         /*
@@ -527,299 +905,10 @@ function (dojo, declare) {
             return this.format_block("jstpl_card_tooltip", card);
         },
 
-        showFinalScore: function(args)
-        {
-            // Build color player names
-            var players = [];
-            for (var player_id in this.gamedatas.players) {
-                var player = this.gamedatas.players[player_id];
-                player.name
-                player.color
-                players[player_id] = '<!--PNS--><span class="playername" style="color:#'+player.color+';">'+player.name+'</span><!--PNE-->';
-            }
-
-            // Populate score tables rows
-            this.buildScoreRow('players', '', 'header', players)
-            this.buildScoreRow('boat', _('Boats'), 'cell', args.boat)
-            this.buildScoreRow('license', _('Licenses'), 'cell', args.license)
-            this.buildScoreRow('fish', _('Fish'), 'cell', args.fish)
-            this.buildScoreRow('bonus', _('Bonus'), 'cell', args.bonus)
-            this.buildScoreRow('total', _('TOTAL'), 'header', args.total)
-
-            // Display table
-            dojo.style('final_score', 'display', 'block');
-        },
-
-        buildScoreRow: function(row, label, jstpl, data)
-        {
-            var cells = '';
-            for (var player_id in this.gamedatas.players) {
-                cells += this.format_block('jstpl_table_' + jstpl, {content: data[player_id]});
-            }
-            var html = this.format_block('jstpl_table_row', {label: label, content: cells});
-            dojo.byId('score_table_' + row).innerHTML = html;
-        },
-
-        addPlayerLicense: function(player_id, card_type, card_id, src)
-        {
-            var zone_div = 'license_' + player_id + '_' + card_type;
-            var license_div = zone_div + '_' + card_id;
-
-            // Ensure player license zone is visible
-            dojo.style(zone_div, 'display', 'inline-block');
-
-            // Create player license object
-            dojo.place(this.format_block('jstpl_license',
-                {player_id:player_id, card_type:card_type, card_id:card_id}), zone_div);
-
-            if (src !== null) {
-                // Place license on auction source
-                this.placeOnObject(license_div, src);
-            }
-
-            this.player_licenses[player_id][card_type].placeInZone(license_div);
-        },
-
-        setCounterValue: function(counter, val)
-        {
-            if (val < 0) {
-                val = 0;
-            }
-            counter.setValue(val);
-        },
-
-        incCounterValue: function(counter, inc)
-        {
-            var val = counter.incValue(inc);
-            if (val < 0) {
-                counter.setValue(0);
-            }
-            return val <= 0;
-        },
-
-        showPossibleMoves: function()
-        {
-            if (!this.isCurrentPlayerActive() || this.possible_moves.length == 0)
-                return;
-
-            if (this.debug) console.log("POSSIBLE MOVES");
-            if (this.debug) console.log(this.possible_moves);
-            if (this.debug) console.log(this.gamedatas.gamestate.name);
-
-            switch(this.gamedatas.gamestate.name)
-            {
-                case 'client_auctionSelect':
-                    this.updateSelectableCards(this.auction.table, true);
-                    break;
-                case 'client_auctionWin':
-                    this.updateSelectableCards(this.playerHand, false);
-                    this.updateSelectableFish(this.player_id + '_fish_');
-                    break;
-                case 'launch':
-                    this.updateSelectableCards(this.playerHand, true);
-                    break;
-                case 'client_launchPay':
-                    this.updateSelectableCards(this.playerHand, false);
-                    this.updateSelectableFish(this.player_id + '_fish_');
-                    break;
-                case 'hire':
-                    this.updateSelectableCards(this.playerHand, true);
-                    this.updateSelectableCards(this.player_boats[this.player_id], true);
-                    break;
-                case 'processing':
-                    this.updateSelectableFish('fish_' + this.player_id + '_');
-                    break;
-                case 'trading':
-                    this.updateSelectableFish(this.player_id + '_fish_');
-                    break;
-                case 'draw':
-                    if (this.hand_discard) {
-                        this.updateSelectableCards(this.playerHand, false);
-                    } else {
-                        this.updateSelectableCards(this.draw_table, false);
-                    }
-                    break;
-            }
-        },
-
-        updateSelectableCards: function(stock, validate)
-        {
-            // Remove additional highlight on selected items
-            var items = stock.getSelectedItems();
-            for (var i in items) {
-                var div = stock.getItemDivId(items[i].id);
-                dojo.removeClass(div, 'flt_selectable');
-            }
-
-            // Highlight all (valid) others as blue possible moves
-            items = stock.getUnselectedItems();
-            for (var i in items) {
-                var card = this.possible_moves[items[i].id];
-                if (validate) {
-                    if (card === undefined)
-                        continue
-                    if (card.hasOwnProperty('can_play') && !card.can_play)
-                        continue
-                }
-                var div = stock.getItemDivId(items[i].id);
-                dojo.addClass(div, 'flt_selectable');
-            }
-        },
-
-        updateSelectableFish: function(prefix)
-        {
-            //TODO: make this highlight more interesting/visible
-            dojo.query('div[id^="' + prefix + '"]').forEach(function(node) {
-                if (this.debug) console.log(node);
-                if (!dojo.hasClass(node, 'flt_fish_selected')) {
-                    dojo.addClass(node, 'flt_fish_selectable');
-                    dojo.style(node, 'cursor', 'pointer');
-                }
-            });
-        },
-
-        createFishZone: function(id)
-        {
-            if (this.debug) console.log('CREATE FISH: ' + id);
-            if (this.debug) console.log($('fish_' + id));
-            var zone = new ebg.zone();
-            zone.create(this, 'fish_' + id, 30, 30); //TODO: width/height
-            zone.setPattern('horizontalfit');
-            this.fish_zones[id] = zone;
-        },
-
-        addFishCube: function(card_id, player_id)
-        {
-            if (!this.fish_zones[card_id]) {
-                // JIT zone creation
-                this.createFishZone(card_id);
-            }
-
-            var nbr_fish = this.fish_zones[card_id].getItemNumber();
-            if (nbr_fish == 4) {
-                this.showMessage(_('Boat fish crates maxed out'), 'error');//TODO
-                return;
-            }
-
-            var fish_div = 'fish_' + player_id + '_' + card_id + '_' + nbr_fish;
-            dojo.place(this.format_block('jstpl_fish',
-                {player_id:player_id, card_id:card_id, fish_id:nbr_fish}), 'fish_' + card_id);
-            this.placeOnObject(fish_div, 'fishicon');
-            this.fish_zones[card_id].placeInZone(fish_div);
-            if (player_id == this.player_id) {
-                dojo.connect($(fish_div), 'onclick', this, 'onClickFishCube');
-            }
-            this.addTooltip(fish_div, _('Fish crate: +1VP'), '');
-        },
-
-        processFishCube: function(card_id, player_id)
-        {
-            if (card_id !== null) {
-                var card_fish = this.fish_zones[card_id].getItemNumber() - 1;
-                if (card_fish < 0) {
-                    this.showMessage(_('No fish crates to process'), 'error');//TODO
-                    return;
-                }
-
-                var src = 'fish_' + player_id + '_' + card_id + '_' + card_fish;
-            } else {
-                var src = 'fishicon';
-            }
-
-            var nbr_fish = this.player_fish[player_id].getItemNumber();
-            var dest = player_id + '_fish_' + nbr_fish;
-
-            dojo.place(this.format_block('jstpl_pfish',
-                {player_id:player_id, card_id:card_id, fish_id:nbr_fish}), 'playerfish_' + player_id);
-            this.placeOnObject(dest, src);
-            this.player_fish[player_id].placeInZone(dest);
-
-            if (card_id !== null) {
-                this.fish_zones[card_id].removeFromZone(src, true);
-            }
-
-            if (player_id == this.player_id) {
-                dojo.connect($(dest), 'onclick', this, 'onClickFishCube');
-            }
-
-            playSound('move');
-        },
-
-        removeFishCube: function(player_id)
-        {
-            var zone = this.player_fish[player_id];
-            var nbr_fish = zone.getItemNumber() - 1;
-            if (nbr_fish < 0) {
-                // Shouldn't be able to get here?
-                alert("ERROR: no fish cubes to trade");
-                return;
-            }
-
-            var fish_div = player_id + '_fish_' + nbr_fish;
-            zone.removeFromZone(fish_div, true, 'site-logo');//TODO: discard area
-        },
-
-        createStockLicense: function (div_id)
-        {
-            var stock = new ebg.stock();
-            stock.create(this, $(div_id), this.license_width, this.license_height);
-            stock.image_items_per_row = this.license_row_size;
-            for (var i = 0; i < 10; i++) {
-                stock.addItemType(i, i, g_gamethemeurl+'img/licenses.png', i);
-            }
-            stock.setSelectionMode(0);
-            stock.onItemCreate = dojo.hitch(this, 'setupLicenseDiv');
-            stock.apparenceBorderWidth = '2px';
-            return stock;
-        },
-
-        createStockBoat: function (div_id, is_hand)
-        {
-            var stock = new ebg.stock();
-            stock.create(this, $(div_id), this.boat_width, this.boat_height);
-            stock.image_items_per_row = this.card_art_row_size;
-            var type, pos;
-            for (type = 9, pos = 0; pos < 7; type++, pos++) {
-                // Boat cards follow licenses in type order
-                stock.addItemType(type, type, g_gamethemeurl+'img/boats.png', pos);
-            }
-            stock.setSelectionMode(0);
-            if (is_hand) {
-                stock.onItemCreate = dojo.hitch(this, 'setupBoatDivHand');
-            } else {
-                stock.onItemCreate = dojo.hitch(this, 'setupBoatDivTable');
-            }
-            stock.setSelectionAppearance('class');
-            // make room for captain cards
-            stock.vertical_overlap = -15;
-            stock.use_vertical_overlap_as_offset = false;
-            return stock;
-        },
-
-        setupLicenseDiv: function(card_div, card_type_id, card_id)
-        {
-            this.addTooltipHtml(card_div.id, this.getCardTooltip(card_type_id));
-        },
-
-        setupBoatDivHand: function(card_div, card_type_id, card_id)
-        {
-            this.setupBoatDiv(card_div, card_type_id, card_id, true);
-        },
-
-        setupBoatDivTable: function(card_div, card_type_id, card_id)
-        {
-            this.setupBoatDiv(card_div, card_type_id, card_id, false);
-        },
-
-        setupBoatDiv: function(card_div, card_type_id, card_id, is_hand)
-        {
-            this.addTooltipHtml(card_div.id, this.getCardTooltip(card_type_id, is_hand));
-            var player_id = parseInt(card_div.id.split('_')[1]);
-            var id = card_id.split('_');
-            id = id[id.length - 1];
-            dojo.place(this.format_block('jstpl_boat', {id:id}), card_div.id);
-        },
-
+        /*
+         * Convenience method for executing ajax actions
+         * Ensures lock is always set
+         */
         ajaxAction: function (action, args)
         {
             if (!args) {
@@ -833,6 +922,9 @@ function (dojo, declare) {
                           args, this, function (result) {});
         },
 
+        /*
+         * Ensure the auction table is visible with updated information
+         */
         showActiveAuction: function ()
         {
             //TODO: player option
@@ -866,9 +958,13 @@ function (dojo, declare) {
             }
         },
 
+        /*
+         * Reset and move auction table out of the way when not needed
+         */
         hideAuction: function(state)
         {
             if (state.indexOf('auction') != -1 || state == 'nextPlayer')  {
+                // Do nothing if in auction or transition state
                 return;
             }
 
@@ -890,6 +986,9 @@ function (dojo, declare) {
             }
         },
 
+        /*
+         * Clear all auction variables
+         */
         resetAuction: function(player_id)
         {
             if (player_id !== undefined) {
@@ -909,40 +1008,38 @@ function (dojo, declare) {
         //// Player's action
         
         /*
-        
-            Here, you are defining methods to handle player's action (ex: results of mouse click on 
-            game objects).
-            
-            Most of the time, these methods:
-            _ check the action is possible at this game state.
-            _ make a call to the game server
-        
-        */
-
+         * Player clicks card in auction stock
+         */
         onAuctionSelectionChanged: function()
         {
+            // Update highlights
             this.showPossibleMoves();
             var items = this.auction.table.getSelectedItems();
 
             if (items.length > 0) {
                 if (this.checkAction('bid')) {
+                    // Player can bid and selects card to bid on
+
+                    // Verify state (should not be possible otherwise)
                     if (this.gamedatas.gamestate.name != 'client_auctionSelect') {
-                        //TODO: error msg cannot select
-                        //      this sould not happen!
+                        this.showMessage(_("ERROR: Invalid game state for bidding"), 'error');
                         return;
                     }
 
+                    // Verify player can bid
                     if (!this.possible_moves[items[0].id]) {
                         this.showMessage(_('You cannot afford the minimum cost for this license'), 'error');
                         this.auction.table.unselectAll();
                         return;
                     }
 
+                    // Store selected card info
                     var card_info = this.card_infos[items[0].type];
                     var card_name = card_info['name'];
                     this.auction.card_id = items[0].id;
                     this.client_state_args.card_id = this.auction.card_id;
                     this.client_state_args.bid = card_info['cost'];
+
                     // Bid logic sets min at high_bid+1 so reduce it by one to start
                     // This will sort itself out through the bid action
                     this.auction.high_bid = card_info['cost'] - 1;
@@ -954,7 +1051,7 @@ function (dojo, declare) {
                     this.removeActionButtons();
                     this.addActionButton('button_1', '-1', 'onMinusOne', null, false, 'gray');
                     this.addActionButton('button_2', '+1', 'onPlusOne');
-                    this.addActionButton('button_3', _('Bid') + ': ' + this.client_state_args.bid, 'onBid');
+                    this.addActionButton('button_3', _('Bid') + ': ' + this.client_state_args.bid, 'onBid');//TODO: change to buy if no other players? title too
                     if (this.gone_fishing) {
                         this.addActionButton('button_4', _("Go fishin' (pass)"), 'onPass');
                     } else {
@@ -965,7 +1062,7 @@ function (dojo, declare) {
                     this.auction.table.unselectAll();
                 }
             } else if (this.checkAction('bid', true)) {
-                // First player undid selection, change title back
+                // First player undid selection, change title and buttons back original options
                 this.gamedatas.gamestate.descriptionmyturn = _('${you} may select a license to bid on'),
                 this.updatePageTitle();
                 this.removeActionButtons();
@@ -977,36 +1074,51 @@ function (dojo, declare) {
             }
         },
 
+        /*
+         * Player clicks a card in the drawn stock during Draw
+         */
         onDrawSelectionChanged: function()
         {
             var items = this.draw_table.getSelectedItems();
 
             if (items.length > 0) {
+                // Immediate action is to discard
                 this.discardAction(items[0]);
                 this.draw_table.unselectAll();
             }
         },
 
+        /*
+         * Player discards a card
+         */
         discardAction: function(card)
         {
             if (!this.checkAction('discard'))
                 return;
 
+            // Take discard action
             this.client_state_args.card_id = card.id;
             this.ajaxAction('discard', this.client_state_args);
         },
 
+        /*
+         * Update title and buttons based on current selections
+         */
         updateBuy: function()
         {
-            var items = this.playerHand.getSelectedItems();
+            var items = this.player_hand.getSelectedItems();
             if (this.debug) console.log('UPDATE BUY');
             if (this.debug) console.log(items);
+
+            // Count coins from currently selected cards and fish
             var coins = 0;
             for (var i in items) {
                 var card = items[i];
                 coins += this.card_infos[card.type]['coins'];
             }
             coins += this.client_state_args.fish_crates;
+
+            // Update text with coins and enable button if it's enough to pay cost
             this.gamedatas.gamestate.descriptionmyturn = _('${you} must discard cards to pay ') + coins + '/' + this.client_state_args.cost;
             this.updatePageTitle();
             this.removeActionButtons();
@@ -1015,31 +1127,43 @@ function (dojo, declare) {
             this.addActionButton('button_2', _('Cancel'), 'onCancel', null, false, 'red');
         },
 
+        /*
+         * Player clicks a card in their hand stock
+         */
         onPlayerHandSelectionChanged: function()
         {
+            // Update highlights
             this.showPossibleMoves();
-
-            var items = this.playerHand.getSelectedItems();
+            var items = this.player_hand.getSelectedItems();
 
             if (this.debug) console.log('hand select ' + this.gamedatas.gamestate.name);
             if (this.debug) console.log(items);
+
+            // Every state does something different with cards in hand
             switch(this.gamedatas.gamestate.name)
             {
                 case 'client_auctionWin':
+                    // Cards used to pay cost, update count
                     this.updateBuy();
                     break;
                 case 'launch':
+                    // Card to be played as launched boat
                     if (this.checkAction('launchBoat') && items.length > 0) {
+                        // Verify card
                         var card = items[0];
                         if (this.debug) console.log('launch select');
                         if (this.debug) console.log(card);
                         if (!this.possible_moves[card.id].can_play) {
+                            // Not a valid boat to launch
                             this.showMessage(this.possible_moves[card.id].error, 'error');
                         } else {
+                            // Clone info to modify properties
                             var card_info = dojo.clone(this.card_infos[card.type]);
                             if (this.debug) console.log(card_info);
                             card_info.cost -= this.discount; // Shrimp License reduction
                             if (this.debug) console.log(card_info);
+
+                            // Store selected launch details
                             this.client_state_args.boat_id = card.id;
                             this.client_state_args.cost = card_info.cost;
                             this.client_state_args.boat_type = card.type;
@@ -1048,15 +1172,18 @@ function (dojo, declare) {
                             this.player_boats[this.player_id].addToStockWithId(
                                 card.type,
                                 card.id,
-                                this.playerHand.getItemDivId(card.id)
+                                this.player_hand.getItemDivId(card.id)
                             );
-                            this.playerHand.removeFromStockById(card.id);
-                            playSound('move');
+                            this.player_hand.removeFromStockById(card.id);
 
                             if (card_info.cost <= 0) {
-                                // Shrimp discount enough launch is free
+                                // Shrimp discount enough that launch is free, take action
                                 this.buyAction('launchBoat');
                             } else {
+                                // Play sound manually as card moves since no action is taken yet
+                                playSound('move');
+
+                                // Change client state to allow player to pay
                                 this.setClientState('client_launchPay', {
                                     descriptionmyturn: _('${name}: ${you} must discard cards to pay 0/${cost}'),
                                     args: card_info
@@ -1064,60 +1191,83 @@ function (dojo, declare) {
                             }
                         }
                     }
-                    this.playerHand.unselectAll();
+
+                    // Clear selection, always
+                    this.player_hand.unselectAll();
                     break;
                 case 'client_launchPay':
+                    // Cards used to pay cost, update count
                     this.updateBuy();
                     break;
                 case 'hire':
+                    // Card played onto another boat as captain
                     if (items.length > 0 && this.checkAction('hireCaptain')) {
+                        // Verify card can be played
                         if (!this.possible_moves[items[0].id]) {
                             this.showMessage(_('That card cannot be used to captain'), 'error');
-                            this.playerHand.unselectAll();
+                            this.player_hand.unselectAll();
                             break;
                         }
-                        this.safeSetSelectionMode(this.player_boats[this.player_id], 1);
+
+                        // Store selected card details
                         this.client_state_args.card_id = items[0].id;
+
                         if (this.client_state_args.boat_id) {
+                            // Boat also selected, take action
                             this.hireCaptain();
                         }
                     } else {
+                        // No selection, clear any stored card
                         delete this.client_state_args.card_id;
                     }
                     break;
                 case 'draw':
+                    // Card is discarded immediately
                     if (items.length > 0) {
                         this.discardAction(items[0]);
                     }
-                    this.playerHand.unselectAll();
+                    this.player_hand.unselectAll();
                     break;
                 default:
-                    this.playerHand.unselectAll();
+                    // Other states have no interaction with player hand
+                    this.player_hand.unselectAll();
                     break;
             }
         },
 
+        /*
+         * Player clicks on card in their boat stock during Hire Captains
+         */
         onPlayerBoatsSelectionChanged: function()
         {
+            // Update highlights
             this.showPossibleMoves();
-
             var items = this.player_boats[this.player_id].getSelectedItems();
 
             if (items.length > 0 && this.checkAction('hireCaptain')) {
+                // Verify boat needs captain
                 if (!this.possible_moves[items[0].id]) {
                     this.showMessage(_('That boat already has a captain'), 'error');
                     this.player_boats[this.player_id].unselectAll();
                     return;
                 }
+
+                // Store selected card details
                 this.client_state_args.boat_id = items[0].id;
+
                 if (this.client_state_args.card_id) {
+                    // Captain also selected, take action
                     this.hireCaptain();
                 }
             } else {
+                // No selection, clear any stored card
                 delete this.client_state_args.boat_id;
             }
         },
 
+        /*
+         * Player clicks on a fish cube somewhere
+         */
         onClickFishCube: function(evt)
         {
             // Determine which type of fish cube clicked
@@ -1126,7 +1276,7 @@ function (dojo, declare) {
 
             var state = this.gamedatas.gamestate.name;
             if (this.debug) console.log('PROC FISH: ' + state);
-            if (state == 'processing') {
+            if (state == 'processing') { // Fish processed and moved to license area
                 if (!this.checkAction('processFish', true)) {
                     // Ignore click if not the right time
                     return;
@@ -1136,10 +1286,12 @@ function (dojo, declare) {
                 dojo.stopEvent(evt);
 
                 if (is_processed) {
+                    // Wrong type
                     this.showMessage(_('You may only process fish crates from boats'), 'error');
                     return;
                 }
 
+                // Verify cube and its boat
                 var cube = evt.currentTarget.id;
                 var boat_id = cube.split('_')[2];
                 if (this.client_state_args.fish_ids[boat_id]) {
@@ -1147,7 +1299,7 @@ function (dojo, declare) {
                     return;
                 }
 
-                // Record id and animate fish cube
+                // Store id and animate fish cube
                 this.client_state_args.fish_ids[boat_id] = true;
                 this.processFishCube(boat_id, this.player_id);
 
@@ -1155,34 +1307,44 @@ function (dojo, declare) {
                 dojo.query('div[id^="fish_' + this.player_id + '_' + boat_id + '_"]').removeClass('flt_fish_selectable');
 
                 if (dojo.query('.flt_fish_selectable').length == 0) {
-                    // All possible fish are processed, automatically move on
+                    // All possible fish are processed, automatically take action
                     this.onProcess();
                 }
-            } else if (state == 'trading') {
+            } else if (state == 'trading') { // Fish traded for card(s)
                 if (!is_processed) {
+                    // Wrong type
                     this.showMessage(_('You may only trade processed fish crates'), 'error');
                     return;
                 }
 
+                // Take action
                 this.onTrade(evt);
             } else if (state == 'client_auctionWin' || state == 'client_launchPay') {
+                // Fish used as coins for purchase
                 if (!this.checkAction('buyLicense', true) && !this.checkAction('launchBoat', true))
                     return;
+
                 dojo.stopEvent(evt);
 
                 if (!is_processed) {
+                    // Wrong type
                     this.showMessage(_('You may only trade processed fish crates'), 'error');
                     return;
                 }
 
+                // Update highlights
                 dojo.toggleClass(evt.currentTarget, 'flt_fish_selectable');
                 dojo.toggleClass(evt.currentTarget, 'flt_fish_selected');
+
+                // Store number fish and update buy status
                 this.client_state_args.fish_crates = dojo.query('.flt_fish_selected').length;
                 this.updateBuy();
-                //Pay $1
             }
         },
 
+        /*
+         * Player clicks 'Pass' button
+         */
         onPass: function(evt)
         {
             dojo.stopEvent(evt);
@@ -1194,30 +1356,36 @@ function (dojo, declare) {
                 this.resetAuction(this.player_id);
             }
 
+            // Take action
             this.client_state_args = {};
             this.ajaxAction('pass');
         },
 
+        /*
+         * Player clicks '+1' button
+         */
         onPlusOne: function(evt)
         {
             dojo.stopEvent(evt);
 
+            // Increment bid
             this.client_state_args.bid += 1;
 
             if (this.debug) console.log('PLUS ONE: ' + this.client_state_args.bid);
 
+            // Verify bid is at/below max
             var max_bid = this.player_coins;
             if (this.client_state_args.bid > max_bid) {
                 this.showMessage(_('You cannot bid more than ') + max_bid, 'error');
                 this.client_state_args.bid = max_bid;
             }
 
+            // Update buttons if at min/max bid
             if (this.client_state_args.bid == max_bid) {
                 // "Disable" +1 button
                 dojo.removeClass('button_2', 'bgabutton_blue');
                 dojo.addClass('button_2', 'bgabutton_gray');
             }
-
             if (this.client_state_args.bid < max_bid) {
                 // "Enabe" -1 button
                 dojo.removeClass('button_1', 'bgabutton_gray');
@@ -1228,26 +1396,31 @@ function (dojo, declare) {
             $('button_3').textContent = _('Bid') + ': ' + this.client_state_args.bid;
         },
 
+        /*
+         * Player clicks '-1' button
+         */
         onMinusOne: function(evt)
         {
             dojo.stopEvent(evt);
 
+            // Decrement bid
             this.client_state_args.bid -= 1;
 
             if (this.debug) console.log('MINUS ONE: ' + this.client_state_args.bid);
 
+            // Verify bid is at/above min
             var min_bid = this.auction.high_bid + 1;
             if (this.client_state_args.bid < min_bid) {
                 this.showMessage(_('You must bid at least ') + min_bid, 'error');
                 this.client_state_args.bid = min_bid;
             }
 
+            // Update buttons if at min/max bid
             if (this.client_state_args.bid == min_bid) {
                 // "Disable" -1 button
                 dojo.removeClass('button_1', 'bgabutton_blue');
                 dojo.addClass('button_1', 'bgabutton_gray');
             }
-
             if (this.client_state_args.bid < this.player_coins) {
                 // "Enabe" +1 button
                 dojo.removeClass('button_2', 'bgabutton_gray');
@@ -1258,77 +1431,105 @@ function (dojo, declare) {
             $('button_3').textContent = _('Bid') + ': ' + this.client_state_args.bid;
         },
 
+        /*
+         * Player clicks 'Bid' button
+         */
         onBid: function(evt)
         {
             dojo.stopEvent(evt);
             if (!this.checkAction('bid'))
                 return;
 
+            // Take action
             this.ajaxAction('bid', this.client_state_args);
         },
 
+        /*
+         * Player clicks 'Discard selected' button
+         */
         onBuy: function(evt)
         {
             dojo.stopEvent(evt);
 
-            //TODO: prevent player spending too much?
-
+            // Determine action from state
             var state = this.gamedatas.gamestate.name;
             if (state == 'client_auctionWin') {
                 var action = 'buyLicense';
             } else if (state == 'client_launchPay') {
                 var action = 'launchBoat';
             } else {
-                this.showMessage('Impossible buy action', 'error');
+                // This should not happen under normal circumstances
+                this.showMessage('ERROR: Impossible buy action', 'error');
                 return;
             }
 
+            // Take action
             this.buyAction(action);
         },
 
+        /*
+         * Player takes buy action from clicking button or automatically
+         */
         buyAction: function(action)
         {
             if (!this.checkAction(action))
                 return;
 
-            var items = this.playerHand.getSelectedItems();
+            // Store selected cards
+            var items = this.player_hand.getSelectedItems();
             this.client_state_args.card_ids = '';
             for (var i in items) {
                 this.client_state_args.card_ids += items[i].id + ';';
             }
 
-            // Selected and traded fish crates may differ for ease of bookkeeping
+            // Selected fish cubes and those actually removed may differ for ease of bookkeeping
             // Remove selection early to avoid confusion
             dojo.query('.flt_fish_selected').removeClass('flt_fish_selected')
 
+            // Take action
             this.ajaxAction(action, this.client_state_args);
         },
 
+        /*
+         * Player selects both card in hand and on board
+         */
         hireCaptain: function()
         {
             if (!this.checkAction('hireCaptain'))
                 return;
 
             if (this.debug) console.log(this.client_state_args);
+
+            // Take actions
             this.ajaxAction('hireCaptain', this.client_state_args);
         },
 
+        /*
+         * Player clicks 'Pass' button during Processing
+         */
         onProcess: function(evt)
         {
             if (!this.checkAction('processFish'))
                 return;
 
             if (this.client_state_args.fish_ids.length > 0) {
+                // Player selected some fish, store ids
                 this.client_state_args.card_ids = '';
                 for (var id in this.client_state_args.fish_ids) {
                     this.client_state_args.card_ids += id + ';';
                 }
+
+                // Take action
                 this.ajaxAction('processFish', this.client_state_args);
             } else {
+                // No fish selected, just pass
                 this.onPass(evt);
             }
         },
 
+        /*
+         * Player clicks 'Trade' button or fish cube
+         */
         onTrade: function(evt)
         {
             if (!this.checkAction('tradeFish', true)) {
@@ -1339,28 +1540,38 @@ function (dojo, declare) {
             // Allow click to fall thru to card above
             dojo.stopEvent(evt);
 
+            // Take action
             this.ajaxAction('tradeFish', null);
         },
 
+        /*
+         * Player clicks 'Cancel' button
+         */
         onCancel: function(evt)
         {
             dojo.stopEvent(evt);
 
+            // Undo any previous actions from this state
             var state = this.gamedatas.gamestate.name;
             if (this.debug) console.log('CANCEL: ' + state);
+
             if (state == 'client_launchPay') {
                 // Undo boat launch
+                // Move boat back from table to hand
                 var card_id = this.client_state_args.boat_id
-                this.playerHand.addToStockWithId(
+                this.player_hand.addToStockWithId(
                     this.client_state_args.boat_type,
                     this.client_state_args.boat_id,
                     this.player_boats[this.player_id].getItemDivId(this.client_state_args.boat_id)
                 );
                 this.player_boats[this.player_id].removeFromStockById(this.client_state_args.boat_id);
-                delete this.client_state_args.boat_id;
+                delete this.client_state_args.boat_id; // clear args
             } else if (state == 'processing') {
                 if (this.debug) console.log('UNDO PROC');
                 // Undo fish crate processing
+                // Move fish back from license area to boat
+                // To simplify things this just discards the processed fish and re-adds new ones
+                // (without actually taking them from the pile - this is just visual)
                 for (var card_id in this.client_state_args.fish_ids) {
                     if (this.debug) console.log('READD FISH ' + card_id);
                     this.removeFishCube(this.player_id);
@@ -1371,6 +1582,7 @@ function (dojo, declare) {
             // Unselect any fish cubes
             dojo.query('.flt_fish_selected').removeClass('flt_fish_selected')
 
+            // Manually play sound as elements move
             playSound('move');
 
             // Reset to main state
@@ -1393,17 +1605,6 @@ function (dojo, declare) {
         {
             if (this.debug) console.log( 'notifications subscriptions setup' );
             
-            // TODO: here, associate your game notifications with local methods
-            
-            // Example 1: standard notification handling
-            // dojo.subscribe( 'cardPlayed', this, "notif_cardPlayed" );
-            
-            // Example 2: standard notification handling + tell the user interface to wait
-            //            during 3 seconds after calling the method in order to let the players
-            //            see what is happening in the game.
-            // dojo.subscribe( 'cardPlayed', this, "notif_cardPlayed" );
-            // this.notifqueue.setSynchronous( 'cardPlayed', 3000 );
-            // 
             dojo.subscribe('firstPlayer', this, 'notif_firstPlayer');
             this.notifqueue.setSynchronous('firstPlayer', 1000);
             dojo.subscribe('pass', this, 'notif_pass');
@@ -1417,7 +1618,7 @@ function (dojo, declare) {
             this.notifqueue.setSynchronous('drawLicense', 500);
             dojo.subscribe('launchBoat', this, 'notif_launchBoat');
             dojo.subscribe('hireCaptain', this, 'notif_hireCaptain');
-            this.notifqueue.setSynchronous('hireCaptain', 200);
+            this.notifqueue.setSynchronous('hireCaptain', 200); // short to not throw errors if player plays bonus move quickly
             dojo.subscribe('fishing', this, 'notif_fishing');
             this.notifqueue.setSynchronous('fishing', 1000);
             dojo.subscribe('processFish', this, 'notif_processFish');
@@ -1434,9 +1635,14 @@ function (dojo, declare) {
             dojo.subscribe('finalScore', this, 'notif_finalScore');
         },  
         
-        // TODO: from this point and below, you can write your game notifications handling methods
+        /*
+         * Message when first player token rotates
+         */
         notif_firstPlayer: function(notif)
         {
+            if (this.debug) console.log('notify_firstPlayer');
+            if (this.debug) console.log(notif);
+
             var durration = 1000; // 1s animation
 
             // Clear existing token
@@ -1454,10 +1660,14 @@ function (dojo, declare) {
             }, durration);
         },
 
+        /*
+         * Message when player passes
+         */
         notif_pass: function (notif)
         {
             if (this.debug) console.log('notify_pass');
             if (this.debug) console.log(notif);
+
             if (notif.args.in_auction) {
                 // Player passes during auction
                 this.auction.bids[parseInt(notif.args.player_id)] = 'pass';
@@ -1468,28 +1678,37 @@ function (dojo, declare) {
                         // Player chose Gone Fishin'
                         this.hand_counters[notif.args.player_id].incValue(1);
                         if (notif.args.player_id == this.player_id) {
-                            this.playerHand.addToStockWithId(notif.args.card.type_arg, notif.args.card.id, 'boatcount');
+                            this.player_hand.addToStockWithId(notif.args.card.type_arg, notif.args.card.id, 'boatcount');
                         }
                     }
                 }
             }
         },
 
+        /*
+         * Private message with possible moves for active player
+         */
         notif_possibleMoves: function (notif)
         {
             if (this.debug) console.log('notify_possibleMoves');
             if (this.debug) console.log(notif);
             this.possible_moves = notif.args.moves;
-            this.player_coins = notif.args.coins;
+            this.player_coins = parseInt(notif.args.coins);
         },
 
+        /*
+         * Message when player chooses card for auction
+         */
         notif_auctionSelect: function (notif)
         {
             if (this.debug) console.log('notify_auctionSelect');
             if (this.debug) console.log(notif);
-            this.auction.card_id = parseInt(notif.args.card_id); //XXX all values coming back as string?
+            this.auction.card_id = parseInt(notif.args.card_id);
         },
 
+        /*
+         * Message when player bids in auction
+         */
         notif_auctionBid: function (notif)
         {
             if (this.debug) console.log('notify_auctionBid');
@@ -1498,6 +1717,9 @@ function (dojo, declare) {
             this.auction.high_bid = parseInt(notif.args.bid);
         },
         
+        /*
+         * Message when player wins auction
+         */
         notif_auctionWin: function (notif)
         {
             if (this.debug) console.log('notify_auctionWin');
@@ -1507,6 +1729,9 @@ function (dojo, declare) {
             this.auction.high_bid = parseInt(notif.args.bid);
         },
 
+        /*
+         * Message when player buys license from auction
+         */
         notif_buyLicense: function (notif)
         {
             if (this.debug) console.log('notify_buyLicense');
@@ -1515,14 +1740,16 @@ function (dojo, declare) {
             if (notif.args.player_id == this.player_id) {
                 // Discard from hand
                 for (var i in notif.args.card_ids) {
-                    this.playerHand.removeFromStockById(notif.args.card_ids[i], 'boatcount', true);
+                    // Do not update display to avoid ghosting
+                    this.player_hand.removeFromStockById(notif.args.card_ids[i], 'boatcount', true);
                 }
-                this.playerHand.updateDisplay();
+                this.player_hand.updateDisplay(); // now update everything
 
-                if (notif.args.license_type == 0) { //TODO: constants
+                // Check for bonuses
+                if (notif.args.license_type == this.constants.shrimp) {
                     // Each Shrimp Licenses increases transaction discount
                     this.discount += 1;
-                } else if (notif.args.license_type == 3) {
+                } else if (notif.args.license_type == this.constants.tuna) {
                     // Any Tuna License allows discard from hand
                     this.hand_discard = true;
                 }
@@ -1547,29 +1774,38 @@ function (dojo, declare) {
             // Score VP from license
             this.scoreCtrl[notif.args.player_id].incValue(notif.args.points);
 
+            // Clear auction vars
             this.resetAuction(notif.args.player_id);
         },
 
+        /*
+         * Message when new cards are drawn into auction
+         */
         notif_drawLicenses: function (notif)
         {
             if (this.debug) console.log('notify_drawLicenses');
             if (this.debug) console.log(notif);
 
             if (notif.args.discard) {
+                // Discards all current cards
                 this.auction.table.removeAllTo('site-logo'); //TODO: discard pile
             }
 
+            // Add new card(s)
             for (var i in notif.args.cards) {
                 var card = notif.args.cards[i];
                 this.auction.table.addToStockWithId(card.type_arg, card.id, 'licensecount');
                 if (this.incCounterValue(this.license_counter, -1)) {
-                    // Last license drawn
+                    // Last license drawn, highlight empty deck
                     dojo.style('licenseicon', {'opacity': '0.5', 'border': 'none'});
                     dojo.style('licensecount', {'color': 'red', 'font-weight': 'bold'});
                 }
             }
         },
         
+        /*
+         * Message when a player launches a boat
+         */
         notif_launchBoat: function (notif)
         {
             if (this.debug) console.log('notify_launchBoat');
@@ -1581,24 +1817,25 @@ function (dojo, declare) {
                     this.player_boats[this.player_id].addToStockWithId(
                         notif.args.boat_type,
                         notif.args.boat_id,
-                        this.playerHand.getItemDivId(notif.args.boat_id)
+                        this.player_hand.getItemDivId(notif.args.boat_id)
                     );
-                    this.playerHand.removeFromStockById(notif.args.boat_id);
+                    this.player_hand.removeFromStockById(notif.args.boat_id);
                 }
 
                 // Discard from hand
                 for (var i in notif.args.card_ids) {
-                    this.playerHand.removeFromStockById(notif.args.card_ids[i], 'boatcount', true);
+                    // Do not update display to avoid ghosting
+                    this.player_hand.removeFromStockById(notif.args.card_ids[i], 'boatcount', true);
                 }
-                this.playerHand.updateDisplay();
+                this.player_hand.updateDisplay(); // now update everything
             } else {
                 // Animate cards from other player
-                // TODO: discards?
                 this.player_boats[notif.args.player_id].addToStockWithId(
                     notif.args.boat_type,
                     notif.args.boat_id,
                     'overall_player_board_' + notif.args.player_id
                 );
+                // TODO: discards?
             }
 
             // Remove discards and launch from hand count
@@ -1613,6 +1850,9 @@ function (dojo, declare) {
             }
         },
 
+        /*
+         * Message when player hires a captain
+         */
         notif_hireCaptain: function (notif)
         {
             if (this.debug) console.log('notify_hireCaptain');
@@ -1624,8 +1864,8 @@ function (dojo, declare) {
 
             if (notif.args.player_id == this.player_id) {
                 // Player plays card onto boat
-                var card = this.playerHand.getItemById(notif.args.card_id);
-                this.playerHand.removeFromStockById(notif.args.card_id, 'captain_' + notif.args.boat_id);
+                var card = this.player_hand.getItemById(notif.args.card_id);
+                this.player_hand.removeFromStockById(notif.args.card_id, 'captain_' + notif.args.boat_id);
             } else {
                 // Animate cards from other player
                 // TODO
@@ -1635,15 +1875,20 @@ function (dojo, declare) {
             this.hand_counters[notif.args.player_id].incValue(-1);
         },
 
+        /*
+         * Message when fish cubes are distributed
+         */
         notif_fishing: function (notif)
         {
             if (this.debug) console.log('notify_fishing');
             if (this.debug) console.log(notif);
 
+            // Add fish too boat card(s)
             for (var i in notif.args.card_ids) {
                 this.addFishCube(notif.args.card_ids[i], notif.args.player_id);
             }
 
+            // Update counter
             if (this.incCounterValue(this.fish_counter, -notif.args.nbr_fish)) {
                 // Last fish crate taken
                 dojo.style('fishicon', 'opacity', '0.5');
@@ -1654,6 +1899,9 @@ function (dojo, declare) {
             this.scoreCtrl[notif.args.player_id].incValue(notif.args.nbr_fish);
         },
 
+        /*
+         * Message when player proceses a fish crate
+         */
         notif_processFish: function (notif)
         {
             if (this.debug) console.log('notify_processFish');
@@ -1671,6 +1919,9 @@ function (dojo, declare) {
             this.scoreCtrl[notif.args.player_id].incValue(-notif.args.nbr_fish);
         },
 
+        /*
+         * Message when player trades a processed fish crate
+         */
         notif_tradeFish: function (notif)
         {
             if (this.debug) console.log('notify_tradeFish');
@@ -1680,6 +1931,9 @@ function (dojo, declare) {
             // Card draw handled separately
         },
 
+        /*
+         * Private message when player draws card(s)
+         */
         notif_draw: function (notif)
         {
             if (this.debug) console.log('notify_draw');
@@ -1691,13 +1945,18 @@ function (dojo, declare) {
                 dojo.style('draw_wrap', 'display', 'block');
             }
 
-            var stock = notif.args.to_hand ? this.playerHand : this.draw_table;
+            // Add cards
+            var stock = notif.args.to_hand ? this.player_hand : this.draw_table;
             for (var i in notif.args.cards) {
                 var card = notif.args.cards[i];
                 stock.addToStockWithId(card.type_arg, card.id, 'boatcount');
             }
         },
 
+        /*
+         * Message when any player draws cards
+         * No card details provided
+         */
         notif_drawLog: function (notif)
         {
             if (this.debug) console.log('notify_drawLog');
@@ -1717,6 +1976,9 @@ function (dojo, declare) {
             //TODO: animate draw for other players?
         },
 
+        /*
+         * Message when any player discards a card
+         */
         notif_discardLog: function (notif)
         {
             if (this.debug) console.log('notify_discardLog');
@@ -1732,44 +1994,63 @@ function (dojo, declare) {
             //TODO: animate draw for other players?
         },
 
+        /*
+         * Private message when player discards a card and potentially takes one in hand
+         */
         notif_discard: function (notif)
         {
             if (this.debug) console.log('notify_discard');
             if (this.debug) console.log(notif);
 
             // Discard selected
-            var stock = notif.args.in_hand ? this.playerHand : this.draw_table;
+            var stock = notif.args.in_hand ? this.player_hand : this.draw_table;
             var card = stock.getItemById(notif.args.discard.id);
             stock.removeFromStockById(notif.args.discard.id, 'site-logo'); //TODO: discard area
 
             if (!notif.args.in_hand) {
                 // Move kept card to hand
                 var card = notif.args.keep;
-                this.playerHand.addToStockWithId(card.type_arg, card.id, this.draw_table.getItemDivId(card.id));
+                this.player_hand.addToStockWithId(card.type_arg, card.id, this.draw_table.getItemDivId(card.id));
                 this.draw_table.removeFromStockById(card.id);
             }
         },
 
+        /*
+         * Message when final round is triggered
+         */
         notif_finalRound: function(notif)
         {
             if (this.debug) console.log('notif_finalRound');
             if (this.debug) console.log(notif);
+
+            // Alert players
             this.showMessage(_('This is the last round!'), 'info');
+
+            // Highlight empty license deck
             dojo.style('licenseicon', 'opacity', '0.5');
             dojo.style('licensecount', {'color': 'red', 'font-weight': 'bold'});
         },
 
+        /*
+         * Message when bonus points are computed
+         */
         notif_bonusScore: function(notif)
         {
             if (this.debug) console.log('notif_bonusScore');
             if (this.debug) console.log(notif);
+            // Log message and update score
             this.scoreCtrl[notif.args.player_id].incValue(notif.args.points);
         },
 
+        /*
+         * Message when final scores are computed
+         */
         notif_finalScore: function(notif)
         {
             if (this.debug) console.log('notif_finalScore');
             if (this.debug) console.log(notif);
+
+            // Display final scores by category in table
             this.showFinalScore(notif.args);
         },
    });             
