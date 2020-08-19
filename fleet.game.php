@@ -138,7 +138,7 @@ class fleet extends Table
         $this->cards->createCards($cards);
 
         // Gone Fishin' bonus cards
-        if ($this->gamestate->table_globals[100]) {
+        if ($this->optGoneFishing()) {
             $loc = 'gonefishing';
         } else {
             $loc = 'box';
@@ -272,7 +272,7 @@ class fleet extends Table
         );
 
         // Game options
-        $result['gone_fishing'] = $this->gamestate->table_globals[100];
+        $result['gone_fishing'] = $this->optGoneFishing();
   
         return $result;
     }
@@ -627,6 +627,14 @@ class fleet extends Table
         self::DbQuery("UPDATE player SET player_score = player_score + '$inc' WHERE player_id = $player_id");
     }
 
+    /*
+     * Returns true if Gone Fishin' option is enabled
+     */
+    function optGoneFishing()
+    {
+       return $this->gamestate->table_globals[100] == 1;
+    }
+
 //////////////////////////////////////////////////////////////////////////////
 //////////// Player actions
 //////////// 
@@ -656,7 +664,7 @@ class fleet extends Table
                 $sql .= ', passed = 1';
                 $auction_done = true; // tell client to remove player
 
-                if ($this->gamestate->table_globals[100]) {
+                if ($this->optGoneFishing()) {
                     // Player gets a Gone Fishin' card
                     $card = $this->cards->pickCard('gonefishing', $player_id);
                     if ($card != null) {
@@ -1844,7 +1852,7 @@ class fleet extends Table
         }
 
         // Gone Fishin' bonus points: +2VP for each in hand
-        if ($this->gamestate->table_globals[100]) {
+        if ($this->optGoneFishing()) {
             foreach ($players as $player_id => $player) {
                 // Count cards remaining in each player's hand
                 $cards = $this->cards->getPlayerHand($player_id);
