@@ -50,7 +50,7 @@
 
 .flt_auction {
     position: relative;
-    width: 740px;
+    width: 720px;
     margin: auto;
 }
 
@@ -59,15 +59,16 @@
     width: 100px;
     height: 143px;
     background-image: url('img/boats.png');
+    background-size: 800% 100%;
+    z-index: 1;
 }
 
 .flt_license {
     position: absolute;
-    width: 180px;
-    height: 125px;
+    width: 175px;
+    height: 122px;
     background-image: url('img/licenses.png');
-    border: 2px solid black;
-    border-radius: 8%;
+    background-size: 500% 200%;
 }
 
 .flt_icon_boat {
@@ -194,21 +195,16 @@
 }
 
 .flt_license_zone {
-    width: 180px;
+    width: 175px;
     display: none;
     margin-right: 9px;
     margin-bottom: 9px;
 }
 
-.flt_lic_0 { background-position: 0px 0px; }
-.flt_lic_1 { background-position: -180px 0px; }
-.flt_lic_2 { background-position: -360px 0px; }
-.flt_lic_3 { background-position: -540px 0px; }
-.flt_lic_4 { background-position: -720px 0px; }
-.flt_lic_5 { background-position: 0px -125px; }
-.flt_lic_6 { background-position: -180px -125px; }
-.flt_lic_7 { background-position: -360px -125px; }
-.flt_lic_8 { background-position: -540px -125px; }
+.flt_license_zone > div {
+    border: 2px solid black;
+    border-radius: 8%;
+}
 
 .flt_score_table {
     background-color: transparent
