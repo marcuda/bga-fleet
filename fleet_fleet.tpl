@@ -120,9 +120,11 @@
 
 // Launched boat cards with captain and fish overlays
 var jstpl_boat = 
-    '<div id="cardcontent_${id}">' +
-        '<div id="captain_${id}" class="flt_boat flt_captain"></div>' +
-        '<div id="fish_${id}" class="flt_fish_boat"></div>' +
+    '<div class="flt_boat" style="background-position: -${x}px -${y}px;">' +
+        '<div id="cardcontent_${id}">' +
+            '<div id="captain_${id}" class="flt_boat flt_captain"></div>' +
+            '<div id="fish_${id}" class="flt_fish_boat"></div>' +
+        '</div>' +
     '</div>';
 
 // Fish cube
@@ -142,8 +144,9 @@ var jstpl_player_board =
         '</div>' +
     '</div>';
 
-// Played license
-var jstpl_license = '<div id="license_${player_id}_${card_type}_${card_id}" class="flt_license flt_lic_${card_type}"></div>';
+// License cards
+var jstpl_license_zone = '<div id="license_${player_id}_${card_type}_${card_id}" class="flt_license" style="background-position: -${x}px -${y}px;"></div>';
+var jstpl_license_stock = '<div class="flt_license" style="background-position: -${x}px -${y}px;"></div>';
 
 // Final score table entries
 var jstpl_table_header = '<th>${content}</th>';

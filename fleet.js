@@ -35,8 +35,8 @@ function (dojo, declare) {
             this.boat_width = 100;       // card width, boats
             this.boat_height = 143;      // card height, boats
             this.boat_row_size = 7;      // sprite image cards per row, boats
-            this.license_width = 180;    // card width, licenses
-            this.license_height = 125;   // card height, licenses
+            this.license_width = 175;    // card width, licenses
+            this.license_height = 122;   // card height, licenses
             this.license_row_size = 5;   // sprite image cards per row, licenses
             this.fish_cube_size = 30;    // fish cube width/height
             this.license_counter = null; // counter for license deck
@@ -561,8 +561,13 @@ function (dojo, declare) {
             dojo.style(zone_div, 'display', 'inline-block');
 
             // Create player license object
-            dojo.place(this.format_block('jstpl_license',
-                {player_id:player_id, card_type:card_type, card_id:card_id}), zone_div);
+            dojo.place(this.format_block('jstpl_license_zone', {
+                player_id: player_id,
+                card_type: card_type,
+                card_id: card_id,
+                x: this.license_width * (card_type % this.license_row_size),
+                y: this.license_height * Math.floor(card_type / this.license_row_size),
+            }), zone_div);
 
             if (src !== null) {
                 // Place license on auction source
@@ -799,7 +804,7 @@ function (dojo, declare) {
             stock.create(this, $(div_id), this.license_width, this.license_height);
             stock.image_items_per_row = this.license_row_size;
             for (var i = 0; i < 10; i++) {
-                stock.addItemType(i, i, g_gamethemeurl+'img/licenses.png', i);
+                stock.addItemType(i, i, '', i);
             }
             stock.setSelectionMode(0);
             stock.onItemCreate = dojo.hitch(this, 'setupLicenseDiv');
@@ -818,7 +823,7 @@ function (dojo, declare) {
             var type, pos;
             for (type = 9, pos = 0; pos < 7; type++, pos++) {
                 // Boat cards follow licenses in type order
-                stock.addItemType(type, type, g_gamethemeurl+'img/boats.png', pos);
+                stock.addItemType(type, type, '', pos);
             }
             stock.setSelectionMode(0);
             stock.setSelectionAppearance('class');
@@ -843,6 +848,10 @@ function (dojo, declare) {
         setupLicenseDiv: function(card_div, card_type_id, card_id)
         {
             this.addTooltipHtml(card_div.id, this.getCardTooltip(card_type_id));
+            dojo.place(this.format_block('jstpl_license_stock', {
+                x: this.license_width * (card_type_id % this.license_row_size),
+                y: this.license_height * Math.floor(card_type_id / this.license_row_size),
+            }), card_div.id);
         },
 
         /*
@@ -870,7 +879,11 @@ function (dojo, declare) {
             var player_id = parseInt(card_div.id.split('_')[1]);
             var id = card_id.split('_');
             id = id[id.length - 1];
-            dojo.place(this.format_block('jstpl_boat', {id:id}), card_div.id);
+            dojo.place(this.format_block('jstpl_boat', {
+                id: id,
+                x: this.boat_width * (card_type_id - 9),
+                y: 0,
+            }), card_div.id);
         },
 
         /*
