@@ -71,6 +71,29 @@
     background-size: 500% 200%;
 }
 
+.flt_tooltip_boat {
+    width: 200px;
+    height: 286px;
+    background-image: url('img/boats.png');
+    background-size: 800% 100%;
+    border: 2px solid black;
+    border-radius: 19px;
+}
+
+.flt_tooltip_license {
+    width: 350px;
+    height: 244px;
+    background-image: url('img/licenses.png');
+    background-size: 500% 200%;
+    border: 2px solid black;
+    border-radius: 21px;
+}
+
+.flt_cardtooltip {
+    text-align: left;
+    max-width: 360px
+}
+
 .flt_icon_boat {
     width: 21px;
     height: 30px;

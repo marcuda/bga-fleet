@@ -904,11 +904,20 @@ function (dojo, declare) {
                 } else {
                     txt += "<p>+" + card.points + _("VP") + "</p>";
                 }
+
+                card.x = 2 * this.boat_width * (card_type_id - 9);
+                card.y = 0;
             } else if (card.type == 'license') {
                 txt += "<p><b>" + _("Min Cost") + ":</b> $" + card.cost + "</p>";
                 txt += "<p>+" + card.points + _("VP") + "</p>";
+
+                card.x = 2 * this.license_width * (card_type_id % this.license_row_size);
+                card.y = 2 * this.license_height * Math.floor(card_type_id / this.license_row_size);
             } else if (card.type == 'bonus') {
                 txt += "<p><b>" + _("Discard") + "</b> => $" + card.coins + "</p>";
+                card.type = 'boat'; // for art class
+                card.x = 2 * this.boat_width * (card_type_id - 9);
+                card.y = 0;
             }
 
             // Add any special bonus text
