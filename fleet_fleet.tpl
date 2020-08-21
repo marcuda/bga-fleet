@@ -159,6 +159,9 @@ var jstpl_card_tooltip =
         '<h3>${name}</h3>' +
         '<hr/>' +
         '${text}' +
+        '<div>' +
+            '<div class="flt_tooltip_${type}" style="background-position: -${x}px -${y}px;"></div>' +
+        '</div>' +
     '</div>';
 
 </script>  
