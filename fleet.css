@@ -94,19 +94,43 @@
     max-width: 360px
 }
 
-.flt_icon_boat {
-    width: 21px;
-    height: 30px;
-    background-image: url('img/boaticon.png');
-    margin-right: 11px;
+[class^="flt_icon_"] {
+    background-image: url('img/icons.png');
+}
+
+[class^="flt_icon_card"] {
     border-right: 2px solid black;
     border-bottom: 2px solid black;
+    border-radius: 4px;
+}
+
+.flt_icon_first {
+    position: relative;
+    display: none;
+    width: 39px;
+    height: 28px;
+    background-position: 0px 0px;
+    margin-right: 5px;
+    margin-left: 10px;
+}
+
+.flt_icon_cardboat {
+    width: 21px;
+    height: 30px;
+    background-position: -39px 0px;
+    margin-right: 11px;
+}
+
+.flt_icon_cardlicense {
+    width: 43px;
+    height: 30px;
+    background-position: -60px 0px;
 }
 
 .flt_icon_fish {
     width: 30px;
     height: 30px;
-    background-image: url('img/cube.png');
+    background-position: -103px -30px;
     position: absolute;
     z-index: 99;
 }
@@ -116,12 +140,16 @@
     margin-right: 7px;
 }
 
-.flt_icon_license {
-    width: 43px;
-    height: 30px;
-    background-image: url('img/licenseicon.png');
-    border-right: 2px solid black;
-    border-bottom: 2px solid black;
+.flt_icon_coin {
+    width: 24px;
+    height: 18px;
+    background-position: -133px 0px;
+}
+
+.flt_icon_hand {
+    width: 16px;
+    height: 16px;
+    background-position: -157px 0px;
 }
 
 .flt_disabled {
@@ -190,16 +218,6 @@
 
 .flt_board > div {
     display: inline-block;
-}
-
-.flt_boat_token {
-    position: relative;
-    display: none;
-    width: 39px;
-    height: 28px;
-    background-image: url('img/firsttoken.png');
-    margin-right: 5px;
-    margin-left: 10px;
 }
 
 .flt_first_player {
