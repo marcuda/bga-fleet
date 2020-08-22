@@ -145,7 +145,10 @@ var jstpl_player_board =
     '</div>';
 
 // License cards
-var jstpl_license_zone = '<div id="license_${player_id}_${card_type}_${card_id}" class="flt_license" style="background-position: -${x}px -${y}px;"></div>';
+var jstpl_license_zone =
+    '<div id="license_${player_id}_${card_type}_${card_id}" class="flt_license" style="background-position: -${x}px -${y}px;">' +
+        '<div class="flt_zone_label">(1)</div>' +
+    '</div>';
 var jstpl_license_stock = '<div class="flt_license" style="background-position: -${x}px -${y}px;"></div>';
 
 // Final score table entries
