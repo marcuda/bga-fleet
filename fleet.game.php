@@ -761,6 +761,7 @@ class fleet extends Table
             // Notify client which card will be auctioned
             $msg = clienttranslate('${player_name} selects ${card_name} for auction');
             self::notifyAllPlayers('auctionSelect', $msg, array(
+                'i18n' => array('card_name'),
                 'player_name' => self::getActivePlayerName(),
                 'card_name' => $this->getCardName($card),
                 'card_id' => $card_id,
@@ -872,14 +873,13 @@ class fleet extends Table
         self::DbQuery($sql);
 
         // Notify
-        $msg = clienttranslate('${player_name} discards ${nbr_cards} card(s)');
         if ($fish > 0) {
-            $msg .= clienttranslate(' and ${nbr_fish} fish crate(s)');
+            $msg = clienttranslate('${player_name} discards ${nbr_cards} card(s) and ${nbr_fish} fish crate(s) for $${coins}');
+        } else {
+            $msg = clienttranslate('${player_name} discards ${nbr_cards} card(s) for $${coins}');
         }
-        $msg .= clienttranslate(' for $${coins}');
         if ($discount > 0) {
-            $msg .= " +$$discount " . $this->card_types[LICENSE_SHRIMP]['name'] . ' ';
-            $msg .= clienttranslate('discount');
+            $msg .= ' (' . clienttranslate("$$discount Shrimp License discount") . ')';
         }
         self::notifyAllPlayers('buyLicense', $msg, array(
             'player_name' => self::getActivePlayerName(),
@@ -985,16 +985,16 @@ class fleet extends Table
         }
 
         // Notify
-        $msg = clienttranslate('${player_name} discards ${nbr_cards} card(s)');
         if ($fish > 0) {
-            $msg .= clienttranslate(' and ${nbr_fish} fish crates');
+            $msg = clienttranslate('${player_name} launches a ${card_name} and discards ${nbr_cards} card(s) and ${nbr_fish} fish crate(s) for $${coins}');
+        } else {
+            $msg = clienttranslate('${player_name} launches a ${card_name} and discards ${nbr_cards} card(s) for $${coins}');
         }
-        $msg .= clienttranslate(' for $${coins} to launch a ${card_name}');
         if ($discount > 0) {
-            $msg .= " +$$discount " . $this->card_types[LICENSE_SHRIMP]['name'] . ' ';
-            $msg .= clienttranslate('discount');
+            $msg .= ' (' . clienttranslate("$$discount Shrimp License discount") . ')';
         }
         self::notifyAllPlayers('launchBoat', $msg, array(
+            'i18n' => array('card_name'),
             'player_name' => self::getActivePlayerName(),
             'nbr_cards' => count($card_ids),
             'nbr_fish' => $fish,
@@ -1052,6 +1052,7 @@ class fleet extends Table
         // Notify
         $msg = clienttranslate('${player_name} hires a captain for their ${card_name}');
         self::notifyAllPlayers('hireCaptain', $msg, array(
+            'i18n' => array('card_name'),
             'player_name' => self::getActivePlayerName(),
             'card_name' => $this->getCardName($boat),
             'player_id' => $player_id,
@@ -1631,10 +1632,12 @@ class fleet extends Table
             // All players get log notice but only current player gets card details
             $msg = '';
             if ($bonus != null) {
-                $msg = $bonus . ': ';
+                $msg = '${bonus}: ';
             }
             $msg .= clienttranslate('${player_name} draws ${nbr} card(s)');
             self::notifyAllPlayers('drawLog', $msg, array(
+                'i18n' => array('bonus'),
+                'bonus' => $bonus,
                 'player_name' => $players[$player_id]['player_name'], // may be multiple active
                 'player_id' => $player_id,
                 'nbr' => $nbr,
@@ -1770,6 +1773,7 @@ class fleet extends Table
             // Notify
             $msg = clienttranslate('${card_name}: ${player_name} scores ${points} points for ${nbr} captains');
             self::notifyAllPlayers('bonusScore', $msg, array(
+                'i18n' => array('card_name'),
                 'card_name' => $this->getCardName($card),
                 'player_name' => $players[$player_id]['player_name'],
                 'points' => $points,
@@ -1796,6 +1800,7 @@ class fleet extends Table
             // Notify
             $msg = clienttranslate('${card_name}: ${player_name} scores ${points} points for ${nbr} fish crates');
             self::notifyAllPlayers('bonusScore', $msg, array(
+                'i18n' => array('card_name'),
                 'card_name' => $this->getCardName($card),
                 'player_name' => $players[$player_id]['player_name'],
                 'points' => $points,
@@ -1843,6 +1848,7 @@ class fleet extends Table
             // Notify
             $msg = clienttranslate('${card_name}: ${player_name} scores ${points} points for ${nbr} different licenses');
             self::notifyAllPlayers('bonusScore', $msg, array(
+                'i18n' => array('card_name'),
                 'card_name' => $this->getCardName($card),
                 'player_name' => $players[$player_id]['player_name'],
                 'points' => $points,
