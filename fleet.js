@@ -42,6 +42,7 @@ function (dojo, declare) {
             this.license_counter = null; // counter for license deck
             this.boat_counter = null;    // counter for boat deck
             this.fish_counter = null;    // counter for fish cubes
+            this.coin_counter = null;    // counter for current player coins
             this.hand_counters = [];     // counters for all players cards in hand
             this.client_state_args = {}; // arguments for all client states
             this.card_infos = null;      // additional card details
@@ -86,7 +87,7 @@ function (dojo, declare) {
             this.hand_discard = gamedatas.hand_discard;
             this.gone_fishing = gamedatas.gone_fishing;
             this.constants = gamedatas.constants;
-            
+
             // Setting up player boards
             for( var player_id in gamedatas.players )
             {
@@ -162,6 +163,17 @@ function (dojo, declare) {
 
             // First player token
             dojo.addClass('first_player_p' + gamedatas.first_player, 'flt_first_player');
+
+            // Player coins
+            this.coin_counter = new ebg.counter();
+            this.coin_counter.create('coincount_p' + this.player_id);
+            this.coin_counter.setValue(this.player_coins - this.discount);
+            if (this.discount > 0) {
+                dojo.byId('discount_p' + this.player_id).textContent = '+' + this.discount;
+            }
+            this.addTooltip('coincount_icon_p' + this.player_id, _('Available money (+ any Shrimp bonus)'), '');
+            this.addTooltip('coincount_p' + this.player_id, _('Available money (+ any Shrimp bonus)'), '');
+            this.addTooltip('discount_p' + this.player_id, _('Available money (+ any Shrimp bonus)'), '');
 
             // License Auction
             this.auction.card_id = parseInt(gamedatas.auction_card);
@@ -1200,6 +1212,9 @@ function (dojo, declare) {
                             this.client_state_args.cost = card_info.cost;
                             this.client_state_args.boat_type = card.type;
 
+                            // Update coin count for launched boat
+                            this.coin_counter.incValue(-card_info.coins);
+
                             // Play boat card from hand
                             this.player_boats[this.player_id].addToStockWithId(
                                 card.type,
@@ -1334,6 +1349,7 @@ function (dojo, declare) {
                 // Store id and animate fish cube
                 this.client_state_args.fish_ids[boat_id] = true;
                 this.processFishCube(boat_id, this.player_id);
+                this.coin_counter.incValue(1);
 
                 // Remove highlight from remaining fish on this boat
                 dojo.query('div[id^="fish_' + this.player_id + '_' + boat_id + '_"]').removeClass('flt_fish_selectable');
@@ -1597,6 +1613,7 @@ function (dojo, declare) {
                     this.player_boats[this.player_id].getItemDivId(this.client_state_args.boat_id)
                 );
                 this.player_boats[this.player_id].removeFromStockById(this.client_state_args.boat_id);
+                this.coin_counter.incValue(this.card_infos[this.client_state_args.boat_type].coins);
                 delete this.client_state_args.boat_id; // clear args
             } else if (state == 'processing') {
                 if (this.debug) console.log('UNDO PROC');
@@ -1608,6 +1625,7 @@ function (dojo, declare) {
                     if (this.debug) console.log('READD FISH ' + card_id);
                     this.removeFishCube(this.player_id);
                     this.addFishCube(card_id, this.player_id);
+                    this.coin_counter.incValue(-1);
                 }
             }
 
@@ -1683,7 +1701,7 @@ function (dojo, declare) {
             var next = 'first_anchor_p' + notif.args.next_player_id;
 
             // Create temporary token to animate rotation
-            var tmp = '<div id="tmp_first_token" style="z-index:99" class="flt_boat_token flt_first_player"></div>';
+            var tmp = '<div id="tmp_first_token" style="z-index:99" class="flt_icon_first flt_first_player"></div>';
             this.slideTemporaryObject(tmp, 'overall_player_board_' + notif.args.current_player_id, curr, next, durration, 0);
 
             // Show token for next player after animation finishes
@@ -1709,6 +1727,7 @@ function (dojo, declare) {
                     if (notif.args.card) {
                         // Player chose Gone Fishin'
                         this.hand_counters[notif.args.player_id].incValue(1);
+                        this.coin_counter.incValue(2);
                         if (notif.args.player_id == this.player_id) {
                             this.player_hand.addToStockWithId(notif.args.card.type_arg, notif.args.card.id, 'boatcount');
                         }
@@ -1726,6 +1745,7 @@ function (dojo, declare) {
             if (this.debug) console.log(notif);
             this.possible_moves = notif.args.moves;
             this.player_coins = parseInt(notif.args.coins);
+            this.coin_counter.setValue(this.player_coins - this.discount);
         },
 
         /*
@@ -1772,15 +1792,22 @@ function (dojo, declare) {
             if (notif.args.player_id == this.player_id) {
                 // Discard from hand
                 for (var i in notif.args.card_ids) {
+                    // Update coin count for spent cards
+                    var card = this.player_hand.getItemById(notif.args.card_ids[i]);
+                    this.coin_counter.incValue(-this.card_infos[card.type].coins);
                     // Do not update display to avoid ghosting
                     this.player_hand.removeFromStockById(notif.args.card_ids[i], 'boatcount', true);
                 }
                 this.player_hand.updateDisplay(); // now update everything
 
+                // Update coin count for spent fish
+                this.coin_counter.incValue(-notif.args.nbr_fish);
+
                 // Check for bonuses
                 if (notif.args.license_type == this.constants.shrimp) {
                     // Each Shrimp Licenses increases transaction discount
                     this.discount += 1;
+                    dojo.byId('discount_p' + this.player_id).textContent = '+' + this.discount;
                 } else if (notif.args.license_type == this.constants.tuna) {
                     // Any Tuna License allows discard from hand
                     this.hand_discard = true;
@@ -1851,11 +1878,19 @@ function (dojo, declare) {
                         notif.args.boat_id,
                         this.player_hand.getItemDivId(notif.args.boat_id)
                     );
+
                     this.player_hand.removeFromStockById(notif.args.boat_id);
                 }
 
+                // Update coin count for spent fish
+                this.coin_counter.incValue(-notif.args.nbr_fish);
+
                 // Discard from hand
                 for (var i in notif.args.card_ids) {
+                    // Update coin count for spent cards
+                    var card = this.player_hand.getItemById(notif.args.card_ids[i]);
+                    this.coin_counter.incValue(-this.card_infos[card.type].coins);
+
                     // Do not update display to avoid ghosting
                     this.player_hand.removeFromStockById(notif.args.card_ids[i], 'boatcount', true);
                 }
@@ -1895,8 +1930,11 @@ function (dojo, declare) {
             dojo.style('captain_' + notif.args.boat_id, 'display', 'block');
 
             if (notif.args.player_id == this.player_id) {
-                // Player plays card onto boat
+                // Update coin count for used captain
                 var card = this.player_hand.getItemById(notif.args.card_id);
+                this.coin_counter.incValue(-this.card_infos[card.type].coins);
+
+                // Player plays card onto boat
                 this.player_hand.removeFromStockById(notif.args.card_id, 'captain_' + notif.args.boat_id);
             } else {
                 // Animate cards from other player
@@ -1960,6 +1998,9 @@ function (dojo, declare) {
             if (this.debug) console.log(notif);
 
             this.removeFishCube(notif.args.player_id);
+            if (notif.args.player_id == this.player_id) {
+                this.coin_counter.incValue(-1);
+            }
             // Card draw handled separately
         },
 
@@ -1982,6 +2023,9 @@ function (dojo, declare) {
             for (var i in notif.args.cards) {
                 var card = notif.args.cards[i];
                 stock.addToStockWithId(card.type_arg, card.id, 'boatcount');
+                if (notif.args.to_hand) {
+                    this.coin_counter.incValue(this.card_infos[card.type_arg].coins);
+                }
             }
         },
 
@@ -2044,6 +2088,9 @@ function (dojo, declare) {
                 var card = notif.args.keep;
                 this.player_hand.addToStockWithId(card.type_arg, card.id, this.draw_table.getItemDivId(card.id));
                 this.draw_table.removeFromStockById(card.id);
+                this.coin_counter.incValue(this.card_infos[card.type_arg].coins);
+            } else {
+                this.coin_counter.incValue(-this.card_infos[discard.type_arg].coins);
             }
         },
 

@@ -63,11 +63,11 @@
         </div>
         <div id="flt_counters" style="margin: 5px;">
             <div class="flt_counter">
-                <div id="licenseicon" class="flt_icon_license"></div>
+                <div id="licenseicon" class="flt_icon_cardlicense"></div>
                 <span id="licensecount"></span>
             </div>
             <div class="flt_counter">
-                <div id="boaticon" class="flt_icon_boat"></div>
+                <div id="boaticon" class="flt_icon_cardboat"></div>
                 <span id="boatcount"></span>
             </div>
             <div class="flt_counter">
@@ -136,11 +136,15 @@ var jstpl_pfish = '<div id="${player_id}_fish_${fish_id}" class="flt_icon_fish">
 // Player board icons
 var jstpl_player_board =
     '<div class="flt_board">' +
-        '<img id="handcount_icon_p${id}" class="imgtext" src="${url}/img/hand.png">' +
+        '<div id="handcount_icon_p${id}" class="flt_icon_hand imgtext"></div>' +
         '<span id="handcount_p${id}">0</span>' +
         '&nbsp;' +
+        '<div id="coincount_icon_p${id}" class="flt_icon_coin imgtext"></div>' +
+        '<span id="coincount_p${id}">?</span>' +
+        '<span id="discount_p${id}"></span>' +
+        '&nbsp;' +
         '<div id="first_anchor_p${id}" style="height:28px; width:54px;">' +
-            '<div id="first_player_p${id}" class="flt_boat_token"></div>' +
+            '<div id="first_player_p${id}" class="flt_icon_first"></div>' +
         '</div>' +
     '</div>';
 
