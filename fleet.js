@@ -111,6 +111,7 @@ function (dojo, declare) {
                     zone.create(this, 'license_' + player_id + '_' + i, this.license_width, this.license_height);
                     zone.setPattern('diagonal');
                     zone.autowidth = true;
+                    zone.item_margin = 10;
                     this.addTooltipHtml('license_' + player_id + '_' + i, this.getCardTooltip(i));
                     this.player_licenses[player_id][i] = zone;
                 }
@@ -576,6 +577,15 @@ function (dojo, declare) {
 
             // Add license
             this.player_licenses[player_id][card_type].placeInZone(license_div);
+
+            // Show number hint if more than one license of this type owned
+            var nbr_lic = this.player_licenses[player_id][card_type].getItemNumber();
+            if (nbr_lic > 1) {
+                dojo.query('div[id^="' + zone_div + '_"] > div').forEach(function(node) {
+                    dojo.style(node, 'display', 'block');
+                    node.textContent = '(' + nbr_lic + ')';
+                });
+            }
         },
 
         /*
