@@ -64,6 +64,7 @@ class view_fleet_fleet extends game_view
         // Translations
         $this->tpl['MY_HAND'] = self::_("My hand");
         $this->tpl['AUCTION_LABEL'] = self::_("License Auction");
+        $this->tpl['BID_LABEL'] = self::_("Bids");
         $this->tpl['DRAW_LABEL'] = self::_("Drawn cards");
         $this->tpl['LICENSES'] = self::_("licenses");
         $this->tpl['BOATS'] = self::_("boats");

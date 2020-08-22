@@ -42,7 +42,7 @@
             <h3>{AUCTION_LABEL}</h3>
             <div id="auctiontable"></div>
             <div id="auctionbids" style="display: none;">
-                <b>Bids</b>
+                <b>{BID_LABEL}</b>
                 <!-- BEGIN bid -->
                 <div id="playerbid_{PLAYER_ID}_wrap">
                     <div style="color:#{PLAYER_COLOR}">

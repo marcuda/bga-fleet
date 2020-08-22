@@ -309,8 +309,9 @@ function (dojo, declare) {
                         var card_info = this.card_infos[card.type];
                         if (this.debug) console.log(card);
                         if (this.debug) console.log(card_info);
+                        var desc = _(card_info.name) + ': ' + _('${you} must bid or pass');
                         this.setClientState('client_auctionBid', {
-                            descriptionmyturn: _('${name}: ${you} must bid or pass'),
+                            descriptionmyturn: desc,
                             args: card_info
                         });
                     } else {
@@ -733,7 +734,7 @@ function (dojo, declare) {
             var nbr_fish = this.fish_zones[card_id].getItemNumber();
             if (nbr_fish == 4) {
                 // This should not happen under normal circumstances
-                this.showMessage(_('ERROR: Boat fish crates maxed out'), 'error');
+                this.showMessage('ERROR: Boat fish crates maxed out', 'error');
                 return;
             }
 
@@ -762,7 +763,7 @@ function (dojo, declare) {
                 var card_fish = this.fish_zones[card_id].getItemNumber() - 1;
                 if (card_fish < 0) {
                     // This should not happen under normal circumstances
-                    this.showMessage(_('ERROR: No fish crates to process'), 'error');
+                    this.showMessage('ERROR: No fish crates to process', 'error');
                     return;
                 }
 
@@ -808,7 +809,7 @@ function (dojo, declare) {
             var nbr_fish = zone.getItemNumber() - 1;
             if (nbr_fish < 0) {
                 // This should not happen under normal circumstances
-                this.showMessage(_("ERROR: No fish cubes to trade"), 'error');
+                this.showMessage("ERROR: No fish cubes to trade", 'error');
                 return;
             }
 
@@ -1066,7 +1067,7 @@ function (dojo, declare) {
 
                     // Verify state (should not be possible otherwise)
                     if (this.gamedatas.gamestate.name != 'client_auctionSelect') {
-                        this.showMessage(_("ERROR: Invalid game state for bidding"), 'error');
+                        this.showMessage("ERROR: Invalid game state for bidding", 'error');
                         return;
                     }
 
@@ -1090,7 +1091,7 @@ function (dojo, declare) {
 
                     // Update page title and buttons for bidding
                     // Do not change state to allow player to change selection
-                    this.gamedatas.gamestate.descriptionmyturn = card_name + ': ' + _('${you} may open the bidding at ') + this.client_state_args.bid;
+                    this.gamedatas.gamestate.descriptionmyturn = _(card_name) + ': ' + _('${you} may open the bidding at') + ' ' + this.client_state_args.bid;
                     this.updatePageTitle();
                     this.removeActionButtons();
                     this.addActionButton('button_1', '-1', 'onMinusOne', null, false, 'gray');
@@ -1163,7 +1164,7 @@ function (dojo, declare) {
             coins += this.client_state_args.fish_crates;
 
             // Update text with coins and enable button if it's enough to pay cost
-            this.gamedatas.gamestate.descriptionmyturn = _('${you} must discard cards to pay ') + coins + '/' + this.client_state_args.cost;
+            this.gamedatas.gamestate.descriptionmyturn = _('${you} must discard cards to pay') + ' ' + coins + '/' + this.client_state_args.cost;
             this.updatePageTitle();
             this.removeActionButtons();
             var color = coins >= this.client_state_args.cost ? 'blue' : 'gray';
@@ -1231,8 +1232,9 @@ function (dojo, declare) {
                                 playSound('move');
 
                                 // Change client state to allow player to pay
+                                var desc = _(card_info.name) + ': ' + _('${you} must discard cards to pay') + ' 0/${cost}';
                                 this.setClientState('client_launchPay', {
-                                    descriptionmyturn: _('${name}: ${you} must discard cards to pay 0/${cost}'),
+                                    descriptionmyturn: desc,
                                     args: card_info
                                 });
                             }
