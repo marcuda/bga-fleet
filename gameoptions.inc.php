@@ -60,6 +60,20 @@ $game_options = array(
             2 => array('name' => totranslate('No')),
         ),
     ),
+    101 => array(
+        'name' => totranslate("Automatic Passing"),
+        'values' => array(
+            1 => array(
+                'name' => totranslate("Fast"),
+                'tmdisplay' => totranslate("Fast passing"),
+                'description' => totranslate("Always skip players that cannot play, even if it may reveal private info"),
+            ),
+            2 => array(
+                'name' => totranslate("Standard"),
+                'description' => totranslate("Only use public info to skip players that cannot play"),
+            ),
+        ),
+    ),
 
 );
 
