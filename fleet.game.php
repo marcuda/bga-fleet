@@ -532,7 +532,9 @@ class fleet extends Table
                     }
                 }
             } else {
-                $moves[] = true;//TODO: check bid
+                if ($this->getCoins($player_id) > $this->getHighBid()) {
+                    $moves[] = true;
+                }
             }
         } else if ($phase == PHASE_LAUNCH) {
             // Launch Boats: any boat in hand the player can afford and owns same license
@@ -643,7 +645,7 @@ class fleet extends Table
      */
     function optFastPassing()
     {
-       return $this->gamestate->table_globals[101] == 1;
+       return $this->gamestate->table_globals[101] == 2;
     }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -658,6 +660,17 @@ class fleet extends Table
         self::checkAction('pass');
 
         $player_id = self::getActivePlayerId();
+        $this->passCheckAndNotify($player_id);
+
+        $this->gamestate->nextState();
+    }
+
+    /*
+     * Check any pass conditions for auction and notify players
+     * (main logic for passing so auto pass can execute from game state)
+     */
+    function passCheckAndNotify($player_id)
+    {
         $in_auction = false;
         $auction_done = false;
         $msg = clienttranslate('${player_name} passes');
@@ -695,15 +708,14 @@ class fleet extends Table
             self::DbQuery("UPDATE player SET passed = 1 WHERE player_id = $player_id");
         }
 
+        $players = self::loadPlayersBasicInfos(); // for player name since may be non-active state
         self::notifyAllPlayers('pass', $msg, array(
-            'player_name' => self::getActivePlayerName(),
-            'player_id' => self::getActivePlayerId(),
+            'player_name' => $players[$player_id]['player_name'],
+            'player_id' => $player_id,
             'in_auction' => $in_auction,
             'auction_done' => $auction_done,
             'card' => $card,
         ));
-
-        $this->gamestate->nextState();
     }
 
     /*
@@ -1246,6 +1258,13 @@ class fleet extends Table
 
         if ($this->skipPlayer($player_id, $next_state)) {
             // Player has no (public) legal moves
+            if ($this->optFastPassing()) {
+                // Need to actually pass auction phase to set db vars
+                // And for launch it's nice to notify, but all others should be obvious
+                if ($next_state == PHASE_AUCTION || $next_state == PHASE_LAUNCH) {
+                    $this->passCheckAndNotify($player_id);
+                }
+            }
             $next_state = 'cantPlay';
             /*
              * TODO: notify here? it triggers a lot...
@@ -1668,7 +1687,11 @@ class fleet extends Table
         // but _NOT_ when it would reveal private information (unless fast passing enabled)
         switch ($phase) {
             case PHASE_AUCTION:
-                $skip = false;//TODO: check coins
+                if ($this->optFastPassing()) {
+                    $skip = count($this->possibleMoves($player_id, PHASE_AUCTION)) == 0;
+                } else {
+                    $skip = false;
+                }
                 break;
             case PHASE_LAUNCH:
                 if ($this->optFastPassing()) {
