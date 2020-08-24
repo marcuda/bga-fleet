@@ -44,6 +44,7 @@ class fleet extends Table
 
             // Game options
             'gone_fishing' => 100,
+            'fast_passing' => 101,
         ) );
 
         // Deck compontent for all cards
@@ -513,9 +514,7 @@ class fleet extends Table
     {
         $moves = array();
         if ($phase == PHASE_AUCTION) {
-            // Auction: depends on current client stat
-
-            // No actions for auction in progress
+            // Auction: depends on current client state
 
             if (self::getGameStateValue('auction_winner')) {
                 // Auction won
@@ -532,6 +531,8 @@ class fleet extends Table
                         $moves[$card_id] = true;
                     }
                 }
+            } else {
+                $moves[] = true;//TODO: check bid
             }
         } else if ($phase == PHASE_LAUNCH) {
             // Launch Boats: any boat in hand the player can afford and owns same license
@@ -570,6 +571,7 @@ class fleet extends Table
             foreach ($cards as $card_id => $card) {
                 if ($card['type'] == CARD_BOAT) {
                     $moves[$card_id] = true;
+                    $moves['has_boat'] = true;
                 }
             }
 
@@ -578,6 +580,7 @@ class fleet extends Table
             foreach ($boats as $card_id => $boat) {
                 if (!$boat['has_captain']) {
                     $moves[$card_id] = true;
+                    $moves['has_captain'] = true;
                 }
             }
         } else if ($phase == PHASE_PROCESSING) {
@@ -633,6 +636,14 @@ class fleet extends Table
     function optGoneFishing()
     {
        return $this->gamestate->table_globals[100] == 1;
+    }
+
+    /*
+     * Returns true if Fast Passing option is enabled
+     */
+    function optFastPassing()
+    {
+       return $this->gamestate->table_globals[101] == 1;
     }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -1428,7 +1439,7 @@ class fleet extends Table
         $nbr_license = count($this->getLicenses($player_id, LICENSE_COD));
         if ($nbr_license > 0 && // has license
             self::getGameStateValue('current_player_launches') < 2 && // has not used bonus launch
-            $this->cards->countCardInLocation('hand', $player_id) > 0 && // has cards in hand
+            !$this->skipPlayer($player_id, PHASE_LAUNCH) && // has another launch play
             !$this->hasPassed($player_id)) // has not passed
         {
             // Player gets bonus action
@@ -1456,13 +1467,9 @@ class fleet extends Table
         // Allow extra turn if player has license and legal play
         $player_id = self::getActivePlayerId();
         $nbr_license = count($this->getLicenses($player_id, LICENSE_LOBSTER));
-        $sql = "SELECT COUNT(*) FROM card WHERE card_location = 'table' ";
-        $sql .= "AND card_location_arg = $player_id AND card_type = '";
-        $sql .= CARD_BOAT . "' AND has_captain = 0";
         if ($nbr_license > 0 && // has license
             self::getGameStateValue('current_player_hires') < 2 && // has not used bonus hire
-            $this->cards->countCardInLocation('hand', $player_id) > 0 && // has cards in hand
-            self::getUniqueValueFromDB($sql) > 0 && // has boat without captain
+            !$this->skipPlayer($player_id, PHASE_HIRE) && // has another hire play
             !$this->hasPassed($player_id)) // has not passed
         {
             // Player gets bonus action
@@ -1658,19 +1665,38 @@ class fleet extends Table
     function skipPlayer($player_id, $phase)
     {
         // When possible automatically skip players without a valid play
-        // but _NOT_ when it would reveal private information
+        // but _NOT_ when it would reveal private information (unless fast passing enabled)
         switch ($phase) {
+            case PHASE_AUCTION:
+                $skip = false;//TODO: check coins
+                break;
             case PHASE_LAUNCH:
-                // Skip player _only_ if hand is empty (ignore no legal play)
-                $skip = $this->cards->countCardInLocation('hand', $player_id) == 0;
+                if ($this->optFastPassing()) {
+                    // Skip player if no legal boat to launch
+                    $moves = $this->possibleMoves($player_id, $phase);
+                    $can_play = false;
+                    foreach ($moves as $move) {
+                        $can_play = $can_play || $move['can_play'];
+                    }
+                    $skip = !$can_play;
+                } else {
+                    // Skip player _only_ if hand is empty (ignore no legal play)
+                    $skip = $this->cards->countCardInLocation('hand', $player_id) == 0;
+                }
                 break;
             case PHASE_HIRE:
-                // Skip player if hand empty or no open boats
-                $hand = $this->cards->countCardInLocation('hand', $player_id);
-                $sql = "SELECT COUNT(*) FROM card WHERE card_location = 'table' ";
-                $sql .= "AND card_location_arg = $player_id AND card_type = '";
-                $sql .= CARD_BOAT . "' AND has_captain = 0";
-                $skip = $hand == 0 || self::getUniqueValueFromDB($sql) == 0;
+                if ($this->optFastPassing()) {
+                    // Skip player if no boats in hand or open
+                    $moves = $this->possibleMoves($player_id, $phase);
+                    $skip = count($moves) < 2 || !array_key_exists('has_boat', $moves) || !array_key_exists('has_captain', $moves);
+                } else {
+                    // Skip player if hand empty or no open boats
+                    $hand = $this->cards->countCardInLocation('hand', $player_id);
+                    $sql = "SELECT COUNT(*) FROM card WHERE card_location = 'table' ";
+                    $sql .= "AND card_location_arg = $player_id AND card_type = '";
+                    $sql .= CARD_BOAT . "' AND has_captain = 0";
+                    $skip = $hand == 0 || self::getUniqueValueFromDB($sql) == 0;
+                }
                 break;
             case PHASE_PROCESSING:
                 // Skip player if no license or fish to process
