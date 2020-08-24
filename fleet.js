@@ -2092,7 +2092,7 @@ function (dojo, declare) {
                 this.draw_table.removeFromStockById(card.id);
                 this.coin_counter.incValue(this.card_infos[card.type_arg].coins);
             } else {
-                this.coin_counter.incValue(-this.card_infos[discard.type_arg].coins);
+                this.coin_counter.incValue(-this.card_infos[notif.args.discard.type_arg].coins);
             }
         },
 
