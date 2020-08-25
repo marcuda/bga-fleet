@@ -52,11 +52,9 @@ function (dojo, declare) {
             this.possible_moves = null;  // objects to highlight as possible plays when active
             this.fish_zones = [];        // zone components for each boats fish area
             this.player_fish = [];       // zone components for each player's processed fish area
-            this.draw_table = null;      // stock compontent for drawn cards area
             this.discount = 0;           // transaction discount from played Shrimp Licenses
-            this.hand_discard = false;   // true if player has Tuna License to draw into/discard from hand
             this.gone_fishing = false;   // true if game option to use Gone Fishing is enabled
-            this.constants = null;        // game constants
+            this.constants = null;       // game constants
         },
         
         /*
@@ -84,7 +82,6 @@ function (dojo, declare) {
             this.auction.winner = parseInt(gamedatas.auction_winner);
             this.possible_moves = gamedatas.moves;
             this.discount = parseInt(gamedatas.discount);
-            this.hand_discard = gamedatas.hand_discard;
             this.gone_fishing = gamedatas.gone_fishing;
             this.constants = gamedatas.constants;
 
@@ -190,15 +187,6 @@ function (dojo, declare) {
                 dojo.place('auction', 'auction_bottom');
             }
 
-            // Draw area
-            this.draw_table = this.createStockBoat('drawarea', true);
-            this.draw_table.vertical_overlap = 0; // remove space for captains
-            for (var i in gamedatas.draw) {
-                var card = gamedatas.draw[i];
-                this.draw_table.addToStockWithId(card.type_arg, card.id);
-            }
-            dojo.connect(this.draw_table, 'onChangeSelection', this, 'onDrawSelectionChanged');
-
             // Game counters
             // License deck
             this.license_counter = new ebg.counter();
@@ -232,6 +220,10 @@ function (dojo, declare) {
                 this.player_hand.vertical_overlap = 0; // remove space for captains
                 for (var i in gamedatas.hand) {
                     var card = gamedatas.hand[i];
+                    this.player_hand.addToStockWithId(card.type_arg, card.id);
+                }
+                for (var i in gamedatas.draw) { // draw cards also show in hand
+                    var card = gamedatas.draw[i];
                     this.player_hand.addToStockWithId(card.type_arg, card.id);
                 }
                 dojo.connect(this.player_hand, 'onChangeSelection', this, 'onPlayerHandSelectionChanged');
@@ -380,7 +372,6 @@ function (dojo, declare) {
             this.auction.table.setSelectionMode(0);
             this.safeSetSelectionMode(this.player_hand, 0);
             this.safeSetSelectionMode(this.player_boats[this.player_id], 0);
-            this.draw_table.setSelectionMode(0);
 
             // Remove all highlights and other activated styling
             dojo.style('auctionbids', 'display', 'none');
@@ -392,12 +383,8 @@ function (dojo, declare) {
 
             switch( stateName )
             {
-                case 'draw':
-                    //TODO: make this smooth
-                    dojo.style('draw_wrap', 'display', 'none');
-                    break;
                 default:
-                    // No special logic for any other state
+                    // No special logic for any state
                     break;
             }               
         }, 
@@ -468,17 +455,9 @@ function (dojo, declare) {
 
                         // Not buttons, but due to timing of multiactive
                         // state cannot apply this logic in onEnteringState
-                        // Highlight cards
-                        this.possible_moves = [true];
+                        // Highlight cards and set selection
                         this.showPossibleMoves();
-
-                        // Set correct selection area
-                        if (this.hand_discard) {
-                            this.safeSetSelectionMode(this.player_hand, 1);
-                        } else {
-                            dojo.style('draw_wrap', 'display', 'block');
-                            this.draw_table.setSelectionMode(1);
-                        }
+                        this.safeSetSelectionMode(this.player_hand, 1);
                         break;
                 }
             }
@@ -650,12 +629,8 @@ function (dojo, declare) {
                     this.updateSelectableFish(this.player_id + '_fish_');
                     break;
                 case 'draw':
-                    // Player draw or hand depending on Tuna License bonus
-                    if (this.hand_discard) {
-                        this.updateSelectableCards(this.player_hand, false);
-                    } else {
-                        this.updateSelectableCards(this.draw_table, false);
-                    }
+                    // Player hand
+                    this.updateSelectableCards(this.player_hand, true);
                     break;
             }
         },
@@ -1120,20 +1095,6 @@ function (dojo, declare) {
         },
 
         /*
-         * Player clicks a card in the drawn stock during Draw
-         */
-        onDrawSelectionChanged: function()
-        {
-            var items = this.draw_table.getSelectedItems();
-
-            if (items.length > 0) {
-                // Immediate action is to discard
-                this.discardAction(items[0]);
-                this.draw_table.unselectAll();
-            }
-        },
-
-        /*
          * Player discards a card
          */
         discardAction: function(card)
@@ -1273,7 +1234,11 @@ function (dojo, declare) {
                 case 'draw':
                     // Card is discarded immediately
                     if (items.length > 0) {
-                        this.discardAction(items[0]);
+                        if (!this.possible_moves[items[0].id]) {
+                            this.showMessage(_('You must discard one of the two cards just drawn'), 'error');
+                        } else {
+                            this.discardAction(items[0]);
+                        }
                     }
                     this.player_hand.unselectAll();
                     break;
@@ -1810,9 +1775,6 @@ function (dojo, declare) {
                     // Each Shrimp Licenses increases transaction discount
                     this.discount += 1;
                     dojo.byId('discount_p' + this.player_id).textContent = '+' + this.discount;
-                } else if (notif.args.license_type == this.constants.tuna) {
-                    // Any Tuna License allows discard from hand
-                    this.hand_discard = true;
                 }
             } else {
                 // Animate cards from other player
@@ -2014,20 +1976,11 @@ function (dojo, declare) {
             if (this.debug) console.log('notify_draw');
             if (this.debug) console.log(notif);
 
-            // This notif happens before state change
-            // Ensure stock is visible to receive cards
-            if (!notif.args.to_hand) {
-                dojo.style('draw_wrap', 'display', 'block');
-            }
-
             // Add cards
-            var stock = notif.args.to_hand ? this.player_hand : this.draw_table;
             for (var i in notif.args.cards) {
                 var card = notif.args.cards[i];
-                stock.addToStockWithId(card.type_arg, card.id, 'boatcount');
-                if (notif.args.to_hand) {
-                    this.coin_counter.incValue(this.card_infos[card.type_arg].coins);
-                }
+                this.player_hand.addToStockWithId(card.type_arg, card.id, 'boatcount');
+                this.coin_counter.incValue(this.card_infos[card.type_arg].coins);
             }
         },
 
@@ -2048,9 +2001,7 @@ function (dojo, declare) {
             }
 
             // Update player hand counter
-            if (notif.args.to_hand) {
-                this.hand_counters[notif.args.player_id].incValue(notif.args.nbr);
-            }
+            this.hand_counters[notif.args.player_id].incValue(notif.args.nbr);
             //TODO: animate draw for other players?
         },
 
@@ -2063,12 +2014,7 @@ function (dojo, declare) {
             if (this.debug) console.log(notif);
 
             // Update player hand counter
-            if (notif.args.in_hand) {
-                this.hand_counters[notif.args.player_id].incValue(-1);
-            } else {
-                // Draw phase where card not discarded is taken into hand
-                this.hand_counters[notif.args.player_id].incValue(1);
-            }
+            this.hand_counters[notif.args.player_id].incValue(-1);
             //TODO: animate draw for other players?
         },
 
@@ -2081,19 +2027,13 @@ function (dojo, declare) {
             if (this.debug) console.log(notif);
 
             // Discard selected
-            var stock = notif.args.in_hand ? this.player_hand : this.draw_table;
-            var card = stock.getItemById(notif.args.discard.id);
-            stock.removeFromStockById(notif.args.discard.id, 'site-logo'); //TODO: discard area
+            var card = this.player_hand.getItemById(notif.args.discard.id);
+            this.player_hand.removeFromStockById(notif.args.discard.id, 'site-logo'); //TODO: discard area
+            this.coin_counter.incValue(-this.card_infos[notif.args.discard.type_arg].coins);
 
-            if (!notif.args.in_hand) {
-                // Move kept card to hand
-                var card = notif.args.keep;
-                this.player_hand.addToStockWithId(card.type_arg, card.id, this.draw_table.getItemDivId(card.id));
-                this.draw_table.removeFromStockById(card.id);
-                this.coin_counter.incValue(this.card_infos[card.type_arg].coins);
-            } else {
-                this.coin_counter.incValue(-this.card_infos[notif.args.discard.type_arg].coins);
-            }
+            // Multiactive state may not move on immediately
+            // Clear highlights manually as soon as possible
+            dojo.query('.flt_selectable').removeClass('flt_selectable');
         },
 
         /*

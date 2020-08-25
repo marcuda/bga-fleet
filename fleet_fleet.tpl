@@ -30,12 +30,6 @@
         </div>
     </div>
 
-    <!-- Drawn card area -->
-    <div id="draw_wrap" class="flt_draw_area whiteblock">
-        <h3>{DRAW_LABEL}</h3>
-        <div id="drawarea"></div>
-    </div>
-
     <!-- Auction block -->
     <div id="auction_top">
         <div id="auction" class="flt_auction whiteblock">
