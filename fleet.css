@@ -229,12 +229,6 @@
     border-radius: 12px;
 }
 
-.flt_draw_area {
-    width: 210px;
-    margin: auto;
-    display: none;
-}
-
 .flt_license_zone {
     width: 175px;
     display: none;

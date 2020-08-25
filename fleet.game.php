@@ -250,8 +250,6 @@ class fleet extends Table
 
         // Each Shrimp License reduces the cost by one
         $result['discount'] = count($this->getLicenses($current_player_id, LICENSE_SHRIMP));
-        // Tuna License draws cards into hand, which changes client logic
-        $result['hand_discard'] = count($this->getLicenses($current_player_id, LICENSE_TUNA)) > 0;
 
         // Card counds
         $result['cards'] = $this->cards->countCardsInLocations();
@@ -459,6 +457,13 @@ class fleet extends Table
             $coins += $card_info['coins'];
         }
 
+        // During draw phase cards are held in hand, so add those coins
+        $cards = $this->cards->getCardsInLocation('draw', $player_id);
+        foreach ($cards as $card) {
+            $card_info = $this->getCardInfo($card);
+            $coins += $card_info['coins'];
+        }
+
         // Each processed fish crate can be sold for $1
         $coins += $this->getFishCrates($player_id);
 
@@ -596,7 +601,15 @@ class fleet extends Table
         } else if ($phase == PHASE_TRADING) {
             $moves[] = true; // Client will track this directly
         } else if ($phase == PHASE_DRAW) {
-            $moves[] = true; // Client will track this directly
+            // Draw: either one of two cards just drawn, or any card with Tuna bonus
+            $cards = $this->cards->getCardsInLocation('draw', $player_id);
+            if (count($cards) == 0) {
+                // No draw means they're already in hand from Tuna bonus
+                $cards = $this->cards->getPlayerHand($player_id);
+            }
+            foreach ($cards as $card_id => $card) {
+                $moves[$card_id] = true;
+            }
         }
 
         return $moves;
@@ -1203,19 +1216,15 @@ class fleet extends Table
 
         // Discard card and take remainder (does nothing if drawn into hand already)
         $this->cards->playCard($card_id);
-        $kept = $this->cards->getCardsInLocation('draw', $player_id);
         $this->cards->moveAllCardsInLocation('draw', 'hand', $player_id, $player_id);
 
         // Notify
         self::notifyAllPlayers('discardLog', clienttranslate('${player_name} discards a card'), array(
             'player_name' => self::getCurrentPlayerName(), // multiple active
             'player_id' => $player_id,
-            'in_hand' => $bonus > 0,
         ));
         self::notifyPlayer($player_id, 'discard', '', array(
             'discard' => $card,
-            'keep' => count($kept) > 0 ? array_shift($kept) : null,
-            'in_hand' => $bonus > 0,
         ));
 
         // Multiple active state
@@ -1308,6 +1317,12 @@ class fleet extends Table
                 // Player must discard
                 $active_players[] = $player_id;
                 self::giveExtraTime($player_id);
+
+                // Notify (again) to highlight cards after draw
+                self::notifyPlayer($player_id, 'possibleMoves', '', array(
+                    'moves' => $this->possibleMoves($player_id, PHASE_DRAW),
+                    'coins' => $this->getCoins($player_id),
+                ));
             }
 
             // Next player
@@ -1669,11 +1684,9 @@ class fleet extends Table
                 'nbr' => $nbr,
                 'shuffle' => $shfl,
                 'deck_nbr' => $deck_nbr,
-                'to_hand' => $dest == 'hand' ? true : false,
             ));
             self::notifyPlayer($player_id, 'draw', '', array(
                 'cards' => $cards,
-                'to_hand' => $dest == 'hand' ? true : false,
             ));
         }
     }
