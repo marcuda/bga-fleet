@@ -41,6 +41,7 @@ function (dojo, declare) {
             this.fish_cube_size = 30;    // fish cube width/height
             this.license_counter = null; // counter for license deck
             this.boat_counter = null;    // counter for boat deck
+            this.discard_counter = null; // counter for boat discard pile
             this.fish_counter = null;    // counter for fish cubes
             this.coin_counter = null;    // counter for current player coins
             this.hand_counters = [];     // counters for all players cards in hand
@@ -198,8 +199,12 @@ function (dojo, declare) {
             this.boat_counter = new ebg.counter();
             this.boat_counter.create('boatcount');
             this.setCounterValue(this.boat_counter, gamedatas.cards['deck'] || 0);
-            this.addTooltip('boaticon', _('Number boat cards remaining (discards get reshuffled)'), '');
-            this.addTooltip('boatcount', _('Number boat cards remaining (discards get reshuffled)'), '');
+            this.discard_counter = new ebg.counter();
+            this.discard_counter.create('discardcount');
+            this.setCounterValue(this.discard_counter, gamedatas.cards['discard'] || 0);
+            this.addTooltip('boaticon', _('Number boat cards in deck / discard pile (automatically reshuffled)'), '');
+            this.addTooltip('boatcount', _('Number boat cards in deck / discard pile (automatically reshuffled)'), '');
+            this.addTooltip('discardcount', _('Number boat cards in deck / discard pile (automatically reshuffled)'), '');
             // Fish cubes
             this.fish_counter = new ebg.counter();
             this.fish_counter.create('fishcount');
@@ -789,7 +794,7 @@ function (dojo, declare) {
 
             // Remove fish cube from game
             var fish_div = player_id + '_fish_' + nbr_fish;
-            zone.removeFromZone(fish_div, true, 'site-logo');//TODO: discard area
+            zone.removeFromZone(fish_div, true, 'site-logo');
         },
 
         /*
@@ -1787,6 +1792,7 @@ function (dojo, declare) {
 
             // Remove discards from hand count
             this.hand_counters[notif.args.player_id].incValue(-notif.args.card_ids.length);
+            this.discard_counter.incValue(notif.args.discards - this.discard_counter.getValue());
 
             // Player takes license card
             var src = this.auction.table.getItemDivId(notif.args.license_id);
@@ -1810,7 +1816,7 @@ function (dojo, declare) {
 
             if (notif.args.discard) {
                 // Discards all current cards
-                this.auction.table.removeAllTo('site-logo'); //TODO: discard pile
+                this.auction.table.removeAllTo('site-logo');
             }
 
             // Add new card(s)
@@ -1870,6 +1876,7 @@ function (dojo, declare) {
 
             // Remove discards and launch from hand count
             this.hand_counters[notif.args.player_id].incValue(-notif.args.card_ids.length-1);
+            this.discard_counter.incValue(notif.args.discards - this.discard_counter.getValue());
 
             // Score VP from boat
             this.scoreCtrl[notif.args.player_id].incValue(notif.args.points);
@@ -1995,6 +2002,7 @@ function (dojo, declare) {
             // Update deck counter
             if (notif.args.shuffle) {
                 this.boat_counter.setValue(notif.args.deck_nbr);
+                this.discard_counter.setValue(0);
             } else {
                 this.boat_counter.incValue(-notif.args.nbr);
             }
@@ -2014,6 +2022,7 @@ function (dojo, declare) {
 
             // Update player hand counter
             this.hand_counters[notif.args.player_id].incValue(-1);
+            this.discard_counter.incValue(1);
             //TODO: animate draw for other players?
         },
 
@@ -2027,7 +2036,7 @@ function (dojo, declare) {
 
             // Discard selected
             var card = this.player_hand.getItemById(notif.args.discard.id);
-            this.player_hand.removeFromStockById(notif.args.discard.id, 'site-logo'); //TODO: discard area
+            this.player_hand.removeFromStockById(notif.args.discard.id, 'boaticon');
             this.coin_counter.incValue(-this.card_infos[notif.args.discard.type_arg].coins);
 
             // Multiactive state may not move on immediately
