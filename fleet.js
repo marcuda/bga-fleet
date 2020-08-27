@@ -318,7 +318,6 @@ function (dojo, declare) {
                     // Player must select a card from auction table or pass
                     this.showActiveAuction();
                     this.auction.table.setSelectionMode(1);
-                    //TODO: if last player change title to say buy vs bid?
                     break;
                 case 'client_auctionBid':
                     // Player must bid or pass; all actions in status bar
@@ -1071,7 +1070,7 @@ function (dojo, declare) {
                     this.removeActionButtons();
                     this.addActionButton('button_1', '-1', 'onMinusOne', null, false, 'gray');
                     this.addActionButton('button_2', '+1', 'onPlusOne');
-                    this.addActionButton('button_3', _('Bid') + ': ' + this.client_state_args.bid, 'onBid');//TODO: change to buy if no other players? title too
+                    this.addActionButton('button_3', _('Bid') + ': ' + this.client_state_args.bid, 'onBid');
                     if (this.gone_fishing) {
                         this.addActionButton('button_4', _("Go fishin' (pass)"), 'onPass');
                     } else {
