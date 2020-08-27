@@ -61,12 +61,14 @@
                 <span id="licensecount"></span>
             </div>
             <div class="flt_counter">
-                <div id="boaticon" class="flt_icon_cardboat"></div>
-                <span id="boatcount"></span>
-            </div>
-            <div class="flt_counter">
                 <div id="fishicon" class="flt_icon_fish"></div>
                 <span id="fishcount"></span>
+            </div>
+            <div class="flt_counter">
+                <div id="boaticon" class="flt_icon_cardboat"></div>
+                <span id="boatcount"></span>
+                <span style="width: auto;">/</span>
+                <span id="discardcount"></span>
             </div>
         </div>
     </div>

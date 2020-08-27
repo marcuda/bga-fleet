@@ -927,6 +927,7 @@ class fleet extends Table
             'license_id' => $license_id,
             'license_type' => $license['type_arg'],
             'points' => $license_info['points'],
+            'discards' => $this->cards->countCardsInLocation('discard'),
         ));
 
         $this->gamestate->nextState();
@@ -1041,6 +1042,7 @@ class fleet extends Table
             'boat_type' => $boat['type_arg'],
             'card_ids' => $card_ids,
             'points' => $boat_info['points'],
+            'discards' => $this->cards->countCardsInLocation('discard'),
         ));
 
         $this->gamestate->nextState();
