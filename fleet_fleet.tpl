@@ -12,7 +12,6 @@
 
 
 <div id="flt_game_area">
-
     <!-- Table to display end game scoring -->
     <div id="final_score" class="whiteblock" style="display: none;">
         <h3>{FINAL_SCORE}</h3>
@@ -116,12 +115,15 @@
 
 // Launched boat cards with captain and fish overlays
 var jstpl_boat = 
-    '<div class="flt_boat" style="background-position: -${x}px -${y}px;">' +
-        '<div id="cardcontent_${id}">' +
-            '<div id="captain_${id}" class="flt_boat flt_captain"></div>' +
-            '<div id="fish_${id}" class="flt_fish_boat"></div>' +
-        '</div>' +
-    '</div>';
+  '<div class="flt_boat_wrap">' +
+    '<div class="flt_boat" style="background-position: -${x}px -${y}px;"></div>' +
+    '<div class="flt_boat flt_boat_back"></div>' +
+    '<div id="captain_${id}" class="flt_boat flt_captain"></div>' +
+    '<div id="fish_${id}" class="flt_fish_boat"></div>' +
+  '</div>';
+
+// Card back for temporary captain animations
+var jstpl_captain = '<div id="tmp_captain_${id}" class="flt_boat flt_captain" style="display:block"></div>';
 
 // Fish cube
 var jstpl_fish = '<div id="fish_${player_id}_${card_id}_${fish_id}" class="flt_icon_fish"></div>';

@@ -1639,7 +1639,7 @@ function (dojo, declare) {
             this.notifqueue.setSynchronous('drawLicense', 500);
             dojo.subscribe('launchBoat', this, 'notif_launchBoat');
             dojo.subscribe('hireCaptain', this, 'notif_hireCaptain');
-            this.notifqueue.setSynchronous('hireCaptain', 200); // short to not throw errors if player plays bonus move quickly
+            this.notifqueue.setSynchronous('hireCaptain', 750);
             dojo.subscribe('fishing', this, 'notif_fishing');
             this.notifqueue.setSynchronous('fishing', 1000);
             dojo.subscribe('processFish', this, 'notif_processFish');
@@ -1895,8 +1895,9 @@ function (dojo, declare) {
             if (this.debug) console.log('notify_hireCaptain');
             if (this.debug) console.log(notif);
 
-            // Show card back for captian
-            // TODO: timing, card flip anim?
+            // Prepare to show captain card back after animations
+            // Need to set display and use opacity so div exists for animations
+            dojo.style('captain_' + notif.args.boat_id, 'opacity', '0');
             dojo.style('captain_' + notif.args.boat_id, 'display', 'block');
 
             if (notif.args.player_id == this.player_id) {
@@ -1904,12 +1905,30 @@ function (dojo, declare) {
                 var card = this.player_hand.getItemById(notif.args.card_id);
                 this.coin_counter.incValue(-this.card_infos[card.type].coins);
 
-                // Player plays card onto boat
-                this.player_hand.removeFromStockById(notif.args.card_id, 'captain_' + notif.args.boat_id);
+                // Flip card over
+                var div = this.player_hand.getItemDivId(notif.args.card_id);
+                var node = dojo.query('#' + div + ' > .flt_boat_wrap')[0];
+                node.style['transform'] = 'rotateY(180deg)';
+
+                // Player plays card onto boat (delay for flip anim)
+                var _this = this;
+                setTimeout(function() {
+                    _this.player_hand.removeFromStockById(notif.args.card_id, 'captain_' + notif.args.boat_id);
+                }, 500);
+
+                var delay = 950;
             } else {
                 // Animate cards from other player
-                // TODO
+                dojo.place(this.format_block('jstpl_captain', {id:999}), 'player_board_' + notif.args.player_id);
+                this.placeOnObject('tmp_captain_999', 'player_board_' + notif.args.player_id);
+                this.slideToObjectAndDestroy('tmp_captain_999', 'captain_' + notif.args.boat_id, 500, 0);
+                var delay = 500;
             }
+
+            // Show captain card after animations
+            setTimeout(function() {
+                dojo.style('captain_' + notif.args.boat_id, 'opacity', '1');
+            }, delay);
 
             // Remove captain card from hand count
             this.hand_counters[notif.args.player_id].incValue(-1);
