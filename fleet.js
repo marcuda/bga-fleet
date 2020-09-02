@@ -1782,7 +1782,8 @@ function (dojo, declare) {
                 }
             } else {
                 // Animate cards from other player
-                // TODO
+                this.slideTemporaryObject(this.format_block('jstpl_captain', {id:999}),
+                    'flt_counters', 'player_board_' + notif.args.player_id, 'boaticon');
             }
 
             // Remove any traded fish crates
@@ -1866,12 +1867,17 @@ function (dojo, declare) {
                 this.player_hand.updateDisplay(); // now update everything
             } else {
                 // Animate cards from other player
+                // Boat
                 this.player_boats[notif.args.player_id].addToStockWithId(
                     notif.args.boat_type,
                     notif.args.boat_id,
                     'overall_player_board_' + notif.args.player_id
                 );
-                // TODO: discards?
+                // Discard
+                if (notif.args.nbr_cards != 0) {
+                    this.slideTemporaryObject(this.format_block('jstpl_captain', {id:999}),
+                        'flt_counters', 'player_board_' + notif.args.player_id, 'boaticon');
+                }
             }
 
             // Remove discards and launch from hand count
@@ -1919,6 +1925,7 @@ function (dojo, declare) {
                 var delay = 950;
             } else {
                 // Animate cards from other player
+                // Do it the hard way because slideTemporaryObject does not line up correctly
                 dojo.place(this.format_block('jstpl_captain', {id:999}), 'player_board_' + notif.args.player_id);
                 this.placeOnObject('tmp_captain_999', 'player_board_' + notif.args.player_id);
                 this.slideToObjectAndDestroy('tmp_captain_999', 'captain_' + notif.args.boat_id, 500, 0);
@@ -2028,7 +2035,12 @@ function (dojo, declare) {
 
             // Update player hand counter
             this.hand_counters[notif.args.player_id].incValue(notif.args.nbr);
-            //TODO: animate draw for other players?
+
+            if (notif.args.player_id != this.player_id) {
+                // Animate draw for other players
+                this.slideTemporaryObject(this.format_block('jstpl_captain', {id:999}),
+                    'flt_counters', 'boaticon', 'player_board_' + notif.args.player_id);
+            }
         },
 
         /*
@@ -2042,11 +2054,11 @@ function (dojo, declare) {
             // Update player hand counter
             this.hand_counters[notif.args.player_id].incValue(-1);
             this.discard_counter.incValue(1);
-            //TODO: animate draw for other players?
+            // since this is multiactive do not animate to simplify things
         },
 
         /*
-         * Private message when player discards a card and potentially takes one in hand
+         * Private message when player discards a card
          */
         notif_discard: function (notif)
         {
