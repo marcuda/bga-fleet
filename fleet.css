@@ -61,6 +61,19 @@
     background-image: url('img/boats.png');
     background-size: 800% 100%;
     z-index: 1;
+    -webkit-backface-visibility: hidden; /* Safari */
+    backface-visibility: hidden;
+}
+
+.flt_boat_back {
+    transform: rotateY(180deg);
+    background-position: -700px 0px;
+}
+
+.flt_boat_wrap {
+    position: relative;
+    transition: transform 0.8s;
+    transform-style: preserve-3d;
 }
 
 .flt_license {
