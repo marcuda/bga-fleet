@@ -52,14 +52,13 @@ class fleet extends Table
         $this->cards->init("card");
 
         // Game phases for determining next player logic and states
-        // N.B. Phases Two and Four are split into two phases each here
+        // N.B. Phase Two is split into two phases here
         $this->phases = array(
             PHASE_AUCTION,
             PHASE_LAUNCH,
             PHASE_HIRE,
             PHASE_FISHING,
             PHASE_PROCESSING,
-            PHASE_TRADING,
             PHASE_DRAW
         );
         $this->nbr_phases = count($this->phases);
@@ -591,11 +590,16 @@ class fleet extends Table
                 }
             }
         } else if ($phase == PHASE_PROCESSING) {
-            // Process Fish: any launched boat with fish on it
-            $boats = $this->getBoats($player_id);
-            foreach ($boats as $card_id => $boat) {
-                if ($boat['fish'] > 0) {
-                    $moves[$card_id] = true;
+            if ($this->hasPassed($player_id)) {
+                // Trading, client tracks this directly
+                $moves[] = true;
+            } else {
+                // Process Fish: any launched boat with fish on it
+                $boats = $this->getBoats($player_id);
+                foreach ($boats as $card_id => $boat) {
+                    if ($boat['fish'] > 0) {
+                        $moves[$card_id] = true;
+                    }
                 }
             }
         } else if ($phase == PHASE_TRADING) {
@@ -672,10 +676,20 @@ class fleet extends Table
     {
         self::checkAction('pass');
 
-        $player_id = self::getActivePlayerId();
+        $state = $this->gamestate->state();
+        if ($state['type'] == 'multipleactiveplayer') {
+            $player_id = self::getCurrentPlayerId();
+        } else {
+            $player_id = self::getActivePlayerId();
+        }
+
         $this->passCheckAndNotify($player_id);
 
-        $this->gamestate->nextState();
+        if ($state['type'] == 'multipleactiveplayer') {
+            $this->gamestate->setPlayerNonMultiactive($player_id, '');
+        } else {
+            $this->gamestate->nextState();
+        }
     }
 
     /*
@@ -1108,7 +1122,7 @@ class fleet extends Table
     {
         self::checkAction('processFish');
 
-        $player_id = self::getActivePlayerId();
+        $player_id = self::getCurrentPlayerId(); // multiple active
         $nbr_fish = count($card_ids);
 
         // Validate game state and transaction
@@ -1148,13 +1162,19 @@ class fleet extends Table
         // Notify
         $msg = clienttranslate('${player_name} processes ${nbr_fish} fish crate(s)');
         self::notifyAllPlayers('processFish', $msg, array(
-            'player_name' => self::getActivePlayerName(),
+            'player_name' => self::getCurrentPlayerName(), // multiple active
             'nbr_fish' => $nbr_fish,
             'card_ids' => $card_ids,
             'player_id' => $player_id,
         ));
 
-        $this->gamestate->nextState();
+        if ($this->skipPlayer($player_id, PHASE_TRADING)) {
+            // Multiple active state
+            $this->gamestate->setPlayerNonMultiactive($player_id, '');
+        } else {
+            // Set passed to trigger trading
+            self::DbQuery("UPDATE player SET passed = 1 WHERE player_id = $player_id");
+        }
     }
 
     /*
@@ -1163,7 +1183,7 @@ class fleet extends Table
     function tradeFish()
     {
         self::checkAction('tradeFish');
-        $player_id = self::getActivePlayerId();
+        $player_id = self::getCurrentPlayerId(); // multiple active
 
         // Validate game state and transaction
 
@@ -1185,7 +1205,7 @@ class fleet extends Table
         // Notify
         $msg = clienttranslate('${player_name} trades a fish crate');
         self::notifyAllPlayers('tradeFish', $msg, array(
-            'player_name' => self::getActivePlayerName(),
+            'player_name' => self::getCurrentPlayerName(), // multiple active
             'nbr_cards' => $nbr_license,
             'player_id' => $player_id,
         ));
@@ -1194,7 +1214,8 @@ class fleet extends Table
         // Do this last to put draw notification last
         $this->drawCards($player_id, $nbr_license, 'hand', $this->card_types[LICENSE_PROCESSING]['name']);
 
-        $this->gamestate->nextState();
+        // Multiple active state
+        $this->gamestate->setPlayerNonMultiactive($player_id, '');
     }
 
     /*
@@ -1238,8 +1259,18 @@ class fleet extends Table
 //////////// Game state arguments
 ////////////
 
-    // No args functions
     // Possible move args are handled privately in state function
+
+    /*
+     * Args for Processing and Trading phase
+     */
+    function argsProcessing() {
+        $player_id = self::getCurrentPlayerId();
+        return array(
+            'moves' => $this->possibleMoves($player_id, PHASE_PROCESSING),
+            'trade' => $this->hasPassed($player_id), // false => processing; true => trading
+        );
+    }
 
 //////////////////////////////////////////////////////////////////////////////
 //////////// Game state actions
@@ -1261,8 +1292,10 @@ class fleet extends Table
         if ($next_state == PHASE_FISHING) {
             // Fishing is automatic, move to next phase (or end)
             $next_state = $this->doFishing();
-        } else if ($next_state == PHASE_DRAW) {
-            // Multiactive state, handled by other function
+        }
+
+        // Multiactive states, handled by other function
+        if ($next_state == PHASE_PROCESSING || $next_state == PHASE_DRAW) {
             $this->gamestate->nextState($next_state);
             return;
         }
@@ -1299,6 +1332,25 @@ class fleet extends Table
         }
 
         $this->gamestate->nextState($next_state);
+    }
+
+    /*
+     * Determine active players for fish processing and trading
+     */
+    function stProcessing()
+    {
+        $players = self::loadPlayersBasicInfos();
+        $active_players = array();
+        foreach ($players as $player_id => $player) {
+            if (!$this->skipPlayer($player_id, PHASE_PROCESSING) ||
+                !$this->skipPlayer($player_id, PHASE_TRADING))
+            {
+                $active_players[] = $player_id;
+            }
+        }
+
+        // Activate players
+        $this->gamestate->setPlayersMultiactive($active_players, '', true);
     }
 
     /*
@@ -1366,20 +1418,9 @@ class fleet extends Table
             // or forward if all players have played
             return $this->nextHire();
         } else if ($current_phase == PHASE_PROCESSING) {
-            // Go direct to trading with current player
+            // Skip trading phase (handled by client)
+            // Next phase (draw) is also multiactive so player doesn't matter
             $next_phase = $this->nextPhase();
-            $extra_time = false; // same player
-        } else if ($current_phase == PHASE_TRADING) {
-            // Trading reverts back to processing for next player,
-            // or forward if all players have played
-            $next_player = self::activeNextPlayer();
-            if ($next_player == self::getGameStateValue('first_player')) {
-                // Back to first player => next phase
-                $next_phase = $this->nextPhase();
-            } else {
-                // Go back to processing for next player
-                $next_phase = $this->prevPhase();
-            }
         } else if ($current_phase == PHASE_DRAW) {
             // All players active at once during last phase
             // Move to next round and advance first player token

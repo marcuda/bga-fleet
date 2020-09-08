@@ -356,7 +356,7 @@ function (dojo, declare) {
                     // Player may select fish from multiple boats
                     this.client_state_args = {fish_ids:[]};
                     break;
-                case 'trading':
+                case 'client_trading':
                     // Player may trade a fish crate
                     // Simple true/false action
                     break;
@@ -401,6 +401,7 @@ function (dojo, declare) {
         onUpdateActionButtons: function( stateName, args )
         {
             if (this.debug) console.log( 'onUpdateActionButtons: '+stateName );
+            if (this.debug) console.log(args);
                       
             if( this.isCurrentPlayerActive() )
             {            
@@ -447,11 +448,23 @@ function (dojo, declare) {
                         this.addActionButton('button_1', _('Pass'), 'onPass');
                         break;
                     case 'processing':
-                        // Options: Pass, Cancel
-                        this.addActionButton('button_1', _('Pass'), 'onProcess');
-                        this.addActionButton('button_2', _('Cancel'), 'onCancel', null, false, 'red');
+                        // Multiactive state handling
+                        this.possible_moves = args.moves;
+                        this.showPossibleMoves();
+
+                        if (args.trade) {
+                            // Player passed processing and may trade
+                            this.setClientState('client_trading', {
+                                descriptionmyturn: _('${you} may trade a fish crate'),
+                                args: args,
+                            });
+                        } else {
+                            // Options: Pass, Cancel
+                            this.addActionButton('button_1', _('Pass'), 'onProcess');
+                            this.addActionButton('button_2', _('Cancel'), 'onCancel', null, false, 'red');
+                        }
                         break;
-                    case 'trading':
+                    case 'client_trading':
                         // Options: Trade, Pass
                         this.addActionButton('button_1', _('Trade'), 'onTrade');
                         this.addActionButton('button_2', _('Pass'), 'onPass');
@@ -630,7 +643,7 @@ function (dojo, declare) {
                     // Boat fish
                     this.updateSelectableFish('fish_' + this.player_id + '_');
                     break;
-                case 'trading':
+                case 'client_trading':
                     // Processed fish
                     this.updateSelectableFish(this.player_id + '_fish_');
                     break;
@@ -1331,7 +1344,7 @@ function (dojo, declare) {
                     // All possible fish are processed, automatically take action
                     this.onProcess();
                 }
-            } else if (state == 'trading') { // Fish traded for card(s)
+            } else if (state == 'client_trading') { // Fish traded for card(s)
                 if (!is_processed) {
                     // Wrong type
                     this.showMessage(_('You may only trade processed fish crates'), 'error');
@@ -1533,19 +1546,20 @@ function (dojo, declare) {
             if (!this.checkAction('processFish'))
                 return;
 
-            if (this.client_state_args.fish_ids.length > 0) {
-                // Player selected some fish, store ids
-                this.client_state_args.card_ids = '';
-                for (var id in this.client_state_args.fish_ids) {
-                    this.client_state_args.card_ids += id + ';';
-                }
-
-                // Take action
-                this.ajaxAction('processFish', this.client_state_args);
-            } else {
-                // No fish selected, just pass
-                this.onPass(evt);
+            // Store ids of any fish player selected
+            this.client_state_args.card_ids = '';
+            for (var id in this.client_state_args.fish_ids) {
+                this.client_state_args.card_ids += id + ';';
             }
+
+            // Take action
+            this.ajaxAction('processFish', this.client_state_args);
+
+            // Move immediately to trading
+            this.setClientState('client_trading', {
+                descriptionmyturn: _('${you} may trade a fish crate'),
+                args: {'moves': [true]},
+            });
         },
 
         /*
@@ -1975,9 +1989,11 @@ function (dojo, declare) {
             if (this.debug) console.log('notify_processFish');
             if (this.debug) console.log(notif);
 
-            if (this.client_state_args.fish_ids.length == 0) {
-                // Active player already moved fish
-                // fish_ids is empty for other players or during replay
+            if (this.client_state_args.fish_ids == undefined ||
+                this.client_state_args.fish_ids[notif.args.card_ids[0]] == undefined)
+            {
+                // Current player already moved fish and has record of it in fish_ids
+                // Other players (or during replay) need to play moves
                 for (var i in notif.args.card_ids) {
                     this.processFishCube(notif.args.card_ids[i], notif.args.player_id);
                 }

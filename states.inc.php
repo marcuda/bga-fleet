@@ -55,7 +55,7 @@ if (!defined("STATE_AUCTION")) {
     define("STATE_HIRE", 4);
     define("STATE_FISHING", 5);
     define("STATE_PROCESSING", 6);
-    define("STATE_TRADING", 7);
+    define("STATE_TRADING", 7); // client only, but still used in logic
     define("STATE_DRAW", 8);
     define("STATE_NEXT_PLAYER", 9);
     define("STATE_FINAL_SCORE", 10);
@@ -100,22 +100,15 @@ $machinestates = array(
         "possibleactions" => array("hireCaptain", "pass"),
         "transitions" => array("" => STATE_NEXT_PLAYER)
     ),
-    // Process fish crates
+    // Process and trade fish crates
     STATE_PROCESSING => array(
         "name" => "processing",
-        "description" => clienttranslate('${actplayer} may process fish crates'),
+        "description" => clienttranslate('Other players may process and trade fish crates'),
         "descriptionmyturn" => clienttranslate('${you} may process fish crates'),
-        "type" => "activeplayer",
-        "possibleactions" => array("processFish", "pass"),
-        "transitions" => array("" => STATE_NEXT_PLAYER)
-    ),
-    // Trade processed fish
-    STATE_TRADING => array(
-        "name" => "trading",
-        "description" => clienttranslate('${actplayer} may trade a fish crate'),
-        "descriptionmyturn" => clienttranslate('${you} may trade a fish crate'),
-        "type" => "activeplayer",
-        "possibleactions" => array("tradeFish", "pass"),
+        "type" => "multipleactiveplayer",
+        "action" => "stProcessing",
+        "args" => "argsProcessing",
+        "possibleactions" => array("processFish", "tradeFish", "pass"),
         "transitions" => array("" => STATE_NEXT_PLAYER)
     ),
     // Draw and discard
@@ -139,7 +132,6 @@ $machinestates = array(
             "launch" => STATE_LAUNCH,
             "hire" => STATE_HIRE,
             "processing" => STATE_PROCESSING,
-            "trading" => STATE_TRADING,
             "draw" => STATE_DRAW,
             "cantPlay" => STATE_NEXT_PLAYER,
             "finalScore" => STATE_FINAL_SCORE,
