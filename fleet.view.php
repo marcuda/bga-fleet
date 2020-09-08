@@ -52,6 +52,14 @@ class view_fleet_fleet extends game_view
         }
 
         // Player tableau
+        // Current player
+        $current_player_id = array_shift($players_ordered); // remove current player id
+        $this->page->begin_block("fleet_fleet",  "currentplayer");
+        $this->page->insert_block("currentplayer", array(
+            "PLAYER_ID" => $current_player_id
+        ));
+
+        // Other players
         $this->page->begin_block("fleet_fleet", "player");
         foreach ($players_ordered as $player_id) {
             $this->page->insert_block("player", array(
@@ -63,6 +71,8 @@ class view_fleet_fleet extends game_view
 
         // Translations
         $this->tpl['MY_HAND'] = self::_("My hand");
+        $this->tpl['MY_BOATS'] = self::_("My boats");
+        $this->tpl['MY_LICENSES'] = self::_("My licenses");
         $this->tpl['AUCTION_LABEL'] = self::_("License Auction");
         $this->tpl['BID_LABEL'] = self::_("Bids");
         $this->tpl['DRAW_LABEL'] = self::_("Drawn cards");
