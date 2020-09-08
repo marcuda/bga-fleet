@@ -163,15 +163,17 @@ function (dojo, declare) {
             dojo.addClass('first_player_p' + gamedatas.first_player, 'flt_first_player');
 
             // Player coins
-            this.coin_counter = new ebg.counter();
-            this.coin_counter.create('coincount_p' + this.player_id);
-            this.coin_counter.setValue(this.player_coins - this.discount);
-            if (this.discount > 0) {
-                dojo.byId('discount_p' + this.player_id).textContent = '+' + this.discount;
+            if (!this.isSpectator) { // Spectator can't see anyone's coins
+                this.coin_counter = new ebg.counter();
+                this.coin_counter.create('coincount_p' + this.player_id);
+                this.coin_counter.setValue(this.player_coins - this.discount);
+                if (this.discount > 0) {
+                    dojo.byId('discount_p' + this.player_id).textContent = '+' + this.discount;
+                }
+                this.addTooltip('coincount_icon_p' + this.player_id, _('Available money (+ any Shrimp bonus)'), '');
+                this.addTooltip('coincount_p' + this.player_id, _('Available money (+ any Shrimp bonus)'), '');
+                this.addTooltip('discount_p' + this.player_id, _('Available money (+ any Shrimp bonus)'), '');
             }
-            this.addTooltip('coincount_icon_p' + this.player_id, _('Available money (+ any Shrimp bonus)'), '');
-            this.addTooltip('coincount_p' + this.player_id, _('Available money (+ any Shrimp bonus)'), '');
-            this.addTooltip('discount_p' + this.player_id, _('Available money (+ any Shrimp bonus)'), '');
 
             // License Auction
             this.auction.card_id = parseInt(gamedatas.auction_card);
@@ -1698,9 +1700,9 @@ function (dojo, declare) {
                     if (notif.args.card) {
                         // Player chose Gone Fishin'
                         this.hand_counters[notif.args.player_id].incValue(1);
-                        this.coin_counter.incValue(2);
                         if (notif.args.player_id == this.player_id) {
                             this.player_hand.addToStockWithId(notif.args.card.type_arg, notif.args.card.id, 'boatcount');
+                            this.coin_counter.incValue(2);
                         }
                     }
                 }
