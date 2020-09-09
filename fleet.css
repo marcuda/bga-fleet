@@ -63,6 +63,8 @@
     z-index: 1;
     -webkit-backface-visibility: hidden; /* Safari */
     backface-visibility: hidden;
+    box-shadow: 2px 2px 5px;
+    border-radius: 10px;
 }
 
 .flt_boat_back {
@@ -82,6 +84,8 @@
     height: 122px;
     background-image: url('img/licenses.png');
     background-size: 500% 200%;
+    box-shadow: 2px 2px 5px;
+    border-radius: 10px;
 }
 
 .flt_tooltip_boat {
