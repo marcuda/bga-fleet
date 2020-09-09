@@ -52,32 +52,31 @@ class view_fleet_fleet extends game_view
         }
 
         // Player tableau
-        // Current player
-        $current_player_id = array_shift($players_ordered); // remove current player id
-        $this->page->begin_block("fleet_fleet",  "currentplayer");
-        $this->page->insert_block("currentplayer", array(
-            "PLAYER_ID" => $current_player_id
-        ));
-
-        // Other players
         $this->page->begin_block("fleet_fleet", "player");
+        // Current player (different labels)
+        $current_player_id = array_shift($players_ordered); // remove current player id
+        $this->page->insert_block("player", array(
+            "PLAYER_ID" => $current_player_id,
+            "PLAYER_COLOR" => '000000',
+            "LABEL_LICENSES" => self::_("My licenses"),
+            "LABEL_BOATS" => self::_("My boats"),
+        ));
+        // Other players
         foreach ($players_ordered as $player_id) {
+            $name = $players[$player_id]['player_name'];
             $this->page->insert_block("player", array(
                 "PLAYER_ID" => $player_id,
                 "PLAYER_COLOR" => $players[$player_id]['player_color'],
-                "PLAYER_NAME" => $players[$player_id]['player_name']
+                "LABEL_LICENSES" => $name . "'s " . self::_("licenses"),
+                "LABEL_BOATS" => $name . "'s " . self::_("boats"),
             ));
         }
 
         // Translations
         $this->tpl['MY_HAND'] = self::_("My hand");
-        $this->tpl['MY_BOATS'] = self::_("My boats");
-        $this->tpl['MY_LICENSES'] = self::_("My licenses");
         $this->tpl['AUCTION_LABEL'] = self::_("License Auction");
         $this->tpl['BID_LABEL'] = self::_("Bids");
         $this->tpl['DRAW_LABEL'] = self::_("Drawn cards");
-        $this->tpl['LICENSES'] = self::_("licenses");
-        $this->tpl['BOATS'] = self::_("boats");
         $this->tpl['FINAL_SCORE'] = self::_("Victory Points");
 
         /*********** Do not change anything below this line  ************/

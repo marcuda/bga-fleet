@@ -74,41 +74,10 @@
 
     <!-- All player tables -->
     <div id="playertables">
-        <!-- Current player has slightly different labels (my vs named) -->
-        <!-- Unfortunately that means this entire block is duplicated -->
-        <!-- BEGIN currentplayer -->
-        <div id="playertable_{PLAYER_ID}_wrap" style="display:flex; flex-wrap:wrap">
-            <div class="whiteblock flt_player_table">
-                <h3>{MY_LICENSES}</h3>
-                <div id="playerlicenses_{PLAYER_ID}" style="display:flex; flex-wrap:wrap">
-                    <div id="license_{PLAYER_ID}_0" class="flt_license_zone"></div>
-                    <div id="license_{PLAYER_ID}_1" class="flt_license_zone"></div>
-                    <div id="license_{PLAYER_ID}_2" class="flt_license_zone"></div>
-                    <div id="license_{PLAYER_ID}_3" class="flt_license_zone"></div>
-                    <div id="license_{PLAYER_ID}_4" class="flt_license_zone">
-                        <div style="border: none;">
-                            <div class="flt_fish_player">
-                                <div id="playerfish_{PLAYER_ID}"></div>
-                            </div>
-                        </div>
-                    </div>
-                    <div id="license_{PLAYER_ID}_5" class="flt_license_zone"></div>
-                    <div id="license_{PLAYER_ID}_6" class="flt_license_zone"></div>
-                    <div id="license_{PLAYER_ID}_7" class="flt_license_zone"></div>
-                    <div id="license_{PLAYER_ID}_8" class="flt_license_zone"></div>
-                </div>
-            </div>
-            &nbsp;
-            <div class="whiteblock flt_player_table">
-                <h3>{MY_BOATS}</h3>
-                <div id="playerboats_{PLAYER_ID}"></div>
-            </div>
-        </div>
-        <!-- END currentplayer -->
         <!-- BEGIN player -->
         <div id="playertable_{PLAYER_ID}_wrap" style="display:flex; flex-wrap:wrap">
             <div class="whiteblock flt_player_table">
-                <h3 style="color:#{PLAYER_COLOR};">{PLAYER_NAME}'s {LICENSES}</h3>
+                <h3 style="color:#{PLAYER_COLOR};">{LABEL_LICENSES}</h3>
                 <div id="playerlicenses_{PLAYER_ID}" style="display:flex; flex-wrap:wrap">
                     <div id="license_{PLAYER_ID}_0" class="flt_license_zone"></div>
                     <div id="license_{PLAYER_ID}_1" class="flt_license_zone"></div>
@@ -129,7 +98,7 @@
             </div>
             &nbsp;
             <div class="whiteblock flt_player_table">
-                <h3 style="color:#{PLAYER_COLOR}">{PLAYER_NAME}'s {BOATS}</h3>
+                <h3 style="color:#{PLAYER_COLOR};">{LABEL_BOATS}</h3>
                 <div id="playerboats_{PLAYER_ID}"></div>
             </div>
         </div>
