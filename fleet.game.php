@@ -59,6 +59,7 @@ class fleet extends Table
             PHASE_HIRE,
             PHASE_FISHING,
             PHASE_PROCESSING,
+            PHASE_TRADING,
             PHASE_DRAW
         );
         $this->nbr_phases = count($this->phases);
@@ -1420,7 +1421,8 @@ class fleet extends Table
         } else if ($current_phase == PHASE_PROCESSING) {
             // Skip trading phase (handled by client)
             // Next phase (draw) is also multiactive so player doesn't matter
-            $next_phase = $this->nextPhase();
+            $next_phase = $this->nextPhase(); // skip trading
+            $next_phase = $this->nextPhase(); // draw
         } else if ($current_phase == PHASE_DRAW) {
             // All players active at once during last phase
             // Move to next round and advance first player token
