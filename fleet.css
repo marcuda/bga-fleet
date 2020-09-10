@@ -63,7 +63,7 @@
     z-index: 1;
     -webkit-backface-visibility: hidden; /* Safari */
     backface-visibility: hidden;
-    box-shadow: 2px 2px 5px;
+    box-shadow: rgba(0,0,0,0.5) 2px 2px 5px;
     border-radius: 10px;
 }
 
@@ -84,7 +84,7 @@
     height: 122px;
     background-image: url('img/licenses.png');
     background-size: 500% 200%;
-    box-shadow: 2px 2px 5px;
+    box-shadow: rgba(0,0,0,0.5) 2px 2px 5px;
     border-radius: 10px;
 }
 
@@ -239,8 +239,8 @@
 }
 
 .flt_selectable {
-    border: 2px solid blue ! important;
-    border-radius: 10px;
+    border: 3px solid blue ! important;
+    border-radius: 12px;
 }
 
 .flt_license_zone {

@@ -825,7 +825,7 @@ function (dojo, declare) {
             }
             stock.setSelectionMode(0);
             stock.onItemCreate = dojo.hitch(this, 'setupLicenseDiv');
-            stock.apparenceBorderWidth = '2px';
+            stock.apparenceBorderWidth = '3px';
             return stock;
         },
 
@@ -843,7 +843,7 @@ function (dojo, declare) {
                 stock.addItemType(type, type, '', pos);
             }
             stock.setSelectionMode(0);
-            stock.setSelectionAppearance('class');
+            stock.apparenceBorderWidth = '3px';
 
             // Set different tooltip depending on where the card is
             if (is_hand) {
