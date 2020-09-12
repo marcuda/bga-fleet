@@ -892,7 +892,14 @@ function (dojo, declare) {
          */
         setupBoatDiv: function(card_div, card_type_id, card_id, is_hand)
         {
-            this.addTooltipHtml(card_div.id, this.getCardTooltip(card_type_id, is_hand));
+            if (is_hand) {
+                this.addTooltipHtml(card_div.id, this.getCardTooltip(card_type_id, is_hand));
+            } else {
+                // Simple tooltips for launched boats
+                var card = this.card_infos[card_type_id];
+                this.addTooltip(card_div.id, _(card.name) + ': +' + card.points + _('VP'), '');
+            }
+
             var player_id = parseInt(card_div.id.split('_')[1]);
             var id = card_id.split('_');
             id = id[id.length - 1];
@@ -910,17 +917,14 @@ function (dojo, declare) {
         {
             // Get card info and copy to modify
             var card = dojo.clone(this.card_infos[card_type_id]);
+            card.name = _(card.name); // i18n in template
 
             // Set tooltip text based on card type
             var txt = '';
             if (card.type == 'boat') {
-                if (is_hand) {
-                    txt += "<p><b>" + _("Cost") + ":</b> $" + card.cost + "</p>";
-                    txt += "<p><b>" + _("Launch") + "</b> => " + card.points + _("VP") + "</p>";
-                    txt += "<p><b>" + _("Discard") + "</b> => $" + card.coins + "</p>";
-                } else {
-                    txt += "<p>+" + card.points + _("VP") + "</p>";
-                }
+                txt += "<p><b>" + _("Cost") + ":</b> $" + card.cost + "</p>";
+                txt += "<p><b>" + _("Launch") + "</b> => " + card.points + _("VP") + "</p>";
+                txt += "<p><b>" + _("Discard") + "</b> => $" + card.coins + "</p>";
 
                 card.x = 2 * this.boat_width * (card_type_id - 9);
                 card.y = 0;
