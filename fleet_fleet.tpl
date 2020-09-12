@@ -79,10 +79,7 @@
             <div class="whiteblock flt_player_table">
                 <h3 style="color:#{PLAYER_COLOR};">{LABEL_LICENSES}</h3>
                 <div id="playerlicenses_{PLAYER_ID}" style="display:flex; flex-wrap:wrap">
-                    <div id="license_{PLAYER_ID}_0" class="flt_license_zone"></div>
-                    <div id="license_{PLAYER_ID}_1" class="flt_license_zone"></div>
-                    <div id="license_{PLAYER_ID}_2" class="flt_license_zone"></div>
-                    <div id="license_{PLAYER_ID}_3" class="flt_license_zone"></div>
+                    <!-- put processing (#4) first so processed fish area doesn't move -->
                     <div id="license_{PLAYER_ID}_4" class="flt_license_zone">
                         <div style="border: none;">
                             <div class="flt_fish_player">
@@ -90,6 +87,10 @@
                             </div>
                         </div>
                     </div>
+                    <div id="license_{PLAYER_ID}_0" class="flt_license_zone"></div>
+                    <div id="license_{PLAYER_ID}_1" class="flt_license_zone"></div>
+                    <div id="license_{PLAYER_ID}_2" class="flt_license_zone"></div>
+                    <div id="license_{PLAYER_ID}_3" class="flt_license_zone"></div>
                     <div id="license_{PLAYER_ID}_5" class="flt_license_zone"></div>
                     <div id="license_{PLAYER_ID}_6" class="flt_license_zone"></div>
                     <div id="license_{PLAYER_ID}_7" class="flt_license_zone"></div>
