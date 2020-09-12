@@ -1025,7 +1025,7 @@ class fleet extends Table
         // Play boat card and score VP
         $this->cards->moveCard($boat_id, 'table', $player_id);
         $this->incScore($player_id, $boat_info['points']);
-        self::incGameStateValue('current_player_launches', 1);
+        $nbr_launches = self::incGameStateValue('current_player_launches', 1);
 
         // Stats
         self::incStat(1, 'boats_launched', $player_id);
@@ -1045,13 +1045,17 @@ class fleet extends Table
         if ($discount > 0) {
             $msg .= ' (' . clienttranslate("$$discount Shrimp License discount") . ')';
         }
+        if ($nbr_launches == 2) {
+            $msg = '${bonus}: ' . $msg;
+        }
         self::notifyAllPlayers('launchBoat', $msg, array(
-            'i18n' => array('card_name'),
+            'i18n' => array('card_name', 'bonus'),
             'player_name' => self::getActivePlayerName(),
             'nbr_cards' => count($card_ids),
             'nbr_fish' => $fish,
             'coins' => $coins,
             'card_name' => $boat_info['name'],
+            'bonus' => $this->card_types[LICENSE_COD]['name'],
             'player_id' => $player_id,
             'boat_id' => $boat_id,
             'boat_type' => $boat['type_arg'],
@@ -1099,15 +1103,19 @@ class fleet extends Table
         // Place card on boat
         $this->cards->moveCard($card_id, 'captain', $boat_id);
         self::DbQuery("UPDATE card SET has_captain = 1 WHERE card_id = $boat_id");
-        self::incGameStateValue('current_player_hires', 1);
+        $nbr_hires = self::incGameStateValue('current_player_hires', 1);
         self::incStat(1, 'captains_hired', $player_id);
 
         // Notify
         $msg = clienttranslate('${player_name} hires a captain for their ${card_name}');
+        if ($nbr_hires == 2) {
+            $msg = '${bonus}: ' . $msg;
+        }
         self::notifyAllPlayers('hireCaptain', $msg, array(
-            'i18n' => array('card_name'),
+            'i18n' => array('card_name', 'bonus'),
             'player_name' => self::getActivePlayerName(),
             'card_name' => $this->getCardName($boat),
+            'bonus' => $this->card_types[LICENSE_LOBSTER]['name'],
             'player_id' => $player_id,
             'boat_id' => $boat_id,
             'card_id' => $card_id,
