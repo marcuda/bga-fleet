@@ -1641,6 +1641,7 @@ function (dojo, declare) {
                 );
                 this.player_boats[this.player_id].removeFromStockById(this.client_state_args.boat_id);
                 this.coin_counter.incValue(this.card_infos[this.client_state_args.boat_type].coins);
+                this.in_client_state = false;
                 delete this.client_state_args.boat_id; // clear args
             } else if (state == 'processing') {
                 if (this.debug) console.log('UNDO PROC');
