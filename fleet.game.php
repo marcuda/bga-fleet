@@ -1028,6 +1028,83 @@ class fleet extends Table
             'discards' => $this->cards->countCardsInLocation('discard'),
         ));
 
+        // Check for King Crab bonus points
+        $points = 0;
+        if ($license['type_arg'] == LICENSE_CRAB_C) {
+            $boats = $this->getBoats($player_id);
+            $captains = array_sum(array_column($boats, 'has_captain'));
+            $points = min($captains, 10);
+        } else if ($license['type_arg'] == LICENSE_CRAB_F) {
+            $boats = $this->getBoats($player_id);
+            $fish = array_sum(array_column($boats, 'fish'));
+            $points = min(intdiv($fish, 3), 10);
+        } else if ($license['type_arg'] == LICENSE_CRAB_L) {
+            $licenses = array_column($this->getLicenses($player_id), 'type_arg');
+            $unique = count(array_unique($licenses));
+            // All King Crab count as one type so do not double count any others
+            if (in_array(LICENSE_CRAB_F, $licenses)) {
+                $unique -= 1;
+            }
+            if (in_array(LICENSE_CRAB_C, $licenses)) {
+                $unique -= 1;
+            }
+
+            // Give points based on license table
+            if ($unique == 1) {
+                $points = 0;
+            } else if ($unique == 2) {
+                $points = 2;
+            } else if ($unique == 3) {
+                $points = 4;
+            } else if ($unique == 4) {
+                $points = 5;
+            } else if ($unique == 5) {
+                $points = 6;
+            } else if ($unique == 6) {
+                $points = 8;
+            } else if ($unique == 7) {
+                $points = 10;
+            }
+        } else if (count($this->getLicenses($player_id, LICENSE_CRAB_L)) == 1 &&
+                   count($this->getLicenses($player_id, $license['type_arg'])) == 1) {
+            // New non-crab license to score for King Crab license bonus
+            $licenses = array_column($this->getLicenses($player_id), 'type_arg');
+            $unique = count(array_unique($licenses));
+            // All King Crab count as one type so do not double count any others
+            if (in_array(LICENSE_CRAB_F, $licenses)) {
+                $unique -= 1;
+            }
+            if (in_array(LICENSE_CRAB_C, $licenses)) {
+                $unique -= 1;
+            }
+
+            // Give additional points based on license table
+            if ($unique == 2) {
+                $points = 2;
+            } else if ($unique == 3) {
+                $points = 2;
+            } else if ($unique == 4) {
+                $points = 1;
+            } else if ($unique == 5) {
+                $points = 1;
+            } else if ($unique == 6) {
+                $points = 2;
+            } else if ($unique == 7) {
+                $points = 2;
+            }
+        }
+
+        if ($points > 0) {
+            // Player scores bonus points for King Crab
+            $this->incScore($player_id, $points);
+            self::incStat($points, 'vp_bonus', $player_id);
+            self::incStat($points, 'vp_total', $player_id);
+            self::notifyAllPlayers('bonusScore', '', array(
+                'points' => $points,
+                'player_id' => $player_id,
+            ));
+        }
+
         $this->gamestate->nextState();
     }
 
@@ -1218,6 +1295,22 @@ class fleet extends Table
         }
         self::incStat(1, 'captains_hired', $player_id);
 
+        // Score King Crab bonus
+        if (count($this->getLicenses($player_id, LICENSE_CRAB_C)) == 1) {
+            $boats = $this->getBoats($player_id);
+            $captains = array_sum(array_column($boats, 'has_captain'));
+            if ($captains <= 10) {
+                // New captain scores one point
+                $this->incScore($player_id, 1);
+                self::incStat(1, 'vp_bonus', $player_id);
+                self::incStat(1, 'vp_total', $player_id);
+                self::notifyAllPlayers('bonusScore', '', array(
+                    'points' => 1,
+                    'player_id' => $player_id,
+                ));
+            }
+        }
+
         // Notify
         $msg = clienttranslate('${player_name} hires a captain for their ${card_name}');
         if ($nbr_hires == 2) {
@@ -1291,6 +1384,24 @@ class fleet extends Table
         self::incStat($nbr_fish, 'fish_processed', $player_id);
         self::incStat(-$nbr_fish, 'vp_fish', $player_id);
         self::incStat(-$nbr_fish, 'vp_total', $player_id);
+
+        // Reduce King Crab bonus
+        if (count($this->getLicenses($player_id, LICENSE_CRAB_F)) == 1) {
+            $boats = $this->getBoats($player_id);
+            $fish_now = array_sum(array_column($boats, 'fish'));
+            $fish_before = $fish_now + $nbr_fish;
+            $points = min(intdiv($fish_now, 3), 10) - min(intdiv($fish_before, 3), 10);
+            if ($points < 0) {
+                // Processed enough fish to lose bonus points
+                $this->incScore($player_id, $points);
+                self::incStat($points, 'vp_bonus', $player_id);
+                self::incStat($points, 'vp_total', $player_id);
+                self::notifyAllPlayers('bonusScore', '', array(
+                    'points' => $points,
+                    'player_id' => $player_id,
+                ));
+            }
+        }
 
         // Notify
         $msg = clienttranslate('${player_name} processes ${nbr_fish} fish crate(s)');
@@ -1819,6 +1930,24 @@ class fleet extends Table
                 self::incStat($nbr_fish, 'fish_gained', $player_id);
                 self::incStat($nbr_fish, 'vp_fish', $player_id);
                 self::incStat($nbr_fish, 'vp_total', $player_id);
+
+                // Score King Crab bonus
+                if (count($this->getLicenses($player_id, LICENSE_CRAB_F)) == 1) {
+                    $boats = $this->getBoats($player_id);
+                    $fish_now = array_sum(array_column($boats, 'fish'));
+                    $fish_before = $fish_now - $nbr_fish;
+                    $points = min(intdiv($fish_now, 3), 10) - min(intdiv($fish_before, 3), 10);
+                    if ($points > 0) {
+                        // Gained enough fish to score bonus points
+                        $this->incScore($player_id, $points);
+                        self::incStat($points, 'vp_bonus', $player_id);
+                        self::incStat($points, 'vp_total', $player_id);
+                        self::notifyAllPlayers('bonusScore', '', array(
+                            'points' => $points,
+                            'player_id' => $player_id,
+                        ));
+                    }
+                }
             }
 
             // Notify
@@ -2056,21 +2185,17 @@ class fleet extends Table
             $boats = $this->getBoats($player_id);
             $captains = array_sum(array_column($boats, 'has_captain'));
 
-            // Give points (max 10)
+            // Compute points (max 10)
             $points = min($captains, 10);
-            $this->incScore($player_id, $points);
-            self::incStat($points, 'vp_bonus', $player_id);
-            self::incStat($points, 'vp_total', $player_id);
 
             // Notify
             $msg = clienttranslate('${card_name}: ${player_name} scores ${points} points for ${nbr} captains');
-            self::notifyAllPlayers('bonusScore', $msg, array(
+            self::notifyAllPlayers('log', $msg, array(
                 'i18n' => array('card_name'),
                 'card_name' => $this->getCardName($card),
                 'player_name' => $players[$player_id]['player_name'],
                 'points' => $points,
                 'nbr' => $captains,
-                'player_id' => $player_id,
             ));
         }
 
@@ -2083,21 +2208,17 @@ class fleet extends Table
             $boats = $this->getBoats($player_id);
             $fish = array_sum(array_column($boats, 'fish'));
 
-            // Give points (max 10)
+            // Compute points (max 10)
             $points = min(intdiv($fish, 3), 10);
-            $this->incScore($player_id, $points);
-            self::incStat($points, 'vp_bonus', $player_id);
-            self::incStat($points, 'vp_total', $player_id);
 
             // Notify
             $msg = clienttranslate('${card_name}: ${player_name} scores ${points} points for ${nbr} fish crates');
-            self::notifyAllPlayers('bonusScore', $msg, array(
+            self::notifyAllPlayers('log', $msg, array(
                 'i18n' => array('card_name'),
                 'card_name' => $this->getCardName($card),
                 'player_name' => $players[$player_id]['player_name'],
                 'points' => $points,
                 'nbr' => $fish,
-                'player_id' => $player_id,
             ));
         }
 
@@ -2117,7 +2238,7 @@ class fleet extends Table
                 $unique -= 1;
             }
 
-            // Give points base on license table
+            // Compute points based on license table
             if ($unique == 1) {
                 $points = 0;
             } else if ($unique == 2) {
@@ -2133,19 +2254,15 @@ class fleet extends Table
             } else if ($unique == 7) {
                 $points = 10;
             }
-            $this->incScore($player_id, $points);
-            self::incStat($points, 'vp_bonus', $player_id);
-            self::incStat($points, 'vp_total', $player_id);
 
             // Notify
             $msg = clienttranslate('${card_name}: ${player_name} scores ${points} points for ${nbr} different licenses');
-            self::notifyAllPlayers('bonusScore', $msg, array(
+            self::notifyAllPlayers('log', $msg, array(
                 'i18n' => array('card_name'),
                 'card_name' => $this->getCardName($card),
                 'player_name' => $players[$player_id]['player_name'],
                 'points' => $points,
                 'nbr' => $unique,
-                'player_id' => $player_id,
             ));
         }
 
