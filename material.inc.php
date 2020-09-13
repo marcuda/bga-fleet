@@ -48,6 +48,9 @@ if (!defined("LICENSE_SHRIMP")) {
     define("PHASE_AUCTION", "auction");
     define("PHASE_LAUNCH", "launch");
     define("PHASE_HIRE", "hire");
+    define("PHASE_GAME_LAUNCH_HIRE", "gameLaunchHire");
+    define("PHASE_GAME_LAUNCH_HIRE_FINISH", "gameLaunchHireFinish");
+    define("PHASE_LAUNCH_HIRE", "launchHire");
     define("PHASE_FISHING", "fishing");
     define("PHASE_PROCESSING", "processing");
     define("PHASE_TRADING", "trading");

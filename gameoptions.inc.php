@@ -74,7 +74,18 @@ $game_options = array(
             ),
         ),
     ),
-
+    102 => array(
+        'name' => totranslate("Launch & Hire Phase"),
+        'values' => array(
+            1 => array(
+                'name' => totranslate("Sequential"),                
+            ),
+            2 => array(
+                'name' => totranslate("Simultaneous"),
+                'tmdisplay' => totranslate("Simultaneous launch & hire")
+            ),
+        ),
+    ),
 );
 
 
