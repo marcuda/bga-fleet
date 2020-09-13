@@ -41,10 +41,12 @@ class fleet extends Table
             'auction_winner' => 15,          // player_id of player the won current aution
             'current_player_launches' => 16, // number of boats launch by current player this phase to track cod bonus
             'current_player_hires' => 17,    // number of captains hired by current player this phase to track lobster bonus
+            'init_launch_hire_phase' => 18,  // flag that launch hire phase has been initalized or not (used in simultaneous mode)
 
             // Game options
             'gone_fishing' => 100,
             'fast_passing' => 101,
+            'simultaneous_launch_hire' => 102
         ) );
 
         // Deck compontent for all cards
@@ -109,6 +111,7 @@ class fleet extends Table
         self::setGameStateInitialValue("final_round", 0);
         self::setGameStateInitialValue("current_player_launches", 0);
         self::setGameStateInitialValue("current_player_hires", 0);
+        self::setGameStateInitialValue("init_launch_hire_phase", 0);
         
         // Init game statistics
         self::initStat('table', 'rounds_number', 1); // count first round
@@ -348,13 +351,27 @@ class fleet extends Table
     }
 
     /*
+     * Adjusts phase based on simultaneous game option 
+     */
+    function getAdjustedPhase($phase)
+    {
+        if ( $this->optSimultaneousLaunchHire() && ( $phase == PHASE_LAUNCH || $phase == PHASE_HIRE ) ) {            
+            $phase = PHASE_LAUNCH_HIRE;
+            if ( self::getGameStateValue("init_launch_hire_phase") == 0 ) {   //first time we want to transition to "GAME_launch_hire" and not launch_hire
+                $phase = PHASE_GAME_LAUNCH_HIRE;
+            }
+        }
+        return $phase;
+    }
+
+    /*
      * Increments the current phase counter and returns name of new phase
      */
     function nextPhase()
     {
         self::DbQuery("UPDATE player SET passed = 0"); // clear player actions
         $phase = self::incGameStateValue('current_phase', 1) % $this->nbr_phases;
-        return $this->phases[$phase];
+        return $this->getAdjustedPhase($this->phases[$phase]);
     }
 
     /*
@@ -366,7 +383,7 @@ class fleet extends Table
     {
         self::DbQuery("UPDATE player SET passed = 0"); // clear player actions
         $phase = self::incGameStateValue('current_phase', -1) % $this->nbr_phases;
-        return $this->phases[$phase];
+        return $this->getAdjustedPhase($this->phases[$phase]);
     }
 
     /*
@@ -375,7 +392,25 @@ class fleet extends Table
     function getCurrentPhase()
     {
         $phase = self::getGameStateValue('current_phase') % $this->nbr_phases;
-        return $this->phases[$phase];
+        $phase = $this->getAdjustedPhase($this->phases[$phase]);
+        if ( $phase == PHASE_LAUNCH_HIRE ) {      //if phase is LAUNCH_HIRE then switch it to HIRE or LAUNCH based on current player
+            $player_id = self::getCurrentPlayerId();
+            $launch_hire_phase = self::getUniqueValueFromDB("SELECT launch_hire_phase FROM player WHERE player_id = {$player_id}");
+            $phase = $launch_hire_phase == 0 ? PHASE_LAUNCH : PHASE_HIRE;
+        }
+        return $phase;
+    }
+
+    /*
+     * Returns player Id based on simultaneous game option
+     */
+    function getPlayerIdForAction()
+    {
+        $player_id = self::getActivePlayerId();
+        if ( $this->optSimultaneousLaunchHire() ) {
+            $player_id = self::getCurrentPlayerId();
+        }
+        return $player_id;
     }
 
     /*
@@ -508,6 +543,34 @@ class fleet extends Table
     function getHighBid()
     {
         return self::getUniqueValueFromDB("SELECT MAX(auction_bid) AS high_bid FROM player");
+    }
+
+    /* 
+     * Returns number of launches done by given player
+     */
+    function getNumberOfLaunches( $player_id )
+    {
+        $result = 0;
+        if ( $this->optSimultaneousLaunchHire() ) {
+            $result = self::getUniqueValueFromDB( "SELECT nbr_launch_hire FROM player WHERE player_id = {$player_id}" );
+        } else {
+            $result = self::getGameStateValue('current_player_launches');
+        }
+        return $result;
+    }
+
+    /* 
+     * Returns number of hires done by given player
+     */
+    function getNumberOfHires( $player_id )
+    {
+        $result = 0;
+        if ( $this->optSimultaneousLaunchHire() ) {
+            $result = self::getUniqueValueFromDB( "SELECT nbr_launch_hire FROM player WHERE player_id = {$player_id}" );
+        } else {
+            $result = self::getGameStateValue('current_player_hires');
+        }
+        return $result;
     }
 
     /*
@@ -665,6 +728,15 @@ class fleet extends Table
     {
        return $this->gamestate->table_globals[101] == 2;
     }
+
+    /*
+     * Returns true if Simultaneous launch boat & hire captain is enabled
+     */
+    function optSimultaneousLaunchHire()
+    {
+        return $this->gamestate->table_globals[102] == 2;
+    }
+
 
 //////////////////////////////////////////////////////////////////////////////
 //////////// Player actions
@@ -955,7 +1027,7 @@ class fleet extends Table
     {
         self::checkAction('launchBoat');
 
-        $player_id = self::getActivePlayerId();
+        $player_id = $this->getPlayerIdForAction();
         $coins = $fish; // $1 per fish crate
 
         // Validate game state and transaction
@@ -1026,6 +1098,9 @@ class fleet extends Table
         $this->cards->moveCard($boat_id, 'table', $player_id);
         $this->incScore($player_id, $boat_info['points']);
         $nbr_launches = self::incGameStateValue('current_player_launches', 1);
+        if ( $this->optSimultaneousLaunchHire() ) {
+            self::DbQuery( "UPDATE player SET nbr_launch_hire = nbr_launch_hire + 1 WHERE player_id = {$player_id}" );
+        }
 
         // Stats
         self::incStat(1, 'boats_launched', $player_id);
@@ -1074,7 +1149,7 @@ class fleet extends Table
     {
         self::checkAction('hireCaptain');
 
-        $player_id = self::getActivePlayerId();
+        $player_id = $this->getPlayerIdForAction();
 
         // Validate game state and transaction
 
@@ -1103,7 +1178,10 @@ class fleet extends Table
         // Place card on boat
         $this->cards->moveCard($card_id, 'captain', $boat_id);
         self::DbQuery("UPDATE card SET has_captain = 1 WHERE card_id = $boat_id");
-        $nbr_hires = self::incGameStateValue('current_player_hires', 1);
+        $nbr_hires = self::incGameStateValue('current_player_hires', 1);        
+        if ( $this->optSimultaneousLaunchHire() ) {
+            self::DbQuery( "UPDATE player SET nbr_launch_hire = nbr_launch_hire + 1 WHERE player_id = {$player_id}" );
+        }
         self::incStat(1, 'captains_hired', $player_id);
 
         // Notify
@@ -1271,6 +1349,25 @@ class fleet extends Table
     // Possible move args are handled privately in state function
 
     /*
+     * Args for simultaneous launch/hire phase
+     */ 
+    function argsLaunchHire()
+    {
+        $player_sub_phases = self::getCollectionFromDB( "SELECT player_id, launch_hire_phase FROM player" );        
+        foreach( $player_sub_phases as $player_id => &$player ) {
+            if ( $player["launch_hire_phase"] == 0 )  {
+                $player["possible_moves"] = $this->possibleMoves( $player_id, PHASE_LAUNCH );
+            } else {
+                $player["possible_moves"] = $this->possibleMoves( $player_id, PHASE_HIRE );
+            }
+        }
+        return array(
+            'reset_client_player_id' => self::getCurrentPlayerId(),
+            'players' => $player_sub_phases,
+        );
+    }
+
+    /*
      * Args for Processing and Trading phase
      */
     function argsProcessing() {
@@ -1303,8 +1400,11 @@ class fleet extends Table
             $next_state = $this->doFishing();
         }
 
+        if ($next_state == PHASE_GAME_LAUNCH_HIRE_FINISH) {  //noop, let the state machine manage transition
+            return;
+        }
         // Multiactive states, handled by other function
-        if ($next_state == PHASE_PROCESSING || $next_state == PHASE_DRAW) {
+        else if ($next_state == PHASE_PROCESSING || $next_state == PHASE_DRAW || $next_state == PHASE_GAME_LAUNCH_HIRE || $next_state == PHASE_LAUNCH_HIRE) {
             $this->gamestate->nextState($next_state);
             return;
         }
@@ -1341,6 +1441,42 @@ class fleet extends Table
         }
 
         $this->gamestate->nextState($next_state);
+    }
+
+    /*
+     * Activates simultaneous launch & hire phases (initialization)
+     */
+    function stGameLaunchHire()
+    {        
+        $players = self::loadPlayersBasicInfos();
+        $active_players = array();
+        foreach ($players as $player_id => $player) {
+            $can_launch = !$this->skipPlayer( $player_id, PHASE_LAUNCH );
+            $can_hire = !$this->skipPlayer( $player_id, PHASE_HIRE );
+            if ( $can_launch || $can_hire ) {
+                if ( !$can_launch ) {
+                    self::DbQuery("UPDATE player SET launch_hire_phase = 1 WHERE player_id = {$player_id}");        //jump straight to hire phase for this specific player
+                }
+                $active_players[] = $player_id;
+            }
+        }
+        self::setGameStateValue("init_launch_hire_phase", 1);
+        $this->gamestate->setPlayersMultiactive($active_players, "no_players", true);
+        if ( sizeof( $active_players ) > 0 ) {  //transition if there are players
+            $this->gamestate->nextState("players");
+        }
+    }
+
+    /*
+     * Close and finalize launch & hire phases (for simultaneous option)
+     */
+    function stGameLaunchHireFinish()
+    {                        
+        $this->nextPhase();     // tick launch
+        $this->nextPhase();     // tick hire
+        self::DbQuery("UPDATE player SET nbr_launch_hire = 0, launch_hire_phase = 0");     //reset launch_hire count
+        self::setGameStateValue("init_launch_hire_phase", 0);   //reset launch hire init flag                
+        $this->gamestate->nextState("");
     }
 
     /*
@@ -1416,16 +1552,37 @@ class fleet extends Table
             return $this->nextAuction();
         } else if ($current_phase == PHASE_LAUNCH) {
             // Launch has potential bonus action
-            if (!$this->nextLaunch()) {
+            if (!$this->nextLaunch() && $this->optSimultaneousLaunchHire() == false) {
                 // Go directly into hire with same player
                 $next_phase = $this->nextPhase();
+            } else if (!$this->nextLaunch() && $this->optSimultaneousLaunchHire()) {
+                $current_player_id = self::getCurrentPlayerId();
+                self::DbQuery("UPDATE player SET launch_hire_phase = 1, nbr_launch_hire = 0 WHERE player_id = {$current_player_id}" );      //mark launch phase done, and reset nbr of
+                if ( $this->skipPlayer( $current_player_id, PHASE_HIRE ) ) {    //if hire is not possible mark player as inactive             
+                    $transition = $this->gamestate->setPlayerNonMultiactive( $current_player_id, PHASE_GAME_LAUNCH_HIRE_FINISH );
+                    $next_phase = $transition ? PHASE_GAME_LAUNCH_HIRE_FINISH : PHASE_LAUNCH_HIRE;
+                } else {
+                    $next_phase = PHASE_LAUNCH_HIRE;
+                }
             }
             $extra_time = false; // same player
         } else if ($current_phase == PHASE_HIRE) {
             // Hire has potential bonus move
             // then reverts back to launch for next player,
             // or forward if all players have played
-            return $this->nextHire();
+            $result = $this->nextHire();
+            $next_player = $result[0];
+            $next_phase = $result[1];
+            $extra_time = $result[2];
+            if ($this->optSimultaneousLaunchHire()) {   
+                if ($next_phase != PHASE_HIRE) {    //no more to hire, set player as inactive
+                    $transition = $this->gamestate->setPlayerNonMultiactive( self::getCurrentPlayerId(), PHASE_GAME_LAUNCH_HIRE_FINISH );
+                    $next_phase = $transition ? PHASE_GAME_LAUNCH_HIRE_FINISH : PHASE_LAUNCH_HIRE;
+                } else {
+                    $next_phase = PHASE_LAUNCH_HIRE;
+                }
+            }
+
         } else if ($current_phase == PHASE_PROCESSING) {
             // Skip trading phase (handled by client)
             // Next phase (draw) is also multiactive so player doesn't matter
@@ -1522,10 +1679,11 @@ class fleet extends Table
     {
         // Cod license gives bonus boat launch
         // Allow extra turn if player has license and legal play
-        $player_id = self::getActivePlayerId();
+        $player_id = $this->getPlayerIdForAction();
         $nbr_license = count($this->getLicenses($player_id, LICENSE_COD));
+        $nbr_launches = $this->getNumberOfLaunches($player_id);
         if ($nbr_license > 0 && // has license
-            self::getGameStateValue('current_player_launches') < 2 && // has not used bonus launch
+            $nbr_launches < 2 && // has not used bonus launch
             !$this->skipPlayer($player_id, PHASE_LAUNCH) && // has another launch play
             !$this->hasPassed($player_id)) // has not passed
         {
@@ -1552,10 +1710,11 @@ class fleet extends Table
     {
         // Lobster license gives bonus captain hire
         // Allow extra turn if player has license and legal play
-        $player_id = self::getActivePlayerId();
+        $player_id = $this->getPlayerIdForAction();
         $nbr_license = count($this->getLicenses($player_id, LICENSE_LOBSTER));
+        $nbr_hires = $this->getNumberOfHires( $player_id );
         if ($nbr_license > 0 && // has license
-            self::getGameStateValue('current_player_hires') < 2 && // has not used bonus hire
+            $nbr_hires < 2 && // has not used bonus hire
             !$this->skipPlayer($player_id, PHASE_HIRE) && // has another hire play
             !$this->hasPassed($player_id)) // has not passed
         {
@@ -1597,7 +1756,7 @@ class fleet extends Table
         if ($has_bonus) {
             // Player turn continues with another possible hire
             $next_state = PHASE_HIRE;
-        } else {
+        } else if ($this->optSimultaneousLaunchHire() == false) {
             // Next player, either back to launch or forward to processing
             self::setGameStateValue('current_player_hires', 0);
             $player_id = self::activeNextPlayer();
@@ -1608,6 +1767,8 @@ class fleet extends Table
                 // Go back to launch for next player
                 $next_state = $this->prevPhase();
             }
+        } else if ($this->optSimultaneousLaunchHire()) {
+            $next_state = PHASE_FISHING;
         }
 
         return array($player_id, $next_state, !$has_bonus);

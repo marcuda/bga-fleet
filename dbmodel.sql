@@ -39,3 +39,10 @@ ALTER TABLE `player` ADD COLUMN `passed` tinyint(1) unsigned NOT NULL DEFAULT 0;
 
 -- Processed fish crates for selling
 ALTER TABLE `player` ADD COLUMN `fish_crates` tinyint(1) unsigned NOT NULL DEFAULT 0;
+
+-- Track which part of launch/hire phase (0 = launch, 1 = hire)
+ALTER TABLE `player` ADD COLUMN `launch_hire_phase` tinyint(1) unsigned NOT NULL DEFAULT 0;
+
+-- Track # of launch or hire player has done.  only used when game option = simultaneous
+ALTER TABLE `player` ADD COLUMN `nbr_launch_hire` tinyint(1) unsigned NOT NULL DEFAULT 0;
+

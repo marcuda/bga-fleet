@@ -56,6 +56,7 @@ function (dojo, declare) {
             this.discount = 0;           // transaction discount from played Shrimp Licenses
             this.gone_fishing = false;   // true if game option to use Gone Fishing is enabled
             this.constants = null;       // game constants
+            this.in_client_state = false;// currently in a client state, used by launch_hire state
         },
         
         /*
@@ -248,7 +249,24 @@ function (dojo, declare) {
 
         ///////////////////////////////////////////////////
         //// Game & client states
-        
+        adjustLaunchHireState : function( stateName, args )
+        {            
+            if (!this.isSpectator && stateName == "launchHire") {
+                if (args.reset_client_player_id && args.reset_client_player_id == this.player_id) {     //reset client state since player completed a server action
+                    this.in_client_state = false;
+                }
+                stateName = "launch";
+                if (args.players[this.player_id].launch_hire_phase == "1")  {   //pass flag = launch done.
+                    stateName = "hire";
+                }
+                if (this.in_client_state && stateName == "launch") {        //player in client state during launch, transition right back to client_launchPay
+                    stateName = "client_launchPay";
+                }
+                this.possible_moves = args.players[this.player_id].possible_moves;
+            }
+            return stateName;
+        },
+
         // onEnteringState: this method is called each time we are entering into a new game state.
         //                  You can use this method to perform some user interface changes at this moment.
         //
@@ -257,6 +275,7 @@ function (dojo, declare) {
             if (this.debug) console.log( 'Entering state: '+stateName );
             if (this.debug) console.log(this.gamedatas.gamestate);
 
+            stateName = this.adjustLaunchHireState(stateName, args.args);
             // Highlight available actions and remove auction (will be displayed if needed)
             this.showPossibleMoves();
             this.hideAuction(stateName);
@@ -337,20 +356,30 @@ function (dojo, declare) {
                     this.client_state_args.fish_crates = 0;
                     break;
                 case 'launch':
-                    // Player may select card from hand
-                    this.client_state_args = {};
-                    this.safeSetSelectionMode(this.player_hand, 1);
+                    if (this.isCurrentPlayerActive()) {
+                        // Player may select card from hand
+                        this.client_state_args = {};
+                        this.safeSetSelectionMode(this.player_hand, 1);
+                    }
                     break;
                 case 'client_launchPay':
-                    // Player must select card(s)/fish from hand
-                    this.safeSetSelectionMode(this.player_hand, 2);
-                    this.client_state_args.fish_crates = 0;
+                    if (!this.in_client_state)  {
+                        // Player must select card(s)/fish from hand
+                        this.safeSetSelectionMode(this.player_hand, 2);
+                        this.client_state_args.fish_crates = 0;
+                    } else {    //player was already in client state just update titles & buttons again
+                        this.updateBuy();
+                    }
                     break;
                 case 'hire':
-                    // Player may select card from hand and boat in play
-                    this.client_state_args = {};
-                    this.safeSetSelectionMode(this.player_hand, 1);
-                    this.safeSetSelectionMode(this.player_boats[this.player_id], 1);
+                    if (this.isCurrentPlayerActive()) {
+                        // Player may select card from hand and boat in play
+                        this.client_state_args = {};
+                        this.safeSetSelectionMode(this.player_hand, 1);
+                        this.safeSetSelectionMode(this.player_boats[this.player_id], 1);
+                        this.gamedatas.gamestate.descriptionmyturn = _("${you} may hire a captain");        //client side description update in case launch_hire state
+                        this.updatePageTitle();
+                    }
                     break;
                 case 'processing':
                     // Player may select fish from multiple boats
@@ -364,6 +393,9 @@ function (dojo, declare) {
                     // Multiactive state but players not yet activated
                     // Handle in onUpdateActionButtons
                     break;
+                case 'gameLaunchHireFinish':
+                    this.in_client_state = false;       //reset in_client_state not needed outside of launchHire state
+                    break;
             }
         },
 
@@ -373,6 +405,8 @@ function (dojo, declare) {
         onLeavingState: function( stateName )
         {
             if (this.debug) console.log( 'Leaving state: '+stateName );
+            if (this.in_client_state)       //noop, ignore transition. want to stay in client state
+                return;
 
             // Clear all selections
             this.auction.table.setSelectionMode(0);
@@ -402,7 +436,8 @@ function (dojo, declare) {
         {
             if (this.debug) console.log( 'onUpdateActionButtons: '+stateName );
             if (this.debug) console.log(args);
-                      
+
+            stateName = this.adjustLaunchHireState(stateName, args);
             if( this.isCurrentPlayerActive() )
             {            
                 switch( stateName )
@@ -611,10 +646,10 @@ function (dojo, declare) {
             if (this.debug) console.log("POSSIBLE MOVES");
             if (this.debug) console.log(this.possible_moves);
             if (this.debug) console.log(this.gamedatas.gamestate.name);
-
+            let modifiedStateName = this.adjustLaunchHireState(this.gamedatas.gamestate.name, this.gamedatas.gamestate.args);
             // Most states highlight cards and/or fish
             // Determine which by state and use helper functions to activate
-            switch(this.gamedatas.gamestate.name)
+            switch(modifiedStateName)
             {
                 case 'client_auctionSelect':
                     // Auction cards
@@ -1167,9 +1202,9 @@ function (dojo, declare) {
 
             if (this.debug) console.log('hand select ' + this.gamedatas.gamestate.name);
             if (this.debug) console.log(items);
-
+            let modifiedStateName = this.adjustLaunchHireState(this.gamedatas.gamestate.name, this.gamedatas.gamestate.args);
             // Every state does something different with cards in hand
-            switch(this.gamedatas.gamestate.name)
+            switch(modifiedStateName)
             {
                 case 'client_auctionWin':
                     // Cards used to pay cost, update count
@@ -1221,6 +1256,7 @@ function (dojo, declare) {
                                     descriptionmyturn: desc,
                                     args: card_info
                                 });
+                                this.in_client_state = true;
                             }
                         }
                     }
@@ -1493,7 +1529,7 @@ function (dojo, declare) {
             var state = this.gamedatas.gamestate.name;
             if (state == 'client_auctionWin') {
                 var action = 'buyLicense';
-            } else if (state == 'client_launchPay') {
+            } else if (state == 'client_launchPay' || state == 'launchHire') {      //sometimes client_launchPay state is "faked" inside launchHire
                 var action = 'launchBoat';
             } else {
                 // This should not happen under normal circumstances
