@@ -60,8 +60,6 @@ if (!defined("STATE_AUCTION")) {
     define("STATE_NEXT_PLAYER", 9);
     define("STATE_FINAL_SCORE", 10);
     define("STATE_LAUNCH_HIRE", 11);
-    define("STATE_GAME_LAUNCH_HIRE", 12);
-    define("STATE_GAME_LAUNCH_HIRE_FINISH", 13);
 }
  
 $machinestates = array(
@@ -103,24 +101,12 @@ $machinestates = array(
         "possibleactions" => array("hireCaptain", "pass"),
         "transitions" => array("" => STATE_NEXT_PLAYER)
     ),
-    // Simultaneous Launch boat & hire captains
-    STATE_GAME_LAUNCH_HIRE => array(
-        "name" => "gameLaunchHire",
-        "type" => "game",
-        "action" => "stGameLaunchHire",
-        "transitions" => array("players" => STATE_LAUNCH_HIRE, "no_players" => STATE_GAME_LAUNCH_HIRE_FINISH),
-    ),
-    STATE_GAME_LAUNCH_HIRE_FINISH => array(
-        "name" => "gameLaunchHireFinish",
-        "type" => "game", 
-        "action" => "stGameLaunchHireFinish",
-        "transitions" => array("" => STATE_NEXT_PLAYER),
-    ),
     STATE_LAUNCH_HIRE => array(
         "name" => "launchHire",
-        "description" => clienttranslate('All players may launch a boat and/or hire a captain'),
+        "description" => clienttranslate('Other players may launch boats and/or hire captains'),
         "descriptionmyturn" => clienttranslate('${you} may launch a boat'),
         "type" => "multipleactiveplayer",        
+        "action" => "stLaunchHire",
         "args" => "argsLaunchHire",
         "possibleactions" => array("launchBoat", "hireCaptain", "pass"),
         "transitions" => array("" => STATE_NEXT_PLAYER)
@@ -156,8 +142,6 @@ $machinestates = array(
             "auction" => STATE_AUCTION,
             "launch" => STATE_LAUNCH,
             "hire" => STATE_HIRE,
-            "gameLaunchHire" => STATE_GAME_LAUNCH_HIRE,
-            "gameLaunchHireFinish" => STATE_GAME_LAUNCH_HIRE_FINISH,
             "launchHire" => STATE_LAUNCH_HIRE,
             "processing" => STATE_PROCESSING,
             "draw" => STATE_DRAW,
