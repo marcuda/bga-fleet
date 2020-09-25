@@ -1673,6 +1673,9 @@ class fleet extends Table
                     'moves' => $this->possibleMoves($player_id, PHASE_DRAW),
                     'coins' => $this->getCoins($player_id),
                 ));
+
+                // Do not count discarded card in stats
+                self::incStat(-1, 'cards_drawn', $player_id);
             }
 
             // Next player
