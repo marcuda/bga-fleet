@@ -1522,11 +1522,15 @@ class fleet extends Table
      * Args for Processing and Trading phase
      */
     function argsProcessing() {
-        $player_id = self::getCurrentPlayerId();
-        return array(
-            'moves' => $this->possibleMoves($player_id, PHASE_PROCESSING),
-            'trade' => $this->hasPassed($player_id), // false => processing; true => trading
-        );
+        $players = self::loadPlayersBasicInfos();
+        $args = array();
+        foreach ($players as $player_id => $player) {
+            $args[$player_id] = array(
+                'moves' => $this->possibleMoves($player_id, PHASE_PROCESSING),
+                'trade' => $this->hasPassed($player_id), // false => processing; true => trading
+            );
+        }
+        return $args;
     }
 
 //////////////////////////////////////////////////////////////////////////////

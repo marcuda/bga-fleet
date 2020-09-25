@@ -468,10 +468,10 @@ function (dojo, declare) {
                         break;
                     case 'processing':
                         // Multiactive state handling
-                        this.possible_moves = args.moves;
+                        this.possible_moves = args[this.player_id].moves;
                         this.showPossibleMoves();
 
-                        if (args.trade) {
+                        if (args[this.player_id].trade) {
                             // Player passed processing and may trade
                             this.setClientState('client_trading', {
                                 descriptionmyturn: _('${you} may trade a fish crate'),
