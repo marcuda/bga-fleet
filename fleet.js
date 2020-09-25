@@ -25,7 +25,7 @@ define([
 function (dojo, declare) {
     return declare("bgagame.fleet", ebg.core.gamegui, {
         constructor: function(){
-            this.debug = true; // enable console logs if true
+            this.debug = false; // enable console logs if true
 
             if (this.debug) console.log('fleet constructor');
               

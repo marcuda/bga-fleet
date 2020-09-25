@@ -735,7 +735,8 @@ class fleet extends Table
      */
     function optSimultaneousLaunchHire()
     {
-        return $this->gamestate->table_globals[102] == 2;
+        return array_key_exists(102, $this->gamestate->table_globals) // ensure option added
+               && $this->gamestate->table_globals[102] == 2;
     }
 
 
