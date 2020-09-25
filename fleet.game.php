@@ -236,7 +236,7 @@ class fleet extends Table
             $boats[$player_id] = $this->getBoats($player_id);
             $licenses[$player_id] = $this->getLicenses($player_id);
             $fish[$player_id] = $this->getFishCrates($player_id);
-            $hands[$player_id] = count($this->cards->getPlayerHand($player_id));
+            $hands[$player_id] = count($this->cards->getPlayerHand($player_id)) + $this->cards->countCardInLocation('draw', $player_id);
         }
         $result['boats'] = $boats;
         $result['licenses'] = $licenses;
