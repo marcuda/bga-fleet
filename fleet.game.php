@@ -1621,6 +1621,7 @@ class fleet extends Table
                     'desc' => $desc,
                 ));
                 $active_players[] = $player_id;
+                self::giveExtraTime($player_id);
             } else {
                 $this->nextHire($player_id); // draw bonus
             }
@@ -1641,7 +1642,9 @@ class fleet extends Table
             if (!$this->skipPlayer($player_id, PHASE_PROCESSING) ||
                 !$this->skipPlayer($player_id, PHASE_TRADING))
             {
+                // Player can process or trade
                 $active_players[] = $player_id;
+                self::giveExtraTime($player_id);
             }
         }
 
