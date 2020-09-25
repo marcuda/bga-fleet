@@ -78,11 +78,13 @@ $game_options = array(
         'name' => totranslate("Launch & Hire Phase"),
         'values' => array(
             1 => array(
-                'name' => totranslate("Sequential"),                
+                'name' => totranslate("Sequential"),
+                'description' => totranslate("Standard turn-based play"),
             ),
             2 => array(
                 'name' => totranslate("Simultaneous"),
-                'tmdisplay' => totranslate("Simultaneous launch & hire")
+                'tmdisplay' => totranslate("Simultaneous launch & hire"),
+                'description' => totranslate("All players can launch and hire at the same time"),
             ),
         ),
     ),
