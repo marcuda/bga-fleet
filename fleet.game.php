@@ -758,6 +758,9 @@ class fleet extends Table
         $state = $this->gamestate->state();
         if ($state['name'] == PHASE_LAUNCH_HIRE) {
             $state = self::getUniqueValueFromDB("SELECT launch_hire_phase FROM player WHERE player_id = {$player_id}");
+            if ($state == 0) {
+                $this->nextLaunch($player_id); // draw bonus
+            }
             if ($state == 0 && !$this->skipPlayer($player_id, PHASE_HIRE)) {
                 self::DbQuery("UPDATE player SET nbr_launch_hire = 0, launch_hire_phase = 1, passed = 0 WHERE player_id = {$player_id}");
                 self::notifyPlayer($player_id, 'clientState', '', array(
