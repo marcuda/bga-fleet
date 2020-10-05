@@ -1213,7 +1213,7 @@ class fleet extends Table
         }
         self::notifyAllPlayers('launchBoat', $msg, array(
             'i18n' => array('card_name', 'bonus'),
-            'player_name' => self::getActivePlayerName(),
+            'player_name' => $this->getPlayerNameForAction(),
             'nbr_cards' => count($card_ids),
             'nbr_fish' => $fish,
             'coins' => $coins,
@@ -1318,7 +1318,7 @@ class fleet extends Table
         }
         self::notifyAllPlayers('hireCaptain', $msg, array(
             'i18n' => array('card_name', 'bonus'),
-            'player_name' => self::getActivePlayerName(),
+            'player_name' => $this->getPlayerNameForAction(),
             'card_name' => $this->getCardName($boat),
             'bonus' => $this->card_types[LICENSE_LOBSTER]['name'],
             'player_id' => $player_id,
