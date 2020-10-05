@@ -337,6 +337,7 @@ function (dojo, declare) {
                     break;
                 case 'launchHire':
                     // Simultaneous launch/hire handled with client states
+                    if (this.isSpectator) { break; } // must quit or following will break with spectator
                     var next_state = 'client_launch';
                     var desc = _('${you} may launch a boat');
                     if (args.args[this.player_id].hire) {
