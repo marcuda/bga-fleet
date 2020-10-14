@@ -87,6 +87,7 @@ $game_options = array(
                 'description' => totranslate("All players can launch and hire at the same time"),
             ),
         ),
+        'default' => 2,
     ),
 );
 
