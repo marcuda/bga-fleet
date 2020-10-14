@@ -316,7 +316,7 @@ function (dojo, declare) {
                         // First player to act in the round
                         // Client state to select license for bid
                         this.setClientState('client_auctionSelect', {
-                            descriptionmyturn: _('${you} may select a license to bid on')
+                            descriptionmyturn: _('${you} may select a license to bid on or pass')
                         });
                     }
                     break;
@@ -422,9 +422,9 @@ function (dojo, declare) {
                     case 'client_auctionSelect':
                         // Options: Pass/Go Fishin', depending on game options
                         if (this.gone_fishing) {
-                            this.addActionButton('button_1', _("Go fishin' (pass)"), 'onPass');
+                            this.addActionButton('button_1', _("Go fishin' (pass)"), 'onPass', null, false, 'red');
                         } else {
-                            this.addActionButton('button_1', _('Pass'), 'onPass');
+                            this.addActionButton('button_1', _('Pass'), 'onPass', null, false, 'red');
                         }
                         break;
                     case 'client_auctionBid':
@@ -440,7 +440,7 @@ function (dojo, declare) {
                             this.addActionButton('button_2', '+1', 'onPlusOne', null, false, color);
                             this.addActionButton('button_3', _('Bid') + ': ' + this.client_state_args.bid, 'onBid');
                         }
-                        this.addActionButton('button_4', _('Pass'), 'onPass');
+                        this.addActionButton('button_4', _('Pass'), 'onPass', null, false, 'red');
                         break;
                     case 'client_auctionWin':
                         // Options: Discard selected
@@ -452,7 +452,7 @@ function (dojo, declare) {
                         //fallthru
                     case 'launch':
                         // Options: Pass
-                        this.addActionButton('button_1', _('Pass'), 'onPass');
+                        this.addActionButton('button_1', _('Pass'), 'onPass', null, false, 'red');
                         break;
                     case 'client_launchPay':
                         // Options: Discard selected, Cancel
@@ -465,7 +465,7 @@ function (dojo, declare) {
                         //fallthru
                     case 'hire':
                         // Options: Pass
-                        this.addActionButton('button_1', _('Pass'), 'onPass');
+                        this.addActionButton('button_1', _('Pass'), 'onPass', null, false, 'red');
                         break;
                     case 'processing':
                         // Multiactive state handling
@@ -487,7 +487,7 @@ function (dojo, declare) {
                     case 'client_trading':
                         // Options: Trade, Pass
                         this.addActionButton('button_1', _('Trade'), 'onTrade');
-                        this.addActionButton('button_2', _('Pass'), 'onPass');
+                        this.addActionButton('button_2', _('Pass'), 'onPass', null, false, 'red');
                         break;
                     case 'draw':
                         // Options: NONE
@@ -1122,9 +1122,9 @@ function (dojo, declare) {
                     this.addActionButton('button_2', '+1', 'onPlusOne');
                     this.addActionButton('button_3', _('Bid') + ': ' + this.client_state_args.bid, 'onBid');
                     if (this.gone_fishing) {
-                        this.addActionButton('button_4', _("Go fishin' (pass)"), 'onPass');
+                        this.addActionButton('button_4', _("Go fishin' (pass)"), 'onPass', null, false, 'red');
                     } else {
-                        this.addActionButton('button_4', _('Pass'), 'onPass');
+                        this.addActionButton('button_4', _('Pass'), 'onPass', null, false, 'red');
                     }
                 } else {
                     // Cannot select new auction card
@@ -1132,13 +1132,13 @@ function (dojo, declare) {
                 }
             } else if (this.checkAction('bid', true)) {
                 // First player undid selection, change title and buttons back original options
-                this.gamedatas.gamestate.descriptionmyturn = _('${you} may select a license to bid on'),
+                this.gamedatas.gamestate.descriptionmyturn = _('${you} may select a license to bid on or pass'),
                 this.updatePageTitle();
                 this.removeActionButtons();
                 if (this.gone_fishing) {
-                    this.addActionButton('button_1', _("Go fishin' (pass)"), 'onPass');
+                    this.addActionButton('button_1', _("Go fishin' (pass)"), 'onPass', null, false, 'red');
                 } else {
-                    this.addActionButton('button_1', _('Pass'), 'onPass');
+                    this.addActionButton('button_1', _('Pass'), 'onPass', null, false, 'red');
                 }
             }
         },

@@ -78,7 +78,7 @@ $machinestates = array(
     STATE_AUCTION => array(
         "name" => "auction",
         "description" => clienttranslate('${actplayer} must bid or pass'),
-        "descriptionmyturn" => clienttranslate('${you} may select a license to bid on'),
+        "descriptionmyturn" => clienttranslate('${you} may select a license to bid on or pass'),
         "type" => "activeplayer",
         "possibleactions" => array("bid", "buyLicense", "pass"),
         "transitions" => array("" => STATE_NEXT_PLAYER)
