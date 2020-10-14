@@ -2061,6 +2061,10 @@ function (dojo, declare) {
             this.removeFishCube(notif.args.player_id);
             if (notif.args.player_id == this.player_id) {
                 this.coin_counter.incValue(-1);
+
+                // Multiactive state may not move on immediately
+                // Clear highlights manually as soon as possible
+                dojo.query('.flt_fish_selectable').removeClass('flt_fish_selectable');
             }
             // Card draw handled separately
         },
