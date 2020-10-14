@@ -1188,10 +1188,12 @@ class fleet extends Table
         // Play boat card and score VP
         $this->cards->moveCard($boat_id, 'table', $player_id);
         $this->incScore($player_id, $boat_info['points']);
-        $nbr_launches = self::incGameStateValue('current_player_launches', 1);
         if ( $this->optSimultaneousLaunchHire() ) {
             self::DbQuery( "UPDATE player SET nbr_launch_hire = nbr_launch_hire + 1 WHERE player_id = {$player_id}" );
+        } else {
+            self::incGameStateValue('current_player_launches', 1);
         }
+        $nbr_launches = $this->getNumberOfLaunches($player_id);
 
         // Stats
         self::incStat(1, 'boats_launched', $player_id);
@@ -1292,11 +1294,13 @@ class fleet extends Table
         // Place card on boat
         $this->cards->moveCard($card_id, 'captain', $boat_id);
         self::DbQuery("UPDATE card SET has_captain = 1 WHERE card_id = $boat_id");
-        $nbr_hires = self::incGameStateValue('current_player_hires', 1);        
         if ( $this->optSimultaneousLaunchHire() ) {
             self::DbQuery( "UPDATE player SET nbr_launch_hire = nbr_launch_hire + 1 WHERE player_id = {$player_id}" );
+        } else {
+            self::incGameStateValue('current_player_hires', 1);
         }
         self::incStat(1, 'captains_hired', $player_id);
+        $nbr_hires = $this->getNumberOfHires($player_id);
 
         // Score King Crab bonus
         if (count($this->getLicenses($player_id, LICENSE_CRAB_C)) == 1) {
@@ -1852,7 +1856,7 @@ class fleet extends Table
             return true;
         } else {
             // No bonus action, but license also gives draw bonus after any launch
-            if ($nbr_license > 0 && self::getGameStateValue('current_player_launches') > 0) {
+            if ($nbr_license > 0 && $nbr_launches > 0) {
                 // Has license and launched at least one boat, draw card(s)
                 $this->drawCards($player_id, $nbr_license, 'hand',
                     $this->card_types[LICENSE_COD]['name']);
